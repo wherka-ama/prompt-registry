@@ -88,13 +88,13 @@ export class SourceCommands {
             let config: any = undefined;
             if (sourceType.value === 'awesome-copilot') {
                 const branch = await vscode.window.showInputBox({
-                    prompt: 'Enter branch name (optional)',
+                    prompt: 'Enter branch name (or press Enter for "main")',
                     placeHolder: 'main',
                     value: 'main'
                 });
 
                 const collectionsPath = await vscode.window.showInputBox({
-                    prompt: 'Enter collections directory path (optional)',
+                    prompt: 'Enter collections directory path (or press Enter for "collections")',
                     placeHolder: 'collections',
                     value: 'collections'
                 });
@@ -588,8 +588,9 @@ export class SourceCommands {
 
             case 'awesome-copilot':
                 return await vscode.window.showInputBox({
-                    prompt: 'Enter GitHub repository URL (e.g., github.com/github/awesome-copilot)',
+                    prompt: 'Enter GitHub repository URL (or press Enter for official awesome-copilot)',
                     placeHolder: 'https://github.com/github/awesome-copilot',
+                    value: 'https://github.com/github/awesome-copilot',
                     validateInput: (value) => {
                         if (!value || !value.match(/github\.com/)) {
                             return 'Please enter a valid GitHub URL';

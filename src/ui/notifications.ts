@@ -201,21 +201,22 @@ export class Notifications {
      * Show first install welcome notification
      */
     public async showWelcomeNotification(): Promise<'install' | 'learn' | 'dismiss' | undefined> {
-        const message = 'Welcome to Prompt Registry! Get started by installing the Prompt Registry components.';
+        const message = 'Welcome to Prompt Registry! Get started by adding the sources of the collections of prompts.';
+        return undefined;
         
-        const action = await this.showInfo(message, 'Install Now', 'Learn More', 'Dismiss');
+        // const action = await this.showInfo(message, 'Add Source Now', 'Learn More', 'Dismiss');
         
-        switch (action) {
-            case 'Install Now':
-                vscode.commands.executeCommand('promptregistry.enhancedInstall');
-                return 'install';
-            case 'Learn More':
-                vscode.commands.executeCommand('promptregistry.showHelp');
-                return 'learn';
-            case 'Dismiss':
-                return 'dismiss';
-            default:
-                return undefined;
-        }
+        // switch (action) {
+        //     case 'Install Now':
+        //         vscode.commands.executeCommand('promptregistry.enhancedInstall');
+        //         return 'install';
+        //     case 'Learn More':
+        //         vscode.commands.executeCommand('promptregistry.showHelp');
+        //         return 'learn';
+        //     case 'Dismiss':
+        //         return 'dismiss';
+        //     default:
+        //         return undefined;
+        // }
     }
 }
