@@ -13,6 +13,8 @@ import { LocalAdapter } from '../adapters/LocalAdapter';
 import { AwesomeCopilotAdapter } from '../adapters/AwesomeCopilotAdapter';
 import { BundleInstaller } from './BundleInstaller';
 import { LocalAwesomeCopilotAdapter } from '../adapters/LocalAwesomeCopilotAdapter';
+import { LocalApmAdapter } from '../adapters/LocalApmAdapter';
+import { ApmAdapter } from '../adapters/ApmAdapter';
 import { VersionConsolidator } from './VersionConsolidator';
 import { VersionManager } from '../utils/versionManager';
 import { BundleIdentityMatcher } from '../utils/bundleIdentityMatcher';
@@ -98,6 +100,8 @@ export class RegistryManager {
         RepositoryAdapterFactory.register('local', LocalAdapter);
         RepositoryAdapterFactory.register('awesome-copilot', AwesomeCopilotAdapter);
         RepositoryAdapterFactory.register('local-awesome-copilot', LocalAwesomeCopilotAdapter);
+        RepositoryAdapterFactory.register('local-apm', LocalApmAdapter);
+        RepositoryAdapterFactory.register('apm', ApmAdapter);
     }
 
 	/**
