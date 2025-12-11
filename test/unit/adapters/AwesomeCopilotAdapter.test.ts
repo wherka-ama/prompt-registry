@@ -49,7 +49,6 @@ suite('AwesomeCopilotAdapter', () => {
         assert.ok(getSessionStub.calledOnce, 'getSession should be called');
         assert.strictEqual(getSessionStub.firstCall.args[0], 'github');
         assert.deepStrictEqual(getSessionStub.firstCall.args[2], { 
-            createIfNone: true, 
             forceNewSession: true 
         });
     });

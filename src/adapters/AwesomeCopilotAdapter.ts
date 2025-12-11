@@ -589,7 +589,6 @@ export class AwesomeCopilotAdapter extends RepositoryAdapter {
         // Force new session with VS Code
         try {
             const session = await vscode.authentication.getSession('github', ['repo'], { 
-                createIfNone: true,
                 forceNewSession: true 
             });
             
