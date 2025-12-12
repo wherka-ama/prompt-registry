@@ -287,7 +287,8 @@ export class PromptRegistryExtension {
                     ],
                     {
                         placeHolder: 'Select project type',
-                        title: 'Scaffold Project'
+                        title: 'Scaffold Project',
+                        ignoreFocusOut: true
                     }
                 );
 
@@ -306,7 +307,8 @@ export class PromptRegistryExtension {
                     const projectName = await vscode.window.showInputBox({
                         prompt: 'Enter project name (optional)',
                         placeHolder: 'example',
-                        value: 'example'
+                        value: 'example',
+                        ignoreFocusOut: true
                     });
 
                     const runnerChoice = await vscode.window.showQuickPick(
@@ -329,7 +331,8 @@ export class PromptRegistryExtension {
                         ],
                         {
                             placeHolder: 'Select GitHub Actions runner type',
-                            title: 'GitHub Actions Runner'
+                            title: 'GitHub Actions Runner',
+                            ignoreFocusOut: true
                         }
                     );
 
@@ -345,7 +348,8 @@ export class PromptRegistryExtension {
                                     return 'Runner label cannot be empty';
                                 }
                                 return undefined;
-                            }
+                            },
+                            ignoreFocusOut: true
                         });
                         githubRunner = customRunner || 'ubuntu-latest';
                     }
@@ -358,19 +362,22 @@ export class PromptRegistryExtension {
                     if (scaffoldTypeChoice.value === ScaffoldType.Apm) {
                         description = await vscode.window.showInputBox({
                             prompt: 'Enter package description',
-                            placeHolder: 'A short description of your package'
+                            placeHolder: 'A short description of your package',
+                            ignoreFocusOut: true
                         });
 
                         author = await vscode.window.showInputBox({
                             prompt: 'Enter author name',
                             placeHolder: 'Your Name <email@example.com>',
-                            value: process.env.USER || 'user'
+                            value: process.env.USER || 'user',
+                            ignoreFocusOut: true
                         });
 
                         const tagsInput = await vscode.window.showInputBox({
                             prompt: 'Enter tags (comma separated)',
                             placeHolder: 'ai, prompts, coding',
-                            value: 'apm, prompts'
+                            value: 'apm, prompts',
+                            ignoreFocusOut: true
                         });
                         
                         if (tagsInput) {
