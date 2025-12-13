@@ -14,7 +14,8 @@ import { promisify } from 'util';
 import { HubStorage, LoadHubResult } from '../storage/HubStorage';
 import { Logger } from '../utils/logger';
 import { SchemaValidator, ValidationResult } from './SchemaValidator';
-import { HubConfig, HubProfile, HubReference, validateHubConfig, sanitizeHubId , HubSource, HubProfileBundle , ProfileActivationState, ProfileActivationOptions, ProfileActivationResult, ProfileDeactivationResult, ProfileChanges, ChangeQuickPickItem, DialogOption, ConflictResolutionDialog } from '../types/hub';
+import { HubConfig, HubProfile, HubReference, validateHubConfig, sanitizeHubId , HubSource, HubProfileBundle , ProfileActivationState, ProfileActivationOptions, ProfileActivationResult, ProfileDeactivationResult, ProfileChanges, ProfileWithUpdates, ChangeQuickPickItem, DialogOption, ConflictResolutionDialog } from '../types/hub';
+import { RegistrySource } from '../types/registry';
 
 const execAsync = promisify(exec);
 
@@ -272,6 +273,13 @@ export class HubManager {
         }
         
         this._onHubSynced.fire(hubId);
+    }
+
+    /**
+     * Sync a specific profile
+     */
+    async syncProfile(hubId: string, profileId: string): Promise<void> {
+        await this.activateProfile(hubId, profileId, { installBundles: true });
     }
 
     /**
@@ -656,9 +664,9 @@ export class HubManager {
      */
     private findDuplicateSource(
         source: HubSource,
-        existingSources: import('../types/registry').RegistrySource[]
-    ): import('../types/registry').RegistrySource | undefined {
-        return existingSources.find((existing: import('../types/registry').RegistrySource) => {
+        existingSources: RegistrySource[]
+    ): RegistrySource | undefined {
+        return existingSources.find((existing: RegistrySource) => {
             // Must have same type and URL
             if (existing.type !== source.type || existing.url !== source.url) {
                 return false;
@@ -726,7 +734,7 @@ export class HubManager {
                 const sourceId = `hub-${hubId}-${hubSource.id}`;
                 
                 // Check if source with same ID already exists (from this hub)
-                const existingSourceById = existingSources.find((s: import('../types/registry').RegistrySource) => s.id === sourceId);
+                const existingSourceById = existingSources.find((s: RegistrySource) => s.id === sourceId);
                 
                 if (existingSourceById) {
                     // Update existing source from same hub
@@ -768,7 +776,7 @@ export class HubManager {
                 this.logger.info(`Adding new hub source: ${sourceId} (${hubSource.name})`);
                 
                 // Convert HubSource to RegistrySource
-                const registrySource: import('../types/registry').RegistrySource = {
+                const registrySource: RegistrySource = {
                     id: sourceId,
                     name: hubSource.name,
                     type: hubSource.type,
@@ -1093,6 +1101,17 @@ export class HubManager {
     }
 
     /**
+     * Get time since last sync in milliseconds
+     */
+    async getTimeSinceLastSync(hubId: string, profileId: string): Promise<number | null> {
+        const state = await this.storage.getProfileActivationState(hubId, profileId);
+        if (!state) {
+            return null;
+        }
+        return Date.now() - new Date(state.activatedAt).getTime();
+    }
+
+    /**
      * List all active profiles across all hubs
      */
     async listAllActiveProfiles(): Promise<ProfileActivationState[]> {
@@ -1114,103 +1133,99 @@ export class HubManager {
             return null;
         }
     }
-    /**
-     * Check if an active profile has changes in the hub
-     */
-    async hasProfileChanges(hubId: string, profileId: string): Promise<boolean> {
-        const changes = await this.getProfileChanges(hubId, profileId);
-        if (!changes) {
-            return false;
-        }
-        return (
-            (changes.bundlesAdded !== undefined && changes.bundlesAdded.length > 0) ||
-            (changes.bundlesRemoved !== undefined && changes.bundlesRemoved.length > 0) ||
-            (changes.bundlesUpdated !== undefined && changes.bundlesUpdated.length > 0) ||
-            (changes.metadataChanged !== undefined && Object.keys(changes.metadataChanged).length > 0)
-        );
+/**
+ * Check if an active profile has changes in the hub
+ */
+async hasProfileChanges(hubId: string, profileId: string): Promise<boolean> {
+    const changes = await this.getProfileChanges(hubId, profileId);
+    if (!changes) {
+        return false;
+    }
+    return (
+        (changes.bundlesAdded !== undefined && changes.bundlesAdded.length > 0) ||
+        (changes.bundlesRemoved !== undefined && changes.bundlesRemoved.length > 0) ||
+        (changes.bundlesUpdated !== undefined && changes.bundlesUpdated.length > 0) ||
+        (changes.metadataChanged !== undefined && Object.keys(changes.metadataChanged).length > 0)
+    );
+}
+
+/**
+ * Get detailed changes for an active profile
+ */
+async getProfileChanges(hubId: string, profileId: string): Promise<ProfileChanges | null> {
+    // Get activation state
+    const state = await this.storage.getProfileActivationState(hubId, profileId);
+    if (!state) {
+        return null;
     }
 
-    /**
-     * Get detailed changes for an active profile
-     */
-    async getProfileChanges(hubId: string, profileId: string): Promise<ProfileChanges | null> {
-        // Get activation state
-        const state = await this.storage.getProfileActivationState(hubId, profileId);
-        if (!state) {
-            return null;
-        }
+    // Get current profile from hub
+    const currentProfile = await this.getHubProfile(hubId, profileId);
+    
+    // Get synced bundles from activation state
+    const syncedBundles = state.syncedBundles;
 
-        // Get current profile from hub
-        const currentProfile = await this.getHubProfile(hubId, profileId);
-        
-        // Get synced bundles from activation state
-        const syncedBundles = state.syncedBundles;
-
-        // Compare bundles
-        const currentBundleIds = currentProfile.bundles.map(b => b.id);
-        const bundlesAdded = currentProfile.bundles.filter(b => !syncedBundles.includes(b.id));
-        const bundlesRemoved = syncedBundles.filter(id => !currentBundleIds.includes(id));
-        
-        // Check for version changes using stored bundle versions
-        const bundlesUpdated: Array<{ id: string; oldVersion: string; newVersion: string }> = [];
-        const profileUpdated = new Date(currentProfile.updatedAt) > new Date(state.activatedAt);
-        
-        if (state.syncedBundleVersions) {
-            // Compare each current bundle version with synced version
-            for (const bundle of currentProfile.bundles) {
-                const syncedVersion = state.syncedBundleVersions[bundle.id];
-                if (syncedVersion && syncedVersion !== bundle.version) {
-                    bundlesUpdated.push({
-                        id: bundle.id,
-                        oldVersion: syncedVersion,
-                        newVersion: bundle.version
-                    });
-                }
+    // Compare bundles
+    const currentBundleIds = currentProfile.bundles.map(b => b.id);
+    const bundlesAdded = currentProfile.bundles.filter(b => !syncedBundles.includes(b.id));
+    const bundlesRemoved = syncedBundles.filter(id => !currentBundleIds.includes(id));
+    
+    // Check for version changes using stored bundle versions
+    const bundlesUpdated: Array<{ id: string; oldVersion: string; newVersion: string }> = [];
+    const profileUpdated = new Date(currentProfile.updatedAt) > new Date(state.activatedAt);
+    
+    if (state.syncedBundleVersions) {
+        // Compare each current bundle version with synced version
+        for (const bundle of currentProfile.bundles) {
+            const syncedVersion = state.syncedBundleVersions[bundle.id];
+            if (syncedVersion && syncedVersion !== bundle.version) {
+                bundlesUpdated.push({
+                    id: bundle.id,
+                    oldVersion: syncedVersion,
+                    newVersion: bundle.version
+                });
             }
         }
+    }
 
-        // Check metadata changes by comparing updated timestamp
-        const metadataChanged: { name?: boolean; description?: boolean; icon?: boolean } = {};
-        if (profileUpdated) {
-            metadataChanged.name = true;
-            metadataChanged.description = true;
-        }
+    // Check metadata changes by comparing updated timestamp
+    const metadataChanged: NonNullable<ProfileChanges['metadataChanged']> = {};
+    if (profileUpdated) {
+        metadataChanged.name = true;
+        metadataChanged.description = true;
+    }
 
-        const changes: import('../types/hub').ProfileChanges = {};
-        if (bundlesAdded.length > 0) {
-            changes.bundlesAdded = bundlesAdded;
-        }
-        if (bundlesRemoved.length > 0) {
-            changes.bundlesRemoved = bundlesRemoved;
-        }
-        if (bundlesUpdated.length > 0) {
-            changes.bundlesUpdated = bundlesUpdated;
-        }
-        if (Object.keys(metadataChanged).length > 0) {
-            changes.metadataChanged = metadataChanged;
-        }
+    const changes: ProfileChanges = {};
+    let hasChanges = false;
 
+    if (bundlesAdded.length > 0) {
+        changes.bundlesAdded = bundlesAdded;
+        hasChanges = true;
+    }
+
+    if (bundlesRemoved.length > 0) {
+        changes.bundlesRemoved = bundlesRemoved;
+        hasChanges = true;
+    }
+
+    if (bundlesUpdated.length > 0) {
+        changes.bundlesUpdated = bundlesUpdated;
+        hasChanges = true;
+    }
+
+    if (Object.keys(metadataChanged).length > 0) {
+        changes.metadataChanged = metadataChanged;
+        hasChanges = true;
+    }
+
+    if (hasChanges) {
         return changes;
     }
 
-    /**
-     * Sync a profile (update activation state)
-     */
-    async syncProfile(hubId: string, profileId: string): Promise<void> {
-        // Re-activate to update the state
-        await this.activateProfile(hubId, profileId, { installBundles: false });
-    }
+    return null;
+}
 
-    /**
-     * Get time since last sync in milliseconds
-     */
-    async getTimeSinceLastSync(hubId: string, profileId: string): Promise<number | null> {
-        const state = await this.storage.getProfileActivationState(hubId, profileId);
-        if (!state) {
-            return null;
-        }
-        return Date.now() - new Date(state.activatedAt).getTime();
-    }
+
 
     /**
      * Check if hub has updates (any profile has changes)
@@ -1221,16 +1236,18 @@ export class HubManager {
     }
 
     /**
-     * Get list of profiles with pending updates
+     * Get profiles with updates
+     * @param hubId Hub identifier
+     * @returns Array of profiles with their updates
      */
-    async getProfilesWithUpdates(hubId: string): Promise<import('../types/hub').ProfileWithUpdates[]> {
+    async getProfilesWithUpdates(hubId: string): Promise<ProfileWithUpdates[]> {
         const hub = await this.getHub(hubId);
         if (!hub) {
             return [];
         }
 
-        const result: import('../types/hub').ProfileWithUpdates[] = [];
-        
+        const result: ProfileWithUpdates[] = [];
+        // ... (rest of the code remains the same)
         for (const profile of hub.config.profiles) {
             const hasChanges = await this.hasProfileChanges(hubId, profile.id);
             if (hasChanges) {

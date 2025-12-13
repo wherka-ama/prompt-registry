@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
+import { execSync } from 'child_process';
 import { TemplateEngine } from '../services/TemplateEngine';
 
 export enum ResourceType {
@@ -244,7 +245,6 @@ export class AddResourceCommand {
 
     private async getGitUserName(): Promise<string> {
         try {
-            const { execSync } = require('child_process');
             return execSync('git config user.name', { encoding: 'utf-8' }).trim();
         } catch {
             return '';
