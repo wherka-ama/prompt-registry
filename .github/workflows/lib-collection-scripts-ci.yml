@@ -11,8 +11,6 @@ on:
       - "lib/**"
   workflow_dispatch:
 
-permissions: read-all
-
 env:
   NODE_VERSION: "20"
 
@@ -20,6 +18,8 @@ jobs:
   lint-and-test:
     name: Lint and Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: lib
