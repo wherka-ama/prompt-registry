@@ -713,37 +713,168 @@ export class EngagementCommands {
 
 ## Implementation Order
 
-### Phase 1: Core Infrastructure
+### Phase 1: Core Infrastructure ✅ COMPLETED
 
 1. **Types** (`src/types/engagement.ts`)
 2. **Backend Interface** (`src/services/engagement/IEngagementBackend.ts`)
 3. **Storage** (`src/storage/EngagementStorage.ts`)
 4. **File Backend** (`src/services/engagement/backends/FileBackend.ts`)
 5. **EngagementService** (`src/services/engagement/EngagementService.ts`)
-6. **Managers** (Telemetry, Rating, Feedback)
-7. **Commands** (`src/commands/EngagementCommands.ts`)
-8. **Hub Config Update** (types + validation)
+6. **Hub Config Update** (types + validation)
 
-### Phase 2: UI Integration
+### Phase 2: GitHub Discussions Backend & VS Code Integration
 
-1. Rating widget in bundle detail view
-2. Feedback dialog
-3. Display aggregated ratings in tree view
-4. Settings UI for privacy preferences
+1. **GitHub Discussions Backend** (`src/services/engagement/backends/GitHubDiscussionsBackend.ts`)
+2. **VoteService** for VS Code voting commands
+3. **Rating widget** in bundle detail view (WebView)
+4. **Feedback dialog** with optional rating
+5. **Tree view enhancement** with rating display
 
-### Phase 3: GitHub Backend (Future)
+### Phase 3: Rating Computation & Aggregation
 
-1. GitHub Issues backend implementation
-2. GitHub Discussions backend implementation
-3. Aggregation from community data
+1. **Wilson Score Algorithm** for robust ranking
+2. **GitHub Action** for scheduled rating computation
+3. **ratings.json** static file generation
+4. **Aggregation** from resource-level to collection-level
+
+---
+
+## GitHub Discussions Backend Design
+
+Based on prior analysis, the recommended approach uses GitHub Discussions as the voting surface.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     VS Code Extension                            │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  User clicks 👍 Vote                                      │   │
+│  │         ↓                                                 │   │
+│  │  VoteService.voteOnCollection(discussionNumber, "+1")    │   │
+│  │         ↓                                                 │   │
+│  │  POST /repos/{owner}/{repo}/discussions/{num}/reactions  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                     GitHub Discussions                           │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  Discussion per Collection                                │   │
+│  │  - Reactions: 👍 (upvote), 👎 (downvote)                 │   │
+│  │  - Comments per Resource (for granular voting)           │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                     GitHub Action (Scheduled)                    │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  1. Fetch reaction counts via GraphQL                     │   │
+│  │  2. Compute Wilson score                                  │   │
+│  │  3. Aggregate resource → collection scores               │   │
+│  │  4. Write ratings.json                                    │   │
+│  │  5. Commit to repo                                        │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Data Model
+
+**collections.yaml** (mapping bundles to discussions):
+```yaml
+collections:
+  - id: "travel-intents"
+    discussion_number: 42
+    resources:
+      - id: "prompt-summary"
+        comment_id: 101
+      - id: "prompt-normalize-request"
+        comment_id: 102
+```
+
+**ratings.json** (computed output):
+```json
+{
+  "generated_at": "2025-11-29T17:22:00Z",
+  "collections": {
+    "travel-intents": {
+      "discussion_number": 42,
+      "up": 137,
+      "down": 5,
+      "resources": {
+        "prompt-summary": { "up": 55, "down": 3 },
+        "prompt-normalize-request": { "up": 82, "down": 1 }
+      },
+      "score_wilson": 0.91,
+      "score_bayesian": 0.82,
+      "aggregated_score": 0.88
+    }
+  }
+}
+```
+
+### Wilson Score Algorithm
+
+For robust ranking that handles small sample sizes:
+
+```typescript
+function wilsonLowerBound(up: number, down: number, z = 1.96): number {
+    const n = up + down;
+    if (n === 0) return 0;
+    const phat = up / n;
+    const z2 = z * z;
+    const denom = 1 + z2 / n;
+    const num = phat + z2 / (2 * n) - z * Math.sqrt((phat * (1 - phat) + z2 / (4 * n)) / n);
+    return num / denom;
+}
+```
+
+### VS Code Voting Integration
+
+**VoteService** for direct voting from extension:
+
+```typescript
+export class VoteService {
+    async voteOnCollection(discussionNumber: number, reaction: "+1" | "-1") {
+        const session = await vscode.authentication.getSession("github", ["repo"], {
+            createIfNone: true,
+        });
+
+        const res = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/discussions/${discussionNumber}/reactions`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${session.accessToken}`,
+                    Accept: "application/vnd.github+json",
+                },
+                body: JSON.stringify({ content: reaction }),
+            }
+        );
+        // ...
+    }
+}
+```
+
+### Anti-Abuse Measures
+
+1. **GitHub Authentication** - Reactions require GitHub accounts
+2. **Account Age Filter** - Ignore votes from accounts < 7 days old
+3. **Blacklist** - Maintainers can exclude specific accounts
+4. **Rate Limiting** - GitHub handles API rate limits
+5. **DDoS Protection** - Static ratings.json served via CDN
+
+---
 
 ## Test Strategy
 
 Following TDD methodology:
 
 1. Write interface tests first (contract tests)
-2. Implement FileBackend with tests
-3. Integration tests for EngagementService
-4. UI component tests (if applicable)
+2. Implement FileBackend with tests ✅
+3. Integration tests for EngagementService ✅
+4. GitHub Discussions backend tests (with nock mocking)
+5. VoteService tests
+6. UI component tests
 
 See `test/AGENTS.md` for testing patterns.
