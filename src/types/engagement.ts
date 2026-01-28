@@ -233,6 +233,8 @@ export interface RatingConfig {
     enabled: boolean;
     /** Whether anonymous ratings are allowed */
     allowAnonymous?: boolean;
+    /** URL to static ratings.json file (pre-computed ratings) */
+    ratingsUrl?: string;
 }
 
 /**
