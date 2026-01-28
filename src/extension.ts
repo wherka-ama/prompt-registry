@@ -20,6 +20,7 @@ import { ValidateCollectionsCommand } from './commands/ValidateCollectionsComman
 import { ValidateApmCommand } from './commands/ValidateApmCommand';
 import { CreateCollectionCommand } from './commands/CreateCollectionCommand';
 import { GitHubAuthCommand } from './commands/GitHubAuthCommand';
+import { VoteCommands } from './commands/VoteCommands';
 import { StatusBar } from './ui/statusBar';
 import { ExtensionNotifications } from './notifications/ExtensionNotifications';
 import { Logger } from './utils/logger';
@@ -248,6 +249,10 @@ export class PromptRegistryExtension {
         this.validateCollectionsCommand = new ValidateCollectionsCommand(this.context);
         this.validateApmCommand = new ValidateApmCommand(this.context);
         this.createCollectionCommand = new CreateCollectionCommand();
+
+        // Engagement commands (voting)
+        const voteCommands = new VoteCommands();
+        voteCommands.registerCommands(this.context);
 
         // Legacy commands
         const updateCommand = new UpdateCommand();
