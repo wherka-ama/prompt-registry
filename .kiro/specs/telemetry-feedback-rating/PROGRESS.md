@@ -76,19 +76,29 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 
 ## Phase 2: GitHub Discussions Backend & VS Code Integration (IN PROGRESS)
 
-### Planned Tasks
+### Completed Tasks
 
-1. **VoteService** - VS Code voting via GitHub REST API
-2. **GitHubDiscussionsBackend** - IEngagementBackend implementation
-3. **VS Code Commands** - voteUpCollection, voteDownCollection, voteUpResource
-4. **Rating Widget** - WebView integration
-5. **Tree View Enhancement** - Display ratings
-6. **Feedback Dialog** - User feedback collection
+| File | Purpose | Tests |
+|------|---------|-------|
+| `src/utils/ratingAlgorithms.ts` | Wilson score, Bayesian smoothing, aggregation | 33 tests |
+| `src/services/engagement/VoteService.ts` | VS Code voting via GitHub REST API | 19 tests |
+
+### Commits
+
+3. **`37a9128`** - `feat(engagement): add VoteService and rating algorithms for Phase 2`
+
+### Remaining Tasks
+
+1. **GitHubDiscussionsBackend** - IEngagementBackend implementation
+2. **VS Code Commands** - voteUpCollection, voteDownCollection, voteUpResource
+3. **Rating Widget** - WebView integration
+4. **Tree View Enhancement** - Display ratings
+5. **Feedback Dialog** - User feedback collection
 
 ### Key Insights from Prior Analysis
 
 - **GitHub Discussions as Voting Surface** - Each collection maps to a Discussion
-- **Wilson Score Algorithm** - Robust ranking for small sample sizes
+- **Wilson Score Algorithm** - Robust ranking for small sample sizes ✅ Implemented
 - **Anti-Abuse Measures** - Account age filter, blacklist, rate limiting
 - **Static ratings.json** - Computed by GitHub Action, served via CDN
 
