@@ -83,6 +83,7 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 | `src/utils/ratingAlgorithms.ts` | Wilson score, Bayesian smoothing, aggregation | 33 tests |
 | `src/services/engagement/VoteService.ts` | VS Code voting via GitHub REST API | 19 tests |
 | `src/commands/VoteCommands.ts` | VS Code command handlers for voting | 16 tests |
+| `src/services/engagement/RatingService.ts` | Fetch and cache ratings from hub ratings.json | 20 tests |
 
 ### Commits
 
@@ -90,6 +91,9 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 4. **`db4bb2d`** - `feat(engagement): add VoteCommands for VS Code command registration`
 5. **`dbc0cc9`** - `docs(engagement): update progress and tasks with Phase 2 completion status`
 6. **`22e34ab`** - `feat(engagement): register VoteCommands in extension and package.json`
+7. **`2e6040d`** - `docs(engagement): update PROGRESS.md with final Phase 2 commits`
+8. **`1312675`** - `feat(engagement): add RatingService for fetching hub ratings`
+9. **`fefb775`** - `feat(engagement): add ratingsUrl field to RatingConfig`
 
 ### Remaining Tasks
 
