@@ -1,0 +1,31 @@
+# Example collections.yaml for rating computation
+# Copy this file to collections.yaml and customize for your hub
+
+# Repository containing the GitHub Discussions for voting
+repository: "owner/prompt-bundles"
+
+# Collections mapped to discussions
+collections:
+  # Each collection maps to a GitHub Discussion
+  - id: "travel-intents"
+    discussion_number: 42
+    # Optional: Map individual resources to comments for granular voting
+    resources:
+      - id: "prompt-summary"
+        comment_id: 101
+      - id: "prompt-normalize-request"
+        comment_id: 102
+      - id: "prompt-validate-booking"
+        comment_id: 103
+
+  - id: "code-review"
+    discussion_number: 43
+    resources:
+      - id: "review-security"
+        comment_id: 201
+      - id: "review-performance"
+        comment_id: 202
+
+  # Collection without resource-level voting
+  - id: "documentation"
+    discussion_number: 44
