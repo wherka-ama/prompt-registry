@@ -457,6 +457,24 @@
         "title": "Remove Vote",
         "category": "Prompt Registry",
         "icon": "$(close)"
+      },
+      {
+        "command": "promptRegistry.submitFeedback",
+        "title": "Submit Feedback",
+        "category": "Prompt Registry",
+        "icon": "$(comment)"
+      },
+      {
+        "command": "promptRegistry.submitFeedbackWithRating",
+        "title": "Submit Feedback with Rating",
+        "category": "Prompt Registry",
+        "icon": "$(star-full)"
+      },
+      {
+        "command": "promptRegistry.quickFeedback",
+        "title": "Quick Feedback",
+        "category": "Prompt Registry",
+        "icon": "$(feedback)"
       }
     ],
     "viewsContainers": {
