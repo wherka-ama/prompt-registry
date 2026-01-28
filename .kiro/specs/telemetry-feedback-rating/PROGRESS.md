@@ -84,6 +84,7 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 | `src/services/engagement/VoteService.ts` | VS Code voting via GitHub REST API | 19 tests |
 | `src/commands/VoteCommands.ts` | VS Code command handlers for voting | 16 tests |
 | `src/services/engagement/RatingService.ts` | Fetch and cache ratings from hub ratings.json | 20 tests |
+| `src/commands/FeedbackCommands.ts` | VS Code commands for user feedback collection | 15 tests |
 
 ### Commits
 
@@ -94,13 +95,15 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 7. **`2e6040d`** - `docs(engagement): update PROGRESS.md with final Phase 2 commits`
 8. **`1312675`** - `feat(engagement): add RatingService for fetching hub ratings`
 9. **`fefb775`** - `feat(engagement): add ratingsUrl field to RatingConfig`
+10. **`45e33d9`** - `docs(engagement): update PROGRESS.md with RatingService completion`
+11. **`65a65e1`** - `feat(engagement): add FeedbackCommands for user feedback collection`
+12. **`1b12c81`** - `feat(engagement): register FeedbackCommands in extension and package.json`
 
-### Remaining Tasks
+### Remaining Tasks (Deferred)
 
-1. **GitHubDiscussionsBackend** - IEngagementBackend implementation (deferred - needs interface alignment)
-2. **Rating Widget** - WebView integration
-3. **Tree View Enhancement** - Display ratings
-4. **Feedback Dialog** - User feedback collection
+1. **GitHubDiscussionsBackend** - IEngagementBackend implementation (needs interface alignment)
+2. **Rating Widget** - WebView integration (requires ratings data source)
+3. **Tree View Enhancement** - Display ratings (requires async-to-sync bridging)
 
 ### Key Insights from Prior Analysis
 

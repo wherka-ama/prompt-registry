@@ -76,10 +76,12 @@
 - [ ] Add rating/feedback context menu items
 - [ ] Display vote count
 
-### Task 2.6: Feedback Dialog
-- [ ] Implement feedback input dialog
-- [ ] Add optional rating with feedback
-- [ ] Implement character limit (configurable)
+### Task 2.6: Feedback Dialog ✅
+- [x] Implement feedback input dialog (`submitFeedback`)
+- [x] Add optional rating with feedback (`submitFeedbackWithRating`)
+- [x] Implement character limit (configurable, default 1000)
+- [x] Add quick feedback options (`quickFeedback`)
+- [x] Write tests: `test/commands/FeedbackCommands.test.ts` (15 tests)
 
 ## Phase 3: Rating Computation & Aggregation
 
