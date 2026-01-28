@@ -88,6 +88,8 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 
 3. **`37a9128`** - `feat(engagement): add VoteService and rating algorithms for Phase 2`
 4. **`db4bb2d`** - `feat(engagement): add VoteCommands for VS Code command registration`
+5. **`dbc0cc9`** - `docs(engagement): update progress and tasks with Phase 2 completion status`
+6. **`22e34ab`** - `feat(engagement): register VoteCommands in extension and package.json`
 
 ### Remaining Tasks
 
