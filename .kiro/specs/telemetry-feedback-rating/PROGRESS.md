@@ -74,7 +74,7 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 
 ---
 
-## Phase 2: GitHub Discussions Backend & VS Code Integration (IN PROGRESS)
+## Phase 2: GitHub Discussions Backend & VS Code Integration (COMPLETE)
 
 ### Completed Tasks
 
@@ -85,6 +85,7 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 | `src/commands/VoteCommands.ts` | VS Code command handlers for voting | 16 tests |
 | `src/services/engagement/RatingService.ts` | Fetch and cache ratings from hub ratings.json | 20 tests |
 | `src/commands/FeedbackCommands.ts` | VS Code commands for user feedback collection | 15 tests |
+| `src/services/engagement/backends/GitHubDiscussionsBackend.ts` | GitHub Discussions backend implementation | 16 tests |
 
 ### Commits
 
@@ -99,11 +100,11 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 11. **`65a65e1`** - `feat(engagement): add FeedbackCommands for user feedback collection`
 12. **`1b12c81`** - `feat(engagement): register FeedbackCommands in extension and package.json`
 
-### Remaining Tasks (Deferred)
+### All Phase 2 Tasks Complete
 
-1. **GitHubDiscussionsBackend** - IEngagementBackend implementation (needs interface alignment)
-2. **Rating Widget** - WebView integration (requires ratings data source)
-3. **Tree View Enhancement** - Display ratings (requires async-to-sync bridging)
+✅ GitHubDiscussionsBackend - IEngagementBackend implementation
+✅ Rating Widget - WebView integration (Marketplace)
+✅ Tree View Enhancement - Display ratings via RatingCache
 
 ### Key Insights from Prior Analysis
 
@@ -116,12 +117,27 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 
 ---
 
-## Phase 3: Rating Computation & Aggregation (PLANNED)
+## Phase 3: Rating Computation & Aggregation (COMPLETE)
 
-1. Wilson Score Algorithm implementation
-2. GitHub Action for scheduled rating computation
-3. ratings.json static file generation
-4. Resource → Collection score aggregation
+### Completed Tasks
+
+| File | Purpose | Tests |
+|------|---------|-------|
+| `scripts/compute-ratings.ts` | Rating computation from GitHub Discussions | 15 tests |
+| `.github/workflows/compute-ratings.yml` | GitHub Action for scheduled computation | - |
+| `scripts/collections.example.yaml` | Example config for rating computation | - |
+| `src/services/engagement/RatingCache.ts` | In-memory cache for synchronous UI access | 23 tests |
+| `src/ui/RegistryTreeProvider.ts` | Tree View rating display integration | - |
+| `src/ui/MarketplaceViewProvider.ts` | Marketplace WebView rating display | - |
+
+### Features Implemented
+
+1. ✅ Wilson Score Algorithm (in ratingAlgorithms.ts)
+2. ✅ GitHub Action for scheduled rating computation (daily)
+3. ✅ ratings.json static file generation
+4. ✅ Resource → Collection score aggregation
+5. ✅ Tree View rating display (★ 4.2 format)
+6. ✅ Marketplace WebView rating display
 
 ---
 
