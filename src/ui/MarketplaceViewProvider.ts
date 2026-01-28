@@ -13,6 +13,7 @@ import { extractAllTags, extractBundleSources } from '../utils/filterUtils';
 import { VersionManager } from '../utils/versionManager';
 import { BundleIdentityMatcher } from '../utils/bundleIdentityMatcher';
 import { McpServerConfig, McpStdioServerConfig, McpRemoteServerConfig, isStdioServerConfig, isRemoteServerConfig } from '../types/mcp';
+import { RatingCache } from '../services/engagement/RatingCache';
 
 /**
  * Message types sent from webview to extension
@@ -317,6 +318,11 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
                     ? autoUpdatePreferences[installed.bundleId] ?? false
                     : false;
 
+                // Get rating from cache if available
+                const ratingCache = RatingCache.getInstance();
+                const ratingDisplay = ratingCache.getRatingDisplay(bundle.id);
+                const cachedRating = ratingCache.getRating(bundle.id);
+
                 return {
                     ...bundle,
                     installed: !!installed,
@@ -327,6 +333,12 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
                     contentBreakdown,
                     availableVersions,
                     autoUpdateEnabled,
+                    rating: cachedRating ? {
+                        starRating: cachedRating.starRating,
+                        voteCount: cachedRating.voteCount,
+                        confidence: cachedRating.confidence,
+                        displayText: ratingDisplay?.text
+                    } : undefined,
                 };
             }));
 
@@ -1782,6 +1794,11 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             color: var(--vscode-descriptionForeground);
         }
 
+        .bundle-rating {
+            color: var(--vscode-charts-yellow);
+            font-weight: 500;
+        }
+
         .bundle-description {
             font-size: 14px;
             color: var(--vscode-foreground);
@@ -2469,7 +2486,7 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
                     
                     <div class="bundle-header">
                         <div class="bundle-title">\${bundle.name}</div>
-                        <div class="bundle-author">by \${bundle.author || 'Unknown'} • v\${bundle.version}</div>
+                        <div class="bundle-author">by \${bundle.author || 'Unknown'} • v\${bundle.version}\${bundle.rating ? ' • <span class="bundle-rating" title="' + bundle.rating.voteCount + ' votes (' + bundle.rating.confidence + ' confidence)">' + bundle.rating.displayText + '</span>' : ''}</div>
                     </div>
 
                     <div class="bundle-description">
