@@ -181,6 +181,12 @@ export interface GitHubDiscussionsBackendConfig extends EngagementBackendConfigB
     repository: string;
     /** Discussion category */
     category?: string;
+    /** Minimum account age in days to count votes (anti-abuse) */
+    minAccountAgeDays?: number;
+    /** List of usernames to exclude from vote counting */
+    blacklist?: string[];
+    /** Cache duration in minutes for aggregated ratings */
+    cacheDurationMinutes?: number;
 }
 
 /**

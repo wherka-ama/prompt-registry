@@ -42,26 +42,28 @@
 
 ## Phase 2: GitHub Discussions Backend & VS Code Integration
 
-### Task 2.1: VoteService Implementation
-- [ ] Create `src/services/engagement/VoteService.ts`
-- [ ] Implement `voteOnCollection(discussionNumber, reaction)` using GitHub REST API
-- [ ] Implement `voteOnResource(discussionNumber, commentId, reaction)` for granular voting
-- [ ] Use VS Code GitHub authentication (`vscode.authentication.getSession`)
-- [ ] Write tests: `test/services/engagement/VoteService.test.ts`
+### Task 2.1: VoteService Implementation ✅
+- [x] Create `src/services/engagement/VoteService.ts`
+- [x] Implement `voteOnCollection(discussionNumber, reaction)` using GitHub REST API
+- [x] Implement `voteOnResource(discussionNumber, commentId, reaction)` for granular voting
+- [x] Use VS Code GitHub authentication (`vscode.authentication.getSession`)
+- [x] Write tests: `test/services/engagement/VoteService.test.ts` (19 tests)
 
-### Task 2.2: GitHub Discussions Backend
+### Task 2.2: GitHub Discussions Backend (DEFERRED)
 - [ ] Create `src/services/engagement/backends/GitHubDiscussionsBackend.ts`
-- [ ] Implement IEngagementBackend interface
+- [ ] Implement IEngagementBackend interface (needs interface alignment)
 - [ ] Fetch reaction counts via GitHub GraphQL API
 - [ ] Map discussions to bundles/collections
 - [ ] Write tests with nock mocking
 
-### Task 2.3: VS Code Commands for Voting
-- [ ] Register `promptRegistry.voteUpCollection` command
-- [ ] Register `promptRegistry.voteDownCollection` command
-- [ ] Register `promptRegistry.voteUpResource` command
-- [ ] Add commands to `package.json` contributions
-- [ ] Write tests: `test/commands/VoteCommands.test.ts`
+### Task 2.3: VS Code Commands for Voting ✅
+- [x] Register `promptRegistry.voteUpCollection` command
+- [x] Register `promptRegistry.voteDownCollection` command
+- [x] Register `promptRegistry.voteUpResource` command
+- [x] Register `promptRegistry.voteDownResource` command
+- [x] Register `promptRegistry.toggleVote` command
+- [x] Register `promptRegistry.removeVote` command
+- [x] Write tests: `test/commands/VoteCommands.test.ts` (16 tests)
 
 ### Task 2.4: Rating Widget (WebView)
 - [ ] Add rating display to bundle detail view

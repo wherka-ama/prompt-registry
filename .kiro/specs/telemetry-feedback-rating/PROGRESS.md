@@ -82,24 +82,27 @@ Implementation of core infrastructure for telemetry, resource rating, and feedba
 |------|---------|-------|
 | `src/utils/ratingAlgorithms.ts` | Wilson score, Bayesian smoothing, aggregation | 33 tests |
 | `src/services/engagement/VoteService.ts` | VS Code voting via GitHub REST API | 19 tests |
+| `src/commands/VoteCommands.ts` | VS Code command handlers for voting | 16 tests |
 
 ### Commits
 
 3. **`37a9128`** - `feat(engagement): add VoteService and rating algorithms for Phase 2`
+4. **`db4bb2d`** - `feat(engagement): add VoteCommands for VS Code command registration`
 
 ### Remaining Tasks
 
-1. **GitHubDiscussionsBackend** - IEngagementBackend implementation
-2. **VS Code Commands** - voteUpCollection, voteDownCollection, voteUpResource
-3. **Rating Widget** - WebView integration
-4. **Tree View Enhancement** - Display ratings
-5. **Feedback Dialog** - User feedback collection
+1. **GitHubDiscussionsBackend** - IEngagementBackend implementation (deferred - needs interface alignment)
+2. **Rating Widget** - WebView integration
+3. **Tree View Enhancement** - Display ratings
+4. **Feedback Dialog** - User feedback collection
 
 ### Key Insights from Prior Analysis
 
 - **GitHub Discussions as Voting Surface** - Each collection maps to a Discussion
 - **Wilson Score Algorithm** - Robust ranking for small sample sizes ✅ Implemented
-- **Anti-Abuse Measures** - Account age filter, blacklist, rate limiting
+- **VoteService** - Direct voting via GitHub REST API ✅ Implemented
+- **VoteCommands** - VS Code command registration ✅ Implemented
+- **Anti-Abuse Measures** - Account age filter, blacklist, rate limiting (types defined)
 - **Static ratings.json** - Computed by GitHub Action, served via CDN
 
 ---
