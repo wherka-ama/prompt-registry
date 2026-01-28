@@ -83,11 +83,13 @@
 
 ## Phase 3: Rating Computation & Aggregation
 
-### Task 3.1: Wilson Score Algorithm
-- [ ] Create `src/utils/ratingAlgorithms.ts`
-- [ ] Implement `wilsonLowerBound(up, down, z)` function
-- [ ] Implement `bayesianSmoothing(up, n, m, k)` function
-- [ ] Write unit tests with edge cases
+### Task 3.1: Wilson Score Algorithm ✅
+- [x] Create `src/utils/ratingAlgorithms.ts`
+- [x] Implement `wilsonLowerBound(up, down, z)` function
+- [x] Implement `bayesianSmoothing(up, n, m, k)` function
+- [x] Implement `scoreToStars()`, `starsToScore()`, `aggregateResourceScores()`
+- [x] Implement `getConfidenceLevel()`, `calculateRatingMetrics()`
+- [x] Write unit tests with edge cases (33 tests)
 
 ### Task 3.2: GitHub Action for Rating Computation
 - [ ] Create `.github/workflows/compute-ratings.yml`
