@@ -461,3 +461,21 @@ profiles:
     version: latest
     source: awesome-copilot-official
     required: true
+
+# Engagement configuration for ratings and feedback
+engagement:
+  enabled: true
+  backend:
+    type: github-discussions
+    repository: wherka/prompt-registry-hub
+  telemetry:
+    enabled: false
+    anonymize: true
+  ratings:
+    enabled: true
+    ratingsUrl: https://raw.githubusercontent.com/wherka/prompt-registry-hub/main/ratings.json
+  feedback:
+    enabled: true
+    requireRating: false
+    maxLength: 2000
+    feedbackUrl: https://raw.githubusercontent.com/wherka/prompt-registry-hub/main/feedbacks.json

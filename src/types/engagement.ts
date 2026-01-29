@@ -428,6 +428,17 @@ export function validateHubEngagementConfig(config: unknown): { valid: boolean; 
             if (typeof ratings.enabled !== 'boolean') {
                 errors.push('engagement.ratings.enabled must be a boolean');
             }
+            if (ratings.ratingsUrl !== undefined) {
+                if (typeof ratings.ratingsUrl !== 'string') {
+                    errors.push('engagement.ratings.ratingsUrl must be a string');
+                } else {
+                    try {
+                        new URL(ratings.ratingsUrl);
+                    } catch {
+                        errors.push('engagement.ratings.ratingsUrl must be a valid URL');
+                    }
+                }
+            }
         }
     }
 
@@ -442,6 +453,17 @@ export function validateHubEngagementConfig(config: unknown): { valid: boolean; 
             }
             if (feedback.maxLength !== undefined && typeof feedback.maxLength !== 'number') {
                 errors.push('engagement.feedback.maxLength must be a number');
+            }
+            if (feedback.feedbackUrl !== undefined) {
+                if (typeof feedback.feedbackUrl !== 'string') {
+                    errors.push('engagement.feedback.feedbackUrl must be a string');
+                } else {
+                    try {
+                        new URL(feedback.feedbackUrl);
+                    } catch {
+                        errors.push('engagement.feedback.feedbackUrl must be a valid URL');
+                    }
+                }
             }
         }
     }
