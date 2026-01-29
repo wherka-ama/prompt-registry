@@ -14,12 +14,13 @@ import { VersionManager } from '../utils/versionManager';
 import { BundleIdentityMatcher } from '../utils/bundleIdentityMatcher';
 import { McpServerConfig, McpStdioServerConfig, McpRemoteServerConfig, isStdioServerConfig, isRemoteServerConfig } from '../types/mcp';
 import { RatingCache } from '../services/engagement/RatingCache';
+import { FeedbackCache } from '../services/engagement/FeedbackCache';
 
 /**
  * Message types sent from webview to extension
  */
 interface WebviewMessage {
-    type: 'refresh' | 'install' | 'update' | 'uninstall' | 'openDetails' | 'openPromptFile' | 'installVersion' | 'getVersions' | 'toggleAutoUpdate' | 'openSourceRepository';
+    type: 'refresh' | 'install' | 'update' | 'uninstall' | 'openDetails' | 'openPromptFile' | 'installVersion' | 'getVersions' | 'toggleAutoUpdate' | 'openSourceRepository' | 'getFeedbacks';
     bundleId?: string;
     installPath?: string;
     filePath?: string;
@@ -526,6 +527,11 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
                     await this.handleOpenSourceRepository(message.bundleId);
                 }
                 break;
+            case 'getFeedbacks':
+                if (message.bundleId) {
+                    await this.handleGetFeedbacks(message.bundleId);
+                }
+                break;
             default:
                 this.logger.warn(`Unknown message type: ${message.type}`);
         }
@@ -551,6 +557,43 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
         } catch (error) {
             this.logger.error('Failed to open source repository', error as Error);
             vscode.window.showErrorMessage(`Failed to open repository: ${(error as Error).message}`);
+        }
+    }
+
+    /**
+     * Get feedbacks for a bundle and send to webview
+     */
+    private async handleGetFeedbacks(bundleId: string): Promise<void> {
+        try {
+            const feedbackCache = FeedbackCache.getInstance();
+            const ratingCache = RatingCache.getInstance();
+            
+            // Get feedbacks from cache
+            const feedbacks = feedbackCache.getFeedbacks(bundleId) || [];
+            
+            // Get rating data for the bundle
+            const rating = ratingCache.getRating(bundleId);
+            
+            // Send data to webview
+            if (this._view) {
+                this._view.webview.postMessage({
+                    type: 'feedbacksLoaded',
+                    bundleId: bundleId,
+                    feedbacks: feedbacks,
+                    rating: rating
+                });
+            }
+        } catch (error) {
+            this.logger.error('Failed to get feedbacks', error as Error);
+            // Send empty feedbacks on error
+            if (this._view) {
+                this._view.webview.postMessage({
+                    type: 'feedbacksLoaded',
+                    bundleId: bundleId,
+                    feedbacks: [],
+                    rating: null
+                });
+            }
         }
     }
 
@@ -2216,6 +2259,211 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Feedback Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-content {
+            position: relative;
+            background: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--vscode-foreground);
+            font-size: 28px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--vscode-list-hoverBackground);
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .feedback-summary {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: var(--vscode-textBlockQuote-background);
+            border-left: 4px solid var(--vscode-focusBorder);
+            border-radius: 4px;
+        }
+
+        .rating-overview {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 16px;
+        }
+
+        .rating-large {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .rating-stars-large {
+            font-size: 24px;
+            color: #ffa500;
+            line-height: 1;
+        }
+
+        .rating-count {
+            font-size: 14px;
+            color: var(--vscode-descriptionForeground);
+            margin-top: 4px;
+        }
+
+        .rating-bars {
+            flex: 1;
+        }
+
+        .rating-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .rating-bar-label {
+            font-size: 12px;
+            width: 60px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .rating-bar-track {
+            flex: 1;
+            height: 8px;
+            background: var(--vscode-input-background);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .rating-bar-fill {
+            height: 100%;
+            background: #ffa500;
+            transition: width 0.3s ease;
+        }
+
+        .rating-bar-count {
+            font-size: 12px;
+            width: 40px;
+            text-align: right;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .feedback-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .feedback-item {
+            padding: 16px;
+            background: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 6px;
+        }
+
+        .feedback-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .feedback-rating {
+            color: #ffa500;
+            font-size: 16px;
+        }
+
+        .feedback-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .feedback-version {
+            padding: 2px 6px;
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .feedback-comment {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--vscode-foreground);
+        }
+
+        .feedback-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .feedback-empty-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
     </style>
 </head>
 <body>
@@ -2292,6 +2540,25 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
         </div>
     </div>
 
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="modal" style="display: none;">
+        <div class="modal-overlay" onclick="closeFeedbackModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="feedbackModalTitle">User Feedbacks</h2>
+                <button class="modal-close" onclick="closeFeedbackModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="feedback-summary" id="feedbackSummary">
+                    <!-- Rating overview will be populated here -->
+                </div>
+                <div class="feedback-list" id="feedbackList">
+                    <!-- Feedback items will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const vscode = acquireVsCodeApi();
         let allBundles = [];
@@ -2310,6 +2577,8 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
                 filterOptions = message.filterOptions || { tags: [], sources: [] };
                 updateFilterUI();
                 renderBundles();
+            } else if (message.type === 'feedbacksLoaded') {
+                renderFeedbackModal(message.bundleId, message.feedbacks, message.rating);
             }
         });
 
@@ -2844,8 +3113,127 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
 
         function showFeedbacks(bundleId, event) {
             event.stopPropagation();
-            // TODO: Implement feedback modal
-            console.log('Show feedbacks for:', bundleId);
+            
+            // Request feedback data from extension
+            vscode.postMessage({ 
+                type: 'getFeedbacks', 
+                bundleId: bundleId 
+            });
+            
+            // Show modal with loading state
+            const modal = document.getElementById('feedbackModal');
+            const feedbackList = document.getElementById('feedbackList');
+            const feedbackSummary = document.getElementById('feedbackSummary');
+            const modalTitle = document.getElementById('feedbackModalTitle');
+            
+            // Find bundle name for title
+            const bundle = allBundles.find(b => b.id === bundleId);
+            modalTitle.textContent = bundle ? \`Feedbacks for \${bundle.name}\` : 'User Feedbacks';
+            
+            feedbackSummary.innerHTML = '';
+            feedbackList.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading feedbacks...</p></div>';
+            modal.style.display = 'flex';
+        }
+
+        function closeFeedbackModal() {
+            const modal = document.getElementById('feedbackModal');
+            modal.style.display = 'none';
+        }
+
+        function renderFeedbackModal(bundleId, feedbacks, rating) {
+            const feedbackSummary = document.getElementById('feedbackSummary');
+            const feedbackList = document.getElementById('feedbackList');
+            
+            // Render rating summary if available
+            if (rating && rating.voteCount > 0) {
+                const distribution = calculateRatingDistribution(feedbacks);
+                feedbackSummary.innerHTML = \`
+                    <div class="rating-overview">
+                        <div>
+                            <div class="rating-large">\${rating.starRating.toFixed(1)}</div>
+                            <div class="rating-stars-large">\${renderStars(rating.starRating)}</div>
+                            <div class="rating-count">\${rating.voteCount} ratings</div>
+                        </div>
+                        <div class="rating-bars">
+                            \${renderRatingBars(distribution, rating.voteCount)}
+                        </div>
+                    </div>
+                \`;
+            }
+            
+            // Render feedback items
+            if (!feedbacks || feedbacks.length === 0) {
+                feedbackList.innerHTML = \`
+                    <div class="feedback-empty">
+                        <div class="feedback-empty-icon">💬</div>
+                        <p>No feedbacks yet</p>
+                        <p style="font-size: 12px; margin-top: 8px;">Be the first to share your experience!</p>
+                    </div>
+                \`;
+                return;
+            }
+            
+            feedbackList.innerHTML = feedbacks.map(feedback => \`
+                <div class="feedback-item">
+                    <div class="feedback-header">
+                        <div class="feedback-rating">\${feedback.rating ? renderStars(feedback.rating) : ''}</div>
+                        <div class="feedback-meta">
+                            <span class="feedback-date">\${formatDate(feedback.timestamp)}</span>
+                            \${feedback.version ? \`<span class="feedback-version">v\${feedback.version}</span>\` : ''}
+                        </div>
+                    </div>
+                    <div class="feedback-comment">\${escapeHtml(feedback.comment)}</div>
+                </div>
+            \`).join('');
+        }
+
+        function calculateRatingDistribution(feedbacks) {
+            const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+            if (!feedbacks) return dist;
+            
+            feedbacks.forEach(f => {
+                if (f.rating && f.rating >= 1 && f.rating <= 5) {
+                    dist[f.rating]++;
+                }
+            });
+            return dist;
+        }
+
+        function renderRatingBars(distribution, total) {
+            const stars = [5, 4, 3, 2, 1];
+            return stars.map(star => {
+                const count = distribution[star] || 0;
+                const percentage = total > 0 ? (count / total * 100) : 0;
+                return \`
+                    <div class="rating-bar-row">
+                        <div class="rating-bar-label">\${star} stars</div>
+                        <div class="rating-bar-track">
+                            <div class="rating-bar-fill" style="width: \${percentage}%"></div>
+                        </div>
+                        <div class="rating-bar-count">\${count}</div>
+                    </div>
+                \`;
+            }).join('');
+        }
+
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return \`\${diffDays} days ago\`;
+            if (diffDays < 30) return \`\${Math.floor(diffDays / 7)} weeks ago\`;
+            if (diffDays < 365) return \`\${Math.floor(diffDays / 30)} months ago\`;
+            return \`\${Math.floor(diffDays / 365)} years ago\`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function installBundleVersion(bundleId, version, event) {
