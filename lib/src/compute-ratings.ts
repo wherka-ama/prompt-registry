@@ -1,31 +1,13 @@
-#!/usr/bin/env npx ts-node
 /**
- * Rating Computation Script for GitHub Actions
+ * Rating Computation for GitHub Actions
  * 
  * Fetches reaction counts from GitHub Discussions and computes ratings
  * using Wilson score algorithm. Outputs ratings.json for static hosting.
- * 
- * Usage:
- *   npx ts-node scripts/compute-ratings.ts --config collections.yaml --output ratings.json
- *   
- * Environment:
- *   GITHUB_TOKEN - GitHub token with repo read access
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
 import * as yaml from 'js-yaml';
 import axios from 'axios';
-
-// Import rating algorithms (relative path for script execution)
-import {
-    wilsonLowerBound,
-    bayesianSmoothing,
-    aggregateResourceScores,
-    getConfidenceLevel,
-    calculateRatingMetrics,
-    RatingMetrics
-} from '../src/utils/ratingAlgorithms';
 
 // ============================================================================
 // Types
@@ -34,7 +16,7 @@ import {
 /**
  * Resource mapping in collections.yaml
  */
-interface ResourceMapping {
+export interface ResourceMapping {
     id: string;
     comment_id?: number;
 }
@@ -42,7 +24,7 @@ interface ResourceMapping {
 /**
  * Collection mapping in collections.yaml
  */
-interface CollectionMapping {
+export interface CollectionMapping {
     id: string;
     discussion_number: number;
     resources?: ResourceMapping[];
@@ -51,7 +33,7 @@ interface CollectionMapping {
 /**
  * Collections configuration file structure
  */
-interface CollectionsConfig {
+export interface CollectionsConfig {
     repository: string;
     collections: CollectionMapping[];
 }
@@ -73,7 +55,7 @@ interface ReactionCounts {
 /**
  * Resource rating in output
  */
-interface ResourceRating {
+export interface ResourceRating {
     up: number;
     down: number;
     wilson_score: number;
@@ -85,7 +67,7 @@ interface ResourceRating {
 /**
  * Collection rating in output
  */
-interface CollectionRating {
+export interface CollectionRating {
     discussion_number: number;
     up: number;
     down: number;
@@ -100,10 +82,97 @@ interface CollectionRating {
 /**
  * Output ratings.json structure
  */
-interface RatingsOutput {
+export interface RatingsOutput {
     generated_at: string;
     repository: string;
     collections: Record<string, CollectionRating>;
+}
+
+/**
+ * Rating metrics calculation result
+ */
+interface RatingMetrics {
+    wilsonScore: number;
+    bayesianScore: number;
+    starRating: number;
+    confidence: string;
+}
+
+// ============================================================================
+// Rating Algorithms (inline to avoid circular dependencies)
+// ============================================================================
+
+/**
+ * Calculate Wilson score lower bound (95% confidence)
+ */
+function wilsonLowerBound(upvotes: number, downvotes: number): number {
+    const n = upvotes + downvotes;
+    if (n === 0) {
+        return 0;
+    }
+    
+    const z = 1.96; // 95% confidence
+    const phat = upvotes / n;
+    
+    return (phat + z * z / (2 * n) - z * Math.sqrt((phat * (1 - phat) + z * z / (4 * n)) / n)) / (1 + z * z / n);
+}
+
+/**
+ * Calculate Bayesian smoothed rating
+ */
+function bayesianSmoothing(upvotes: number, downvotes: number, priorMean: number = 3.5, priorWeight: number = 10): number {
+    const totalVotes = upvotes + downvotes;
+    const observedMean = totalVotes > 0 ? (upvotes / totalVotes) * 5 : priorMean;
+    
+    return (observedMean * totalVotes + priorMean * priorWeight) / (totalVotes + priorWeight);
+}
+
+/**
+ * Get confidence level based on vote count
+ */
+function getConfidenceLevel(voteCount: number): string {
+    if (voteCount >= 100) {
+        return 'very_high';
+    } else if (voteCount >= 20) {
+        return 'high';
+    } else if (voteCount >= 5) {
+        return 'medium';
+    } else {
+        return 'low';
+    }
+}
+
+/**
+ * Calculate all rating metrics
+ */
+function calculateRatingMetrics(upvotes: number, downvotes: number): RatingMetrics {
+    const wilsonScore = wilsonLowerBound(upvotes, downvotes);
+    const bayesianScore = bayesianSmoothing(upvotes, downvotes);
+    const starRating = Math.round(bayesianScore * 10) / 10;
+    const confidence = getConfidenceLevel(upvotes + downvotes);
+    
+    return {
+        wilsonScore,
+        bayesianScore,
+        starRating,
+        confidence
+    };
+}
+
+/**
+ * Aggregate resource scores into collection score
+ */
+function aggregateResourceScores(resources: Array<{ score: number; voteCount: number }>): number {
+    if (resources.length === 0) {
+        return 0;
+    }
+    
+    const totalVotes = resources.reduce((sum, r) => sum + r.voteCount, 0);
+    if (totalVotes === 0) {
+        return 0;
+    }
+    
+    return resources.reduce((sum, r) => sum + r.score * r.voteCount, 0) / totalVotes;
 }
 
 // ============================================================================
@@ -111,7 +180,51 @@ interface RatingsOutput {
 // ============================================================================
 
 /**
- * Fetch reactions for a discussion
+ * Fetch all reactions with pagination support
+ * GitHub API returns max 100 items per page
+ */
+async function fetchAllReactions(
+    url: string,
+    token: string
+): Promise<Array<{ content: string }>> {
+    const allReactions: Array<{ content: string }> = [];
+    let page = 1;
+    const perPage = 100;
+    
+    while (true) {
+        const response = await axios.get<Array<{ content: string }>>(
+            `${url}?per_page=${perPage}&page=${page}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
+            }
+        );
+        
+        const reactions = response.data;
+        allReactions.push(...reactions);
+        
+        // If we got fewer than perPage results, we've reached the end
+        if (reactions.length < perPage) {
+            break;
+        }
+        
+        page++;
+        
+        // Safety limit to prevent infinite loops
+        if (page > 100) {
+            console.warn(`Pagination limit reached for ${url}`);
+            break;
+        }
+    }
+    
+    return allReactions;
+}
+
+/**
+ * Fetch reactions for a discussion (with pagination)
  */
 async function fetchDiscussionReactions(
     owner: string,
@@ -122,15 +235,7 @@ async function fetchDiscussionReactions(
     const url = `https://api.github.com/repos/${owner}/${repo}/discussions/${discussionNumber}/reactions`;
     
     try {
-        const response = await axios.get<Array<{ content: string }>>(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github+json',
-                'X-GitHub-Api-Version': '2022-11-28'
-            }
-        });
-
-        const reactions = response.data;
+        const reactions = await fetchAllReactions(url, token);
         
         // Count reactions by type
         const counts: ReactionCounts = { '+1': 0, '-1': 0 };
@@ -150,7 +255,7 @@ async function fetchDiscussionReactions(
 }
 
 /**
- * Fetch reactions for a comment (resource-level voting)
+ * Fetch reactions for a comment (resource-level voting, with pagination)
  */
 async function fetchCommentReactions(
     owner: string,
@@ -161,15 +266,7 @@ async function fetchCommentReactions(
     const url = `https://api.github.com/repos/${owner}/${repo}/discussions/comments/${commentId}/reactions`;
     
     try {
-        const response = await axios.get<Array<{ content: string }>>(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github+json',
-                'X-GitHub-Api-Version': '2022-11-28'
-            }
-        });
-
-        const reactions = response.data;
+        const reactions = await fetchAllReactions(url, token);
         
         const counts: ReactionCounts = { '+1': 0, '-1': 0 };
         for (const reaction of reactions) {
@@ -194,7 +291,7 @@ async function fetchCommentReactions(
 /**
  * Compute ratings for a single resource
  */
-function computeResourceRating(up: number, down: number): ResourceRating {
+export function computeResourceRating(up: number, down: number): ResourceRating {
     const metrics = calculateRatingMetrics(up, down);
     return {
         up,
@@ -274,8 +371,7 @@ async function computeCollectionRating(
 /**
  * Parse command line arguments
  */
-function parseArgs(): { configPath: string; outputPath: string } {
-    const args = process.argv.slice(2);
+export function parseArgs(args: string[]): { configPath: string; outputPath: string } {
     let configPath = 'collections.yaml';
     let outputPath = 'ratings.json';
     
@@ -295,34 +391,22 @@ function parseArgs(): { configPath: string; outputPath: string } {
 /**
  * Main entry point
  */
-async function main(): Promise<void> {
-    const { configPath, outputPath } = parseArgs();
-    
-    // Check for GitHub token
-    const token = process.env.GITHUB_TOKEN;
-    if (!token) {
-        console.error('Error: GITHUB_TOKEN environment variable is required');
-        process.exit(1);
-    }
-    
+export async function computeRatings(configPath: string, outputPath: string, token: string): Promise<void> {
     // Load collections config
     if (!fs.existsSync(configPath)) {
-        console.error(`Error: Config file not found: ${configPath}`);
-        process.exit(1);
+        throw new Error(`Config file not found: ${configPath}`);
     }
     
     const configContent = fs.readFileSync(configPath, 'utf-8');
     const config = yaml.load(configContent) as CollectionsConfig;
     
     if (!config.repository || !config.collections) {
-        console.error('Error: Invalid config file. Must have "repository" and "collections" fields.');
-        process.exit(1);
+        throw new Error('Invalid config file. Must have "repository" and "collections" fields.');
     }
     
     const [owner, repo] = config.repository.split('/');
     if (!owner || !repo) {
-        console.error('Error: Invalid repository format. Expected "owner/repo".');
-        process.exit(1);
+        throw new Error('Invalid repository format. Expected "owner/repo".');
     }
     
     console.log(`Computing ratings for ${config.repository}`);
@@ -360,23 +444,3 @@ async function main(): Promise<void> {
     );
     console.log(`Summary: ${totalCollections} collections, ${totalResources} resources`);
 }
-
-// Run if executed directly (not when imported for testing)
-if (require.main === module) {
-    main().catch(error => {
-        console.error('Fatal error:', error);
-        process.exit(1);
-    });
-}
-
-// Export for testing
-export {
-    CollectionsConfig,
-    CollectionMapping,
-    ResourceMapping,
-    RatingsOutput,
-    CollectionRating,
-    ResourceRating,
-    computeResourceRating,
-    parseArgs
-};

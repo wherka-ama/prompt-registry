@@ -1,5 +1,5 @@
 /**
- * Tests for compute-ratings script
+ * Tests for compute-ratings
  * Rating computation for GitHub Actions
  */
 
@@ -9,11 +9,11 @@ import {
     parseArgs,
     ResourceRating,
     CollectionMapping
-} from '../../scripts/compute-ratings';
+} from '../src/compute-ratings';
 
-suite('compute-ratings script', () => {
-    suite('computeResourceRating()', () => {
-        test('should compute rating for resource with votes', () => {
+describe('compute-ratings', () => {
+    describe('computeResourceRating()', () => {
+        it('should compute rating for resource with votes', () => {
             const rating = computeResourceRating(100, 10);
             
             assert.strictEqual(rating.up, 100);
@@ -23,7 +23,7 @@ suite('compute-ratings script', () => {
             assert.strictEqual(rating.confidence, 'very_high');
         });
 
-        test('should compute rating for resource with no votes', () => {
+        it('should compute rating for resource with no votes', () => {
             const rating = computeResourceRating(0, 0);
             
             assert.strictEqual(rating.up, 0);
@@ -32,7 +32,7 @@ suite('compute-ratings script', () => {
             assert.strictEqual(rating.confidence, 'low');
         });
 
-        test('should compute rating for resource with only upvotes', () => {
+        it('should compute rating for resource with only upvotes', () => {
             const rating = computeResourceRating(3, 0);
             
             assert.strictEqual(rating.up, 3);
@@ -42,7 +42,7 @@ suite('compute-ratings script', () => {
             assert.strictEqual(rating.confidence, 'low');
         });
 
-        test('should compute rating for resource with only downvotes', () => {
+        it('should compute rating for resource with only downvotes', () => {
             const rating = computeResourceRating(0, 3);
             
             assert.strictEqual(rating.up, 0);
@@ -51,7 +51,7 @@ suite('compute-ratings script', () => {
             assert.strictEqual(rating.confidence, 'low');
         });
 
-        test('should round scores to 3 decimal places', () => {
+        it('should round scores to 3 decimal places', () => {
             const rating = computeResourceRating(73, 17);
             
             // Check that scores are rounded to 3 decimal places
@@ -60,7 +60,7 @@ suite('compute-ratings script', () => {
             assert.ok(decimalPart.length <= 3, 'Wilson score should have at most 3 decimal places');
         });
 
-        test('should assign correct confidence levels', () => {
+        it('should assign correct confidence levels', () => {
             // Low: < 5 votes
             assert.strictEqual(computeResourceRating(2, 1).confidence, 'low');
             
@@ -74,7 +74,7 @@ suite('compute-ratings script', () => {
             assert.strictEqual(computeResourceRating(80, 30).confidence, 'very_high');
         });
 
-        test('should compute star rating between 1 and 5', () => {
+        it('should compute star rating between 1 and 5', () => {
             const rating = computeResourceRating(50, 10);
             
             assert.ok(rating.star_rating >= 1, 'Star rating should be at least 1');
@@ -82,70 +82,57 @@ suite('compute-ratings script', () => {
         });
     });
 
-    suite('parseArgs()', () => {
-        const originalArgv = process.argv;
-
-        teardown(() => {
-            process.argv = originalArgv;
-        });
-
-        test('should return default values when no args provided', () => {
-            process.argv = ['node', 'script.js'];
-            const args = parseArgs();
+    describe('parseArgs()', () => {
+        it('should parse config and output paths', () => {
+            const result = parseArgs([]);
             
-            assert.strictEqual(args.configPath, 'collections.yaml');
-            assert.strictEqual(args.outputPath, 'ratings.json');
+            assert.strictEqual(result.configPath, 'collections.yaml');
+            assert.strictEqual(result.outputPath, 'ratings.json');
         });
-
-        test('should parse --config argument', () => {
-            process.argv = ['node', 'script.js', '--config', 'custom.yaml'];
-            const args = parseArgs();
+        
+        it('should parse --config flag', () => {
+            const result = parseArgs(['--config', 'custom.yaml']);
             
-            assert.strictEqual(args.configPath, 'custom.yaml');
-            assert.strictEqual(args.outputPath, 'ratings.json');
+            assert.strictEqual(result.configPath, 'custom.yaml');
         });
-
-        test('should parse --output argument', () => {
-            process.argv = ['node', 'script.js', '--output', 'custom-ratings.json'];
-            const args = parseArgs();
+        
+        it('should parse --output flag', () => {
+            const result = parseArgs(['--output', 'custom.json']);
             
-            assert.strictEqual(args.configPath, 'collections.yaml');
-            assert.strictEqual(args.outputPath, 'custom-ratings.json');
+            assert.strictEqual(result.outputPath, 'custom.json');
         });
-
-        test('should parse both arguments', () => {
-            process.argv = ['node', 'script.js', '--config', 'my-config.yaml', '--output', 'my-ratings.json'];
-            const args = parseArgs();
+        
+        it('should parse both flags', () => {
+            const result = parseArgs(['--config', 'custom.yaml', '--output', 'custom.json']);
             
-            assert.strictEqual(args.configPath, 'my-config.yaml');
-            assert.strictEqual(args.outputPath, 'my-ratings.json');
+            assert.strictEqual(result.configPath, 'custom.yaml');
+            assert.strictEqual(result.outputPath, 'custom.json');
         });
-
-        test('should handle arguments in any order', () => {
-            process.argv = ['node', 'script.js', '--output', 'out.json', '--config', 'in.yaml'];
-            const args = parseArgs();
+        
+        it('should handle missing flags', () => {
+            const result = parseArgs([]);
             
-            assert.strictEqual(args.configPath, 'in.yaml');
-            assert.strictEqual(args.outputPath, 'out.json');
+            assert.strictEqual(result.configPath, 'collections.yaml');
+            assert.strictEqual(result.outputPath, 'ratings.json');
         });
     });
 
-    suite('Rating Computation Edge Cases', () => {
-        test('should handle very large vote counts', () => {
+    describe('Rating Computation Edge Cases', () => {
+        it('should handle very large vote counts', () => {
             const rating = computeResourceRating(10000, 500);
             
             assert.ok(rating.wilson_score > 0.9, 'Should have high score for 10000:500 ratio');
             assert.strictEqual(rating.confidence, 'very_high');
         });
 
-        test('should handle equal up and down votes', () => {
+        it('should handle equal up and down votes', () => {
             const rating = computeResourceRating(50, 50);
             
             assert.ok(rating.wilson_score < 0.5, 'Wilson score should be below 0.5 for 50:50');
             assert.ok(rating.wilson_score > 0.3, 'Wilson score should not be too low');
         });
 
-        test('should handle mostly negative votes', () => {
+        it('should handle mostly negative votes', () => {
             const rating = computeResourceRating(10, 90);
             
             assert.ok(rating.wilson_score < 0.2, 'Wilson score should be low for 10:90 ratio');

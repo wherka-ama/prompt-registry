@@ -13,7 +13,8 @@
     "generate-manifest": "./bin/generate-manifest.js",
     "publish-collections": "./bin/publish-collections.js",
     "list-collections": "./bin/list-collections.js",
-    "create-skill": "./bin/create-skill.js"
+    "create-skill": "./bin/create-skill.js",
+    "compute-ratings": "./bin/compute-ratings.js"
   },
   "scripts": {
     "build": "tsc",
@@ -52,6 +53,7 @@
   },
   "dependencies": {
     "archiver": "^6.0.1",
+    "axios": "^1.6.0",
     "js-yaml": "^4.1.0",
     "semver": "^7.5.4",
     "yauzl": "^3.1.3"

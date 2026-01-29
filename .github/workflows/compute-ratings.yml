@@ -45,7 +45,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx ts-node scripts/compute-ratings.ts \
+          npx compute-ratings \
             --config "${{ github.event.inputs.config_path || 'collections.yaml' }}" \
             --output "${{ github.event.inputs.output_path || 'ratings.json' }}"
 
