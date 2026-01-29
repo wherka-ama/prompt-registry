@@ -26,6 +26,7 @@ export interface ResourceMapping {
  */
 export interface CollectionMapping {
     id: string;
+    source_id?: string;
     discussion_number: number;
     resources?: ResourceMapping[];
 }
@@ -68,6 +69,7 @@ export interface ResourceRating {
  * Collection rating in output
  */
 export interface CollectionRating {
+    source_id?: string;
     discussion_number: number;
     up: number;
     down: number;
@@ -352,6 +354,7 @@ async function computeCollectionRating(
     }
     
     return {
+        source_id: collection.source_id,
         discussion_number: collection.discussion_number,
         up: collectionUp,
         down: collectionDown,

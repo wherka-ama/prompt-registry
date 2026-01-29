@@ -301,6 +301,7 @@ The `ratingsUrl` and `feedbackUrl` fields point to static JSON files that contai
   "generated": "2025-01-29T10:00:00Z",
   "bundles": [
     {
+      "sourceId": "awesome-copilot-official",
       "bundleId": "bundle-id",
       "upvotes": 45,
       "downvotes": 3,
@@ -312,6 +313,8 @@ The `ratingsUrl` and `feedbackUrl` fields point to static JSON files that contai
   ]
 }
 ```
+
+**Note**: The `sourceId` field is required to uniquely identify bundles across different sources. Bundle IDs alone are not globally unique.
 
 **feedbacks.json structure:**
 ```json
