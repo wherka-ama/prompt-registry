@@ -12,7 +12,8 @@ suite('RatingCache', () => {
     let sandbox: sinon.SinonSandbox;
     let cache: RatingCache;
 
-    const createMockRating = (bundleId: string, starRating: number = 4.0, voteCount: number = 50): CachedRating => ({
+    const createMockRating = (sourceId: string, bundleId: string, starRating: number = 4.0, voteCount: number = 50): CachedRating => ({
+        sourceId,
         bundleId,
         starRating,
         wilsonScore: 0.75,
@@ -49,38 +50,38 @@ suite('RatingCache', () => {
 
     suite('getRating()', () => {
         test('should return undefined for uncached bundle', () => {
-            const rating = cache.getRating('unknown-bundle');
+            const rating = cache.getRating('test-source', 'unknown-bundle');
             assert.strictEqual(rating, undefined);
         });
 
         test('should return cached rating', () => {
-            const mockRating = createMockRating('test-bundle');
+            const mockRating = createMockRating('test-source', 'test-bundle');
             cache.setRating(mockRating);
 
-            const rating = cache.getRating('test-bundle');
+            const rating = cache.getRating('test-source', 'test-bundle');
             assert.deepStrictEqual(rating, mockRating);
         });
     });
 
     suite('getRatingDisplay()', () => {
         test('should return undefined for uncached bundle', () => {
-            const display = cache.getRatingDisplay('unknown-bundle');
+            const display = cache.getRatingDisplay('test-source', 'unknown-bundle');
             assert.strictEqual(display, undefined);
         });
 
         test('should return undefined for bundle with zero votes', () => {
-            const mockRating = createMockRating('test-bundle', 0, 0);
+            const mockRating = createMockRating('test-source', 'test-bundle', 0, 0);
             cache.setRating(mockRating);
 
-            const display = cache.getRatingDisplay('test-bundle');
+            const display = cache.getRatingDisplay('test-source', 'test-bundle');
             assert.strictEqual(display, undefined);
         });
 
         test('should return formatted display for cached rating', () => {
-            const mockRating = createMockRating('test-bundle', 4.2, 50);
+            const mockRating = createMockRating('test-source', 'test-bundle', 4.2, 50);
             cache.setRating(mockRating);
 
-            const display = cache.getRatingDisplay('test-bundle');
+            const display = cache.getRatingDisplay('test-source', 'test-bundle');
             assert.ok(display);
             assert.ok(display.text.includes('★'));
             assert.ok(display.text.includes('4.2'));
@@ -91,37 +92,37 @@ suite('RatingCache', () => {
 
     suite('hasRating()', () => {
         test('should return false for uncached bundle', () => {
-            assert.strictEqual(cache.hasRating('unknown-bundle'), false);
+            assert.strictEqual(cache.hasRating('test-source', 'unknown-bundle'), false);
         });
 
         test('should return true for cached bundle', () => {
-            cache.setRating(createMockRating('test-bundle'));
-            assert.strictEqual(cache.hasRating('test-bundle'), true);
+            cache.setRating(createMockRating('test-source', 'test-bundle'));
+            assert.strictEqual(cache.hasRating('test-source', 'test-bundle'), true);
         });
     });
 
     suite('setRating()', () => {
         test('should add rating to cache', () => {
-            const rating = createMockRating('new-bundle');
+            const rating = createMockRating('test-source', 'new-bundle');
             cache.setRating(rating);
 
             assert.strictEqual(cache.size, 1);
-            assert.deepStrictEqual(cache.getRating('new-bundle'), rating);
+            assert.deepStrictEqual(cache.getRating('test-source', 'new-bundle'), rating);
         });
 
         test('should update existing rating', () => {
-            cache.setRating(createMockRating('test-bundle', 3.0));
-            cache.setRating(createMockRating('test-bundle', 4.5));
+            cache.setRating(createMockRating('test-source', 'test-bundle', 3.0));
+            cache.setRating(createMockRating('test-source', 'test-bundle', 4.5));
 
-            const rating = cache.getRating('test-bundle');
+            const rating = cache.getRating('test-source', 'test-bundle');
             assert.strictEqual(rating?.starRating, 4.5);
         });
     });
 
     suite('clear()', () => {
         test('should remove all cached ratings', () => {
-            cache.setRating(createMockRating('bundle-1'));
-            cache.setRating(createMockRating('bundle-2'));
+            cache.setRating(createMockRating('test-source', 'bundle-1'));
+            cache.setRating(createMockRating('test-source', 'bundle-2'));
             assert.strictEqual(cache.size, 2);
 
             cache.clear();
@@ -131,14 +132,14 @@ suite('RatingCache', () => {
 
     suite('clearHub()', () => {
         test('should remove ratings matching hub prefix', () => {
-            cache.setRating(createMockRating('hub1/bundle-1'));
-            cache.setRating(createMockRating('hub1/bundle-2'));
-            cache.setRating(createMockRating('hub2/bundle-1'));
+            cache.setRating(createMockRating('hub1', 'bundle-1'));
+            cache.setRating(createMockRating('hub1', 'bundle-2'));
+            cache.setRating(createMockRating('hub2', 'bundle-1'));
 
-            cache.clearHub('hub1/');
+            cache.clearHub('hub1');
 
             assert.strictEqual(cache.size, 1);
-            assert.strictEqual(cache.hasRating('hub2/bundle-1'), true);
+            assert.strictEqual(cache.hasRating('hub2', 'bundle-1'), true);
         });
     });
 
@@ -148,14 +149,14 @@ suite('RatingCache', () => {
             assert.deepStrictEqual(ids, []);
         });
 
-        test('should return all cached bundle IDs', () => {
-            cache.setRating(createMockRating('bundle-a'));
-            cache.setRating(createMockRating('bundle-b'));
+        test('should return all cached composite keys', () => {
+            cache.setRating(createMockRating('test-source', 'bundle-a'));
+            cache.setRating(createMockRating('test-source', 'bundle-b'));
 
             const ids = cache.getCachedBundleIds();
             assert.strictEqual(ids.length, 2);
-            assert.ok(ids.includes('bundle-a'));
-            assert.ok(ids.includes('bundle-b'));
+            assert.ok(ids.includes('test-source:bundle-a'));
+            assert.ok(ids.includes('test-source:bundle-b'));
         });
     });
 
@@ -166,6 +167,7 @@ suite('RatingCache', () => {
                 generatedAt: new Date().toISOString(),
                 bundles: {
                     'bundle-1': {
+                        sourceId: 'test-source',
                         bundleId: 'bundle-1',
                         upvotes: 80,
                         downvotes: 10,
@@ -175,6 +177,7 @@ suite('RatingCache', () => {
                         lastUpdated: new Date().toISOString()
                     },
                     'bundle-2': {
+                        sourceId: 'test-source',
                         bundleId: 'bundle-2',
                         upvotes: 20,
                         downvotes: 5,
@@ -193,12 +196,12 @@ suite('RatingCache', () => {
 
             assert.strictEqual(cache.size, 2);
             
-            const rating1 = cache.getRating('bundle-1');
+            const rating1 = cache.getRating('test-source', 'bundle-1');
             assert.ok(rating1);
             assert.strictEqual(rating1.starRating, 4.3);
             assert.strictEqual(rating1.voteCount, 90);
             
-            const rating2 = cache.getRating('bundle-2');
+            const rating2 = cache.getRating('test-source', 'bundle-2');
             assert.ok(rating2);
             assert.strictEqual(rating2.starRating, 3.6);
         });
@@ -228,6 +231,7 @@ suite('RatingCache', () => {
                 generatedAt: new Date().toISOString(),
                 bundles: {
                     'bundle-1': {
+                        sourceId: 'test-source',
                         bundleId: 'bundle-1',
                         upvotes: 50,
                         downvotes: 5,
@@ -258,6 +262,7 @@ suite('RatingCache', () => {
                 generatedAt: new Date().toISOString(),
                 bundles: {
                     'bundle-1': {
+                        sourceId: 'test-source',
                         bundleId: 'bundle-1',
                         upvotes: 3,
                         downvotes: 0,
@@ -274,7 +279,7 @@ suite('RatingCache', () => {
 
             await cache.refreshFromHub('test-hub', 'https://example.com/ratings.json');
 
-            const rating = cache.getRating('bundle-1');
+            const rating = cache.getRating('test-source', 'bundle-1');
             assert.strictEqual(rating?.confidence, 'low');
         });
 
@@ -284,6 +289,7 @@ suite('RatingCache', () => {
                 generatedAt: new Date().toISOString(),
                 bundles: {
                     'bundle-1': {
+                        sourceId: 'test-source',
                         bundleId: 'bundle-1',
                         upvotes: 10,
                         downvotes: 2,
@@ -300,7 +306,7 @@ suite('RatingCache', () => {
 
             await cache.refreshFromHub('test-hub', 'https://example.com/ratings.json');
 
-            const rating = cache.getRating('bundle-1');
+            const rating = cache.getRating('test-source', 'bundle-1');
             assert.strictEqual(rating?.confidence, 'medium');
         });
 
@@ -310,6 +316,7 @@ suite('RatingCache', () => {
                 generatedAt: new Date().toISOString(),
                 bundles: {
                     'bundle-1': {
+                        sourceId: 'test-source',
                         bundleId: 'bundle-1',
                         upvotes: 40,
                         downvotes: 10,
@@ -326,7 +333,7 @@ suite('RatingCache', () => {
 
             await cache.refreshFromHub('test-hub', 'https://example.com/ratings.json');
 
-            const rating = cache.getRating('bundle-1');
+            const rating = cache.getRating('test-source', 'bundle-1');
             assert.strictEqual(rating?.confidence, 'high');
         });
 
@@ -336,6 +343,7 @@ suite('RatingCache', () => {
                 generatedAt: new Date().toISOString(),
                 bundles: {
                     'bundle-1': {
+                        sourceId: 'test-source',
                         bundleId: 'bundle-1',
                         upvotes: 150,
                         downvotes: 20,
@@ -352,7 +360,7 @@ suite('RatingCache', () => {
 
             await cache.refreshFromHub('test-hub', 'https://example.com/ratings.json');
 
-            const rating = cache.getRating('bundle-1');
+            const rating = cache.getRating('test-source', 'bundle-1');
             assert.strictEqual(rating?.confidence, 'very_high');
         });
     });

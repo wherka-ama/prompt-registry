@@ -18,6 +18,7 @@ suite('RatingService', () => {
             Object.entries(bundles).map(([id, data]) => [
                 id,
                 {
+                    sourceId: data.sourceId ?? 'test-source',
                     bundleId: id,
                     upvotes: data.upvotes ?? 10,
                     downvotes: data.downvotes ?? 2,
@@ -213,6 +214,7 @@ suite('RatingService', () => {
     suite('formatRatingForDisplay()', () => {
         test('should format with star rating for 5+ votes', () => {
             const rating: BundleRating = {
+                sourceId: 'test-source',
                 bundleId: 'test',
                 upvotes: 10,
                 downvotes: 2,
@@ -229,6 +231,7 @@ suite('RatingService', () => {
 
         test('should format with thumbs up for fewer than 5 votes', () => {
             const rating: BundleRating = {
+                sourceId: 'test-source',
                 bundleId: 'test',
                 upvotes: 3,
                 downvotes: 1,
@@ -245,6 +248,7 @@ suite('RatingService', () => {
 
         test('should return empty string for zero votes', () => {
             const rating: BundleRating = {
+                sourceId: 'test-source',
                 bundleId: 'test',
                 upvotes: 0,
                 downvotes: 0,
