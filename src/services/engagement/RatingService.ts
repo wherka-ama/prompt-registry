@@ -20,15 +20,50 @@ export interface BundleRating {
     starRating: number;
     totalVotes: number;
     lastUpdated: string;
+    /** Discussion number for voting (if available) */
+    discussionNumber?: number;
+    /** Confidence level based on vote count */
+    confidence?: string;
 }
 
 /**
- * Ratings file structure served by hubs
+ * Ratings file structure served by hubs (bundles format)
  */
 export interface RatingsData {
     version: string;
     generatedAt: string;
     bundles: Record<string, BundleRating>;
+}
+
+/**
+ * Collection rating from compute-ratings.ts output
+ */
+export interface CollectionRating {
+    discussion_number: number;
+    up: number;
+    down: number;
+    wilson_score: number;
+    bayesian_score: number;
+    aggregated_score: number;
+    star_rating: number;
+    confidence: string;
+    resources: Record<string, {
+        up: number;
+        down: number;
+        wilson_score: number;
+        bayesian_score: number;
+        star_rating: number;
+        confidence: string;
+    }>;
+}
+
+/**
+ * Ratings file structure from compute-ratings.ts (collections format)
+ */
+export interface CollectionsRatingsData {
+    generated_at: string;
+    repository: string;
+    collections: Record<string, CollectionRating>;
 }
 
 /**
@@ -77,34 +112,70 @@ export class RatingService {
         }
 
         try {
-            // Add cache-busting query parameter
-            const urlWithCacheBust = `${ratingsUrl}?t=${Date.now()}`;
-            const response = await axios.get<RatingsData>(urlWithCacheBust, {
+            // Add cache-busting query parameter (handle existing query params)
+            const separator = ratingsUrl.includes('?') ? '&' : '?';
+            const urlWithCacheBust = `${ratingsUrl}${separator}t=${Date.now()}`;
+            const response = await axios.get(urlWithCacheBust, {
                 timeout: 10000,
                 headers: {
                     'Accept': 'application/json',
                 },
             });
 
-            const data = response.data;
+            const rawData = response.data;
             
-            // Validate structure
-            if (!data.bundles || typeof data.bundles !== 'object') {
-                this.logger.warn(`Invalid ratings data from ${ratingsUrl}`);
+            // Handle both formats: bundles (new) and collections (compute-ratings.ts output)
+            let normalizedData: RatingsData;
+            
+            if (rawData.bundles && typeof rawData.bundles === 'object') {
+                // Already in bundles format
+                normalizedData = rawData as RatingsData;
+            } else if (rawData.collections && typeof rawData.collections === 'object') {
+                // Convert collections format to bundles format
+                normalizedData = this.convertCollectionsToBundle(rawData as CollectionsRatingsData);
+            } else {
+                this.logger.warn(`Invalid ratings data from ${ratingsUrl}: missing bundles or collections`);
                 return undefined;
             }
 
-            // Cache the result
-            this.ratingsCache.set(ratingsUrl, data);
+            // Cache the normalized result
+            this.ratingsCache.set(ratingsUrl, normalizedData);
             this.cacheExpiry.set(ratingsUrl, Date.now() + this.cacheDurationMs);
 
-            this.logger.debug(`Fetched ratings from ${ratingsUrl}: ${Object.keys(data.bundles).length} bundles`);
-            return data;
+            this.logger.debug(`Fetched ratings from ${ratingsUrl}: ${Object.keys(normalizedData.bundles).length} bundles`);
+            return normalizedData;
         } catch (error) {
             const err = error instanceof Error ? error : undefined;
             this.logger.debug(`Failed to fetch ratings from ${ratingsUrl}`, err);
             return undefined;
         }
+    }
+
+    /**
+     * Convert collections format (from compute-ratings.ts) to bundles format
+     */
+    private convertCollectionsToBundle(collectionsData: CollectionsRatingsData): RatingsData {
+        const bundles: Record<string, BundleRating> = {};
+
+        for (const [collectionId, collection] of Object.entries(collectionsData.collections)) {
+            bundles[collectionId] = {
+                bundleId: collectionId,
+                upvotes: collection.up,
+                downvotes: collection.down,
+                wilsonScore: collection.wilson_score,
+                starRating: collection.star_rating,
+                totalVotes: collection.up + collection.down,
+                lastUpdated: collectionsData.generated_at,
+                discussionNumber: collection.discussion_number,
+                confidence: collection.confidence,
+            };
+        }
+
+        return {
+            version: '1.0.0',
+            generatedAt: collectionsData.generated_at,
+            bundles,
+        };
     }
 
     /**

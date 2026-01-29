@@ -686,6 +686,16 @@
           "group": "bundleActions@5"
         },
         {
+          "command": "promptRegistry.submitFeedback",
+          "when": "view == promptRegistryExplorer && viewItem =~ /^installed_bundle/",
+          "group": "engagement@1"
+        },
+        {
+          "command": "promptRegistry.quickFeedback",
+          "when": "view == promptRegistryExplorer && viewItem =~ /^installed_bundle/",
+          "group": "engagement@2"
+        },
+        {
           "command": "promptRegistry.moveToRepositoryCommit",
           "when": "view == promptRegistryExplorer && viewItem =~ /^installed_bundle.*_user$/",
           "group": "scopeActions@1"

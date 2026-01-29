@@ -218,6 +218,44 @@ export class VoteService {
     }
 
     /**
+     * Fetch all reactions with pagination support
+     * GitHub API returns max 100 items per page
+     */
+    private async fetchAllReactions(
+        url: string,
+        headers: Record<string, string>
+    ): Promise<Array<{ id: number; content: string; user: { login: string } }>> {
+        const allReactions: Array<{ id: number; content: string; user: { login: string } }> = [];
+        let page = 1;
+        const perPage = 100;
+        
+        while (true) {
+            const response = await axios.get(
+                `${url}?per_page=${perPage}&page=${page}`,
+                { headers }
+            );
+            
+            const reactions = response.data as Array<{ id: number; content: string; user: { login: string } }>;
+            allReactions.push(...reactions);
+            
+            // If we got fewer than perPage results, we've reached the end
+            if (reactions.length < perPage) {
+                break;
+            }
+            
+            page++;
+            
+            // Safety limit to prevent infinite loops
+            if (page > 100) {
+                this.logger.warn(`Pagination limit reached for ${url}`);
+                break;
+            }
+        }
+        
+        return allReactions;
+    }
+
+    /**
      * Get current user's vote on a discussion
      * 
      * @param discussionNumber - GitHub Discussion number
@@ -241,17 +279,11 @@ export class VoteService {
             const userResponse = await axios.get('https://api.github.com/user', { headers });
             const user = userResponse.data as { login: string };
             
-            // Get reactions on the discussion
-            const reactionsResponse = await axios.get(
+            // Get all reactions on the discussion (with pagination)
+            const reactions = await this.fetchAllReactions(
                 `https://api.github.com/repos/${repoOwner}/${repoName}/discussions/${discussionNumber}/reactions`,
-                { headers }
+                headers
             );
-            
-            const reactions = reactionsResponse.data as Array<{
-                id: number;
-                content: string;
-                user: { login: string };
-            }>;
             
             // Find user's vote reaction
             const userReaction = reactions.find(

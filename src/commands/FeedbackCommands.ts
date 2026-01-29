@@ -60,19 +60,66 @@ export class FeedbackCommands {
         context.subscriptions.push(
             vscode.commands.registerCommand(
                 'promptRegistry.submitFeedback',
-                (item: FeedbackableItem) => this.submitFeedback(item)
+                (item: FeedbackableItem | any) => this.submitFeedback(this.normalizeFeedbackItem(item))
             ),
             vscode.commands.registerCommand(
                 'promptRegistry.submitFeedbackWithRating',
-                (item: FeedbackableItem) => this.submitFeedbackWithRating(item)
+                (item: FeedbackableItem | any) => this.submitFeedbackWithRating(this.normalizeFeedbackItem(item))
             ),
             vscode.commands.registerCommand(
                 'promptRegistry.quickFeedback',
-                (item: FeedbackableItem) => this.quickFeedback(item)
+                (item: FeedbackableItem | any) => this.quickFeedback(this.normalizeFeedbackItem(item))
             )
         );
 
         this.logger.debug('FeedbackCommands registered');
+    }
+
+    /**
+     * Normalize various input types to FeedbackableItem
+     * Handles TreeView items, direct FeedbackableItem, or bundleId strings
+     */
+    private normalizeFeedbackItem(item: any): FeedbackableItem {
+        // If it's already a FeedbackableItem
+        if (item?.resourceId && item?.resourceType) {
+            return item as FeedbackableItem;
+        }
+
+        // If it's a TreeView item with data (InstalledBundle)
+        if (item?.data?.bundleId) {
+            return {
+                resourceId: item.data.bundleId,
+                resourceType: 'bundle',
+                name: item.label || item.data.bundleId,
+                version: item.data.version,
+            };
+        }
+
+        // If it's a direct InstalledBundle or Bundle object
+        if (item?.bundleId) {
+            return {
+                resourceId: item.bundleId,
+                resourceType: 'bundle',
+                name: item.name || item.bundleId,
+                version: item.version,
+            };
+        }
+
+        // If it's just a string (bundleId)
+        if (typeof item === 'string') {
+            return {
+                resourceId: item,
+                resourceType: 'bundle',
+                name: item,
+            };
+        }
+
+        // Default fallback - prompt user to select
+        return {
+            resourceId: 'unknown',
+            resourceType: 'bundle',
+            name: 'Unknown Resource',
+        };
     }
 
     /**

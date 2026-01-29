@@ -170,6 +170,37 @@ This is useful when bundle files have been manually deleted but the lockfile sti
 | `promptregistry.validateAccess` | Validate Repository Access | Validate access to a repository |
 | `promptregistry.forceGitHubAuth` | Force GitHub Authentication | Force re-authentication with GitHub |
 
+## Engagement (Feedback & Voting)
+
+| Command | Title | Description |
+|---------|-------|-------------|
+| `promptRegistry.submitFeedback` | Submit Feedback | Submit feedback for a bundle |
+| `promptRegistry.submitFeedbackWithRating` | Submit Feedback with Rating | Submit feedback with a 1-5 star rating |
+| `promptRegistry.quickFeedback` | Quick Feedback | Submit quick feedback using predefined options |
+| `promptRegistry.voteUpCollection` | Vote Up Collection | Upvote a collection via GitHub Discussions |
+| `promptRegistry.voteDownCollection` | Vote Down Collection | Downvote a collection via GitHub Discussions |
+| `promptRegistry.voteUpResource` | Vote Up Resource | Upvote a resource via GitHub Discussions |
+| `promptRegistry.voteDownResource` | Vote Down Resource | Downvote a resource via GitHub Discussions |
+| `promptRegistry.toggleVote` | Toggle Vote | Toggle your vote on a collection |
+| `promptRegistry.removeVote` | Remove Vote | Remove your vote from a collection |
+
+### Feedback Commands
+
+Available via context menu on installed bundles in the Registry Explorer:
+- **Submit Feedback** — Opens a dialog for detailed feedback
+- **Quick Feedback** — Quick options: 👍 Works great!, 💡 Suggestion, 🐛 Bug report, ❓ Question
+
+Feedback is stored locally via the EngagementService.
+
+### Voting Commands
+
+Voting requires:
+1. GitHub authentication
+2. A hub with GitHub Discussions enabled
+3. The bundle must have a `discussionNumber` configured
+
+See [Engagement Guide](../user-guide/engagement.md) for setup instructions.
+
 ## Utilities
 
 | Command | Title | Description |

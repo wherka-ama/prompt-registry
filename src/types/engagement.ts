@@ -247,6 +247,8 @@ export interface FeedbackConfig {
     requireRating?: boolean;
     /** Maximum comment length */
     maxLength?: number;
+    /** URL to static feedbacks.json file (pre-computed feedbacks) */
+    feedbackUrl?: string;
 }
 
 /**
