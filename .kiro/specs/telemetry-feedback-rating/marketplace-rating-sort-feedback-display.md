@@ -280,19 +280,19 @@ export class FeedbackHarvester {
     
     /**
      * Export feedbacks to JSON for static hosting
+     * Note: Feedback must include sourceId to match composite key pattern
      */
     async exportToJson(
-        feedbacks: Feedback[],
+        feedbacks: BundleFeedbackCollection[],
         outputPath: string
     ): Promise<void> {
-        const feedbacksByBundle = groupBy(feedbacks, 'resourceId');
-        
         const output = {
             version: '1.0.0',
             generated: new Date().toISOString(),
-            bundles: Object.entries(feedbacksByBundle).map(([bundleId, items]) => ({
-                bundleId,
-                feedbacks: items.map(f => ({
+            bundles: feedbacks.map(collection => ({
+                sourceId: collection.sourceId,
+                bundleId: collection.bundleId,
+                feedbacks: collection.feedbacks.map(f => ({
                     id: f.id,
                     rating: f.rating,
                     comment: f.comment,
@@ -314,6 +314,7 @@ export class FeedbackHarvester {
     "generated": "2026-01-29T08:00:00Z",
     "bundles": [
         {
+            "sourceId": "awesome-copilot-official",
             "bundleId": "owner/repo/bundle-name",
             "feedbacks": [
                 {
@@ -328,6 +329,8 @@ export class FeedbackHarvester {
     ]
 }
 ```
+
+**Note**: The `sourceId` field is required to uniquely identify bundles across different sources, matching the composite key pattern used in `ratings.json`.
 
 **Add to Hub Config**:
 ```yaml
