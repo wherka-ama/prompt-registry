@@ -13,6 +13,7 @@ import { RatingStats } from '../../types/engagement';
  * Rating data for a single bundle
  */
 export interface BundleRating {
+    sourceId: string;
     bundleId: string;
     upvotes: number;
     downvotes: number;
@@ -39,6 +40,7 @@ export interface RatingsData {
  * Collection rating from compute-ratings.ts output
  */
 export interface CollectionRating {
+    source_id?: string;
     discussion_number: number;
     up: number;
     down: number;
@@ -159,6 +161,7 @@ export class RatingService {
 
         for (const [collectionId, collection] of Object.entries(collectionsData.collections)) {
             bundles[collectionId] = {
+                sourceId: collection.source_id || 'unknown',
                 bundleId: collectionId,
                 upvotes: collection.up,
                 downvotes: collection.down,

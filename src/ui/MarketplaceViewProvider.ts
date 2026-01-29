@@ -321,8 +321,8 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
 
                 // Get rating from cache if available
                 const ratingCache = RatingCache.getInstance();
-                const ratingDisplay = ratingCache.getRatingDisplay(bundle.id);
-                const cachedRating = ratingCache.getRating(bundle.id);
+                const ratingDisplay = ratingCache.getRatingDisplay(bundle.sourceId, bundle.id);
+                const cachedRating = ratingCache.getRating(bundle.sourceId, bundle.id);
 
                 return {
                     ...bundle,
@@ -572,7 +572,11 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             const feedbacks = feedbackCache.getFeedbacks(bundleId) || [];
             
             // Get rating data for the bundle
-            const rating = ratingCache.getRating(bundleId);
+            // Note: We need sourceId to look up ratings, but bundleId alone is insufficient
+            // For now, we'll need to find the bundle to get its sourceId
+            const bundles = await this.registryManager.searchBundles({ text: bundleId });
+            const bundle = bundles.find(b => b.id === bundleId);
+            const rating = bundle ? ratingCache.getRating(bundle.sourceId, bundleId) : undefined;
             
             // Send data to webview
             if (this._view) {
@@ -899,8 +903,8 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
 
             // Get rating from cache
             const ratingCache = RatingCache.getInstance();
-            const ratingDisplay = ratingCache.getRatingDisplay(bundle.id);
-            const cachedRating = ratingCache.getRating(bundle.id);
+            const ratingDisplay = ratingCache.getRatingDisplay(bundle.sourceId, bundle.id);
+            const cachedRating = ratingCache.getRating(bundle.sourceId, bundle.id);
 
             // Create webview panel
             const panel = vscode.window.createWebviewPanel(

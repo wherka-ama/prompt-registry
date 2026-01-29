@@ -18,6 +18,8 @@ import { Logger } from '../../utils/logger';
  * Cached rating entry with metadata
  */
 export interface CachedRating {
+    /** Source ID */
+    sourceId: string;
     /** Bundle ID */
     bundleId: string;
     /** Star rating (1-5) */
@@ -91,16 +93,24 @@ export class RatingCache {
      * Get rating for a bundle (synchronous)
      * Returns undefined if not cached
      */
-    getRating(bundleId: string): CachedRating | undefined {
-        return this.cache.get(bundleId);
+    getRating(sourceId: string, bundleId: string): CachedRating | undefined {
+        const key = this.makeKey(sourceId, bundleId);
+        return this.cache.get(key);
+    }
+
+    /**
+     * Create composite key from sourceId and bundleId
+     */
+    private makeKey(sourceId: string, bundleId: string): string {
+        return `${sourceId}:${bundleId}`;
     }
 
     /**
      * Get formatted rating display for UI
      * Returns undefined if not cached or no rating
      */
-    getRatingDisplay(bundleId: string): RatingDisplay | undefined {
-        const rating = this.cache.get(bundleId);
+    getRatingDisplay(sourceId: string, bundleId: string): RatingDisplay | undefined {
+        const rating = this.getRating(sourceId, bundleId);
         if (!rating || rating.voteCount === 0) {
             return undefined;
         }
@@ -137,8 +147,9 @@ export class RatingCache {
     /**
      * Check if a bundle has a cached rating
      */
-    hasRating(bundleId: string): boolean {
-        return this.cache.has(bundleId);
+    hasRating(sourceId: string, bundleId: string): boolean {
+        const key = this.makeKey(sourceId, bundleId);
+        return this.cache.has(key);
     }
 
     /**
@@ -190,7 +201,9 @@ export class RatingCache {
             const now = Date.now();
             const bundles = ratingsData.bundles;
             for (const [bundleId, rating] of Object.entries(bundles)) {
-                this.cache.set(bundleId, {
+                const key = this.makeKey(rating.sourceId, bundleId);
+                this.cache.set(key, {
+                    sourceId: rating.sourceId,
                     bundleId,
                     starRating: rating.starRating,
                     wilsonScore: rating.wilsonScore,
@@ -227,7 +240,8 @@ export class RatingCache {
      * Manually set a rating (for testing or local updates)
      */
     setRating(rating: CachedRating): void {
-        this.cache.set(rating.bundleId, rating);
+        const key = this.makeKey(rating.sourceId, rating.bundleId);
+        this.cache.set(key, rating);
     }
 
     /**
