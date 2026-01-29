@@ -854,6 +854,11 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
                 }
             }
 
+            // Get rating from cache
+            const ratingCache = RatingCache.getInstance();
+            const ratingDisplay = ratingCache.getRatingDisplay(bundle.id);
+            const cachedRating = ratingCache.getRating(bundle.id);
+
             // Create webview panel
             const panel = vscode.window.createWebviewPanel(
                 'bundleDetails',
@@ -865,7 +870,7 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             );
 
             // Set HTML content
-            panel.webview.html = this.getBundleDetailsHtml(bundle, installed, breakdown, autoUpdateEnabled);
+            panel.webview.html = this.getBundleDetailsHtml(bundle, installed, breakdown, autoUpdateEnabled, cachedRating, ratingDisplay);
 
             // Handle messages from the details panel
             panel.webview.onDidReceiveMessage(
@@ -879,6 +884,22 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
                             const newStatus = await this.registryManager.autoUpdateService?.isAutoUpdateEnabled(installed.bundleId) || false;
                             panel.webview.postMessage({ type: 'autoUpdateStatusChanged', enabled: newStatus });
                         }
+                    } else if (message.type === 'submitFeedback') {
+                        // Execute the feedback command with bundle info
+                        await vscode.commands.executeCommand('promptRegistry.submitFeedback', {
+                            resourceId: message.bundleId,
+                            resourceType: 'bundle',
+                            name: bundle.name,
+                            version: bundle.version
+                        });
+                    } else if (message.type === 'quickFeedback') {
+                        // Execute the quick feedback command with bundle info
+                        await vscode.commands.executeCommand('promptRegistry.quickFeedback', {
+                            resourceId: message.bundleId,
+                            resourceType: 'bundle',
+                            name: bundle.name,
+                            version: bundle.version
+                        });
                     }
                 },
                 undefined,
@@ -904,7 +925,14 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
     /**
      * Get HTML for bundle details panel
      */
-    private getBundleDetailsHtml(bundle: Bundle, installed: InstalledBundle | undefined, breakdown: ContentBreakdown, autoUpdateEnabled: boolean = false): string {
+    private getBundleDetailsHtml(
+        bundle: Bundle, 
+        installed: InstalledBundle | undefined, 
+        breakdown: ContentBreakdown, 
+        autoUpdateEnabled: boolean = false,
+        rating?: { starRating: number; voteCount: number; confidence: string } | null,
+        ratingDisplay?: { text: string; tooltip: string } | null
+    ): string {
         const isInstalled = !!installed;
         const installPath = installed?.installPath || 'Not installed';
         // Escape backslashes and quotes for safe embedding in HTML onclick attributes
@@ -1118,6 +1146,59 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             background: var(--vscode-descriptionForeground);
             color: var(--vscode-editor-background);
         }
+        .rating-section {
+            background: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .rating-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .rating-display {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .rating-stars {
+            font-size: 24px;
+            color: var(--vscode-charts-yellow);
+        }
+        .rating-score {
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .rating-meta {
+            font-size: 13px;
+            color: var(--vscode-descriptionForeground);
+        }
+        .feedback-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-feedback {
+            padding: 8px 16px;
+            border: 1px solid var(--vscode-button-border, var(--vscode-input-border));
+            border-radius: 4px;
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-feedback:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+        }
+        .no-rating {
+            color: var(--vscode-descriptionForeground);
+            font-style: italic;
+        }
     </style>
     <script>
         const vscode = acquireVsCodeApi();
@@ -1152,6 +1233,20 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             }
         }
         
+        function submitFeedback() {
+            vscode.postMessage({
+                type: 'submitFeedback',
+                bundleId: '${installed?.bundleId || bundle.id}'
+            });
+        }
+        
+        function quickFeedback() {
+            vscode.postMessage({
+                type: 'quickFeedback',
+                bundleId: '${installed?.bundleId || bundle.id}'
+            });
+        }
+        
         // Listen for status updates from extension
         window.addEventListener('message', event => {
             const message = event.data;
@@ -1184,6 +1279,24 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
         </div>
     </div>
     ` : ''}
+
+    <div class="rating-section">
+        <div class="rating-header">
+            <div class="rating-display">
+                ${rating ? `
+                    <span class="rating-stars">${'★'.repeat(Math.round(rating.starRating))}${'☆'.repeat(5 - Math.round(rating.starRating))}</span>
+                    <span class="rating-score">${rating.starRating.toFixed(1)}</span>
+                    <span class="rating-meta">${rating.voteCount} votes (${rating.confidence} confidence)</span>
+                ` : `
+                    <span class="no-rating">No ratings yet</span>
+                `}
+            </div>
+            <div class="feedback-actions">
+                <button class="btn-feedback" onclick="quickFeedback()">👍 Quick Feedback</button>
+                <button class="btn-feedback" onclick="submitFeedback()">✏️ Write Feedback</button>
+            </div>
+        </div>
+    </div>
 
     <div class="section">
         <h2>Description</h2>
@@ -1783,10 +1896,19 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             margin-bottom: 12px;
         }
 
+        .bundle-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
         .bundle-title {
             font-size: 18px;
             font-weight: 600;
-            margin-bottom: 4px;
+            flex: 1;
+            min-width: 0;
         }
 
         .bundle-author {
@@ -1794,9 +1916,47 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             color: var(--vscode-descriptionForeground);
         }
 
-        .bundle-rating {
-            color: var(--vscode-charts-yellow);
+        .rating-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            border-radius: 12px;
+            font-size: 12px;
             font-weight: 500;
+            border: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .rating-badge.clickable {
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .rating-badge.clickable:hover {
+            background: var(--vscode-list-hoverBackground);
+            border-color: var(--vscode-focusBorder);
+            transform: translateY(-1px);
+        }
+
+        .rating-stars {
+            color: #ffa500;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .rating-score {
+            font-weight: 600;
+            color: var(--vscode-badge-foreground);
+        }
+
+        .rating-votes {
+            opacity: 0.8;
+            font-size: 11px;
         }
 
         .bundle-description {
@@ -2106,6 +2266,16 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             </div>
         </div>
         
+        <div class="filter-group">
+            <label class="filter-label">Sort:</label>
+            <select class="filter-select" id="sortSelect">
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="rating-desc">Rating (High to Low)</option>
+                <option value="rating-asc">Rating (Low to High)</option>
+            </select>
+        </div>
+        
         <div class="installed-filter" id="installedFilter">
             <input type="checkbox" id="installedCheckbox">
             <label for="installedCheckbox">Installed</label>
@@ -2129,6 +2299,7 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
         let selectedSource = 'all';
         let selectedTags = [];
         let showInstalledOnly = false;
+        let selectedSort = 'name-asc';
 
         // Handle messages from extension
         window.addEventListener('message', event => {
@@ -2368,12 +2539,19 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             }
         });
 
+        // Sort dropdown
+        document.getElementById('sortSelect').addEventListener('change', (e) => {
+            selectedSort = e.target.value;
+            renderBundles();
+        });
+
         // Clear filters button
         document.getElementById('clearFiltersBtn').addEventListener('click', () => {
             document.getElementById('searchBox').value = '';
             document.getElementById('sourceSearch').value = '';
             document.getElementById('tagSearch').value = '';
             document.getElementById('installedCheckbox').checked = false;
+            document.getElementById('sortSelect').value = 'name-asc';
             
             // Reset source selector
             selectedSource = 'all';
@@ -2397,6 +2575,7 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             selectedSource = 'all';
             selectedTags = [];
             showInstalledOnly = false;
+            selectedSort = 'name-asc';
             updateTagButtonText();
             renderBundles();
         });
@@ -2445,6 +2624,30 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
                 );
             }
 
+            // Apply sorting
+            switch (selectedSort) {
+                case 'rating-desc':
+                    filteredBundles.sort((a, b) => {
+                        const ratingA = a.rating?.wilsonScore ?? 0;
+                        const ratingB = b.rating?.wilsonScore ?? 0;
+                        return ratingB - ratingA;
+                    });
+                    break;
+                case 'rating-asc':
+                    filteredBundles.sort((a, b) => {
+                        const ratingA = a.rating?.wilsonScore ?? 0;
+                        const ratingB = b.rating?.wilsonScore ?? 0;
+                        return ratingA - ratingB;
+                    });
+                    break;
+                case 'name-asc':
+                    filteredBundles.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'name-desc':
+                    filteredBundles.sort((a, b) => b.name.localeCompare(a.name));
+                    break;
+            }
+
             if (filteredBundles.length === 0) {
                 // Check if we have any bundles at all (before filtering)
                 const hasFiltersApplied = searchTerm || selectedSource !== 'all' || selectedTags.length > 0 || showInstalledOnly;
@@ -2485,8 +2688,19 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
                     \${bundle.isCurated ? '<div class="curated-badge" title="From curated hub: ' + (bundle.hubName || 'Unknown') + '">' + (bundle.hubName || 'Curated') + '</div>' : ''}
                     
                     <div class="bundle-header">
-                        <div class="bundle-title">\${bundle.name}</div>
-                        <div class="bundle-author">by \${bundle.author || 'Unknown'} • v\${bundle.version}\${bundle.rating ? ' • <span class="bundle-rating" title="' + bundle.rating.voteCount + ' votes (' + bundle.rating.confidence + ' confidence)">' + bundle.rating.displayText + '</span>' : ''}</div>
+                        <div class="bundle-title-row">
+                            <div class="bundle-title">\${bundle.name}</div>
+                            \${bundle.rating ? \`
+                                <button class="rating-badge clickable" 
+                                        onclick="showFeedbacks('\${bundle.id}', event)" 
+                                        title="\${bundle.rating.voteCount} votes (\${bundle.rating.confidence} confidence)">
+                                    <span class="rating-stars">\${renderStars(bundle.rating.starRating)}</span>
+                                    <span class="rating-score">\${bundle.rating.wilsonScore.toFixed(1)}</span>
+                                    <span class="rating-votes">(\${bundle.rating.voteCount})</span>
+                                </button>
+                            \` : ''}
+                        </div>
+                        <div class="bundle-author">by \${bundle.author || 'Unknown'} • v\${bundle.version}</div>
                     </div>
 
                     <div class="bundle-description">
@@ -2616,6 +2830,22 @@ export class MarketplaceViewProvider implements vscode.WebviewViewProvider {
             
             // Toggle this dropdown
             dropdown.classList.toggle('show');
+        }
+
+        function renderStars(rating) {
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 >= 0.5;
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+            
+            return '★'.repeat(fullStars) + 
+                   (hasHalfStar ? '⯨' : '') + 
+                   '☆'.repeat(emptyStars);
+        }
+
+        function showFeedbacks(bundleId, event) {
+            event.stopPropagation();
+            // TODO: Implement feedback modal
+            console.log('Show feedbacks for:', bundleId);
         }
 
         function installBundleVersion(bundleId, version, event) {
