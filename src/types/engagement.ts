@@ -181,6 +181,8 @@ export interface GitHubDiscussionsBackendConfig extends EngagementBackendConfigB
     repository: string;
     /** Discussion category */
     category?: string;
+    /** URL to collections.yaml mapping bundles to discussion numbers */
+    collectionsUrl?: string;
     /** Minimum account age in days to count votes (anti-abuse) */
     minAccountAgeDays?: number;
     /** List of usernames to exclude from vote counting */

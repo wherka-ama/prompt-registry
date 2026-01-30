@@ -159,6 +159,7 @@ suite('VoteService', () => {
             
             nock('https://api.github.com')
                 .get(`/repos/${TEST_OWNER}/${TEST_REPO}/discussions/${TEST_DISCUSSION}/reactions`)
+                .query({ per_page: 100, page: 1 })
                 .reply(200, [
                     { id: TEST_REACTION_ID, content: '+1', user: { login: 'test-user' } },
                     { id: 99999, content: '-1', user: { login: 'other-user' } }
@@ -178,6 +179,7 @@ suite('VoteService', () => {
             
             nock('https://api.github.com')
                 .get(`/repos/${TEST_OWNER}/${TEST_REPO}/discussions/${TEST_DISCUSSION}/reactions`)
+                .query({ per_page: 100, page: 1 })
                 .reply(200, [
                     { id: 99999, content: '+1', user: { login: 'other-user' } }
                 ]);
@@ -202,9 +204,27 @@ suite('VoteService', () => {
             
             nock('https://api.github.com')
                 .get(`/repos/${TEST_OWNER}/${TEST_REPO}/discussions/${TEST_DISCUSSION}/reactions`)
+                .query({ per_page: 100, page: 1 })
                 .reply(200, [
                     { id: 11111, content: 'heart', user: { login: 'test-user' } },
                     { id: 22222, content: 'rocket', user: { login: 'test-user' } }
+                ]);
+
+            const result = await voteService.getCurrentVote(TEST_DISCUSSION);
+            assert.strictEqual(result, null);
+        });
+
+        test('should ignore reactions from other users', async () => {
+            nock('https://api.github.com')
+                .get('/user')
+                .reply(200, { login: 'test-user' });
+            
+            nock('https://api.github.com')
+                .get(`/repos/${TEST_OWNER}/${TEST_REPO}/discussions/${TEST_DISCUSSION}/reactions`)
+                .query({ per_page: 100, page: 1 })
+                .reply(200, [
+                    { id: 88888, content: 'heart', user: { login: 'test-user' } },
+                    { id: 99999, content: '+1', user: { login: 'other-user' } }
                 ]);
 
             const result = await voteService.getCurrentVote(TEST_DISCUSSION);
@@ -221,6 +241,7 @@ suite('VoteService', () => {
             
             nock('https://api.github.com')
                 .get(`/repos/${TEST_OWNER}/${TEST_REPO}/discussions/${TEST_DISCUSSION}/reactions`)
+                .query({ per_page: 100, page: 1 })
                 .reply(200, []);
             
             // Mock voteOnCollection
@@ -235,18 +256,19 @@ suite('VoteService', () => {
         });
 
         test('should remove vote when user has same vote', async () => {
-            // Mock getCurrentVote to return existing vote
+            // Mock getting current vote
             nock('https://api.github.com')
                 .get('/user')
                 .reply(200, { login: 'test-user' });
             
             nock('https://api.github.com')
                 .get(`/repos/${TEST_OWNER}/${TEST_REPO}/discussions/${TEST_DISCUSSION}/reactions`)
+                .query({ per_page: 100, page: 1 })
                 .reply(200, [
                     { id: TEST_REACTION_ID, content: '+1', user: { login: 'test-user' } }
                 ]);
-            
-            // Mock removeVote
+
+            // Mock removing reaction
             nock('https://api.github.com')
                 .delete(`/repos/${TEST_OWNER}/${TEST_REPO}/reactions/${TEST_REACTION_ID}`)
                 .reply(204);
@@ -258,31 +280,33 @@ suite('VoteService', () => {
         });
 
         test('should change vote when user has different vote', async () => {
-            // Mock getCurrentVote to return existing downvote
+            // Mock getting current vote
             nock('https://api.github.com')
                 .get('/user')
                 .reply(200, { login: 'test-user' });
             
             nock('https://api.github.com')
                 .get(`/repos/${TEST_OWNER}/${TEST_REPO}/discussions/${TEST_DISCUSSION}/reactions`)
+                .query({ per_page: 100, page: 1 })
                 .reply(200, [
-                    { id: TEST_REACTION_ID, content: '-1', user: { login: 'test-user' } }
+                    { id: TEST_REACTION_ID, content: '+1', user: { login: 'test-user' } }
                 ]);
-            
-            // Mock removeVote
+
+            // Mock removing old reaction
             nock('https://api.github.com')
                 .delete(`/repos/${TEST_OWNER}/${TEST_REPO}/reactions/${TEST_REACTION_ID}`)
                 .reply(204);
-            
-            // Mock voteOnCollection with new vote
+
+            // Mock adding new reaction
             nock('https://api.github.com')
                 .post(`/repos/${TEST_OWNER}/${TEST_REPO}/discussions/${TEST_DISCUSSION}/reactions`)
-                .reply(201, { id: 99999 });
+                .reply(201, { id: 77777, content: '-1' });
 
-            const result = await voteService.toggleVote(TEST_DISCUSSION, '+1');
+            const result = await voteService.toggleVote(TEST_DISCUSSION, '-1');
             
             assert.strictEqual(result.success, true);
             assert.strictEqual(result.action, 'changed');
+            assert.strictEqual(result.reactionId, 77777);
         });
     });
 

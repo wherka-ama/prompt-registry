@@ -12,6 +12,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { IEngagementBackend } from './IEngagementBackend';
 import { FileBackend } from './backends/FileBackend';
+import { GitHubDiscussionsBackend } from './backends/GitHubDiscussionsBackend';
 import {
     TelemetryEvent,
     TelemetryFilter,
@@ -21,6 +22,7 @@ import {
     Feedback,
     BackendConfig,
     FileBackendConfig,
+    GitHubDiscussionsBackendConfig,
     ResourceEngagement,
     EngagementResourceType,
     EngagementPrivacySettings,
@@ -130,23 +132,40 @@ export class EngagementService {
             return;
         }
 
-        // For now, only file backend is supported
-        // Future: Add GitHub Issues, Discussions, API backends
-        if (config.backend.type !== 'file') {
-            this.logger.warn(`Backend type '${config.backend.type}' not yet supported, using file backend`);
+        const storagePath = this.context.globalStorageUri.fsPath;
+        let backend: IEngagementBackend;
+
+        // Initialize backend based on type
+        if (config.backend.type === 'github-discussions') {
+            const ghConfig = config.backend as GitHubDiscussionsBackendConfig;
+            backend = new GitHubDiscussionsBackend(storagePath);
+            await backend.initialize(ghConfig);
+
+            // Load collections mappings if collectionsUrl is provided
+            if (ghConfig.collectionsUrl) {
+                try {
+                    await (backend as GitHubDiscussionsBackend).loadCollectionsMappings(ghConfig.collectionsUrl);
+                    this.logger.info(`Loaded collections mappings for hub ${hubId} from ${ghConfig.collectionsUrl}`);
+                } catch (error: any) {
+                    this.logger.error(`Failed to load collections mappings for hub ${hubId}: ${error.message}`);
+                    // Continue without mappings - ratings will fall back to local storage
+                }
+            }
+        } else {
+            // Default to file backend
+            if (config.backend.type !== 'file') {
+                this.logger.warn(`Backend type '${config.backend.type}' not yet supported, using file backend`);
+            }
+            const fileConfig: FileBackendConfig = {
+                type: 'file',
+                storagePath,
+            };
+            backend = new FileBackend();
+            await backend.initialize(fileConfig);
         }
 
-        const storagePath = this.context.globalStorageUri.fsPath;
-        const fileConfig: FileBackendConfig = {
-            type: 'file',
-            storagePath,
-        };
-
-        const backend = new FileBackend();
-        await backend.initialize(fileConfig);
         this.hubBackends.set(hubId, backend);
-
-        this.logger.info(`Registered engagement backend for hub: ${hubId}`);
+        this.logger.info(`Registered engagement backend for hub: ${hubId} (type: ${config.backend.type})`);
     }
 
     /**

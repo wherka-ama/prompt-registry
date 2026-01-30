@@ -229,7 +229,8 @@ export class VoteService {
         let page = 1;
         const perPage = 100;
         
-        while (true) {
+        let hasMore = true;
+        while (hasMore) {
             const response = await axios.get(
                 `${url}?per_page=${perPage}&page=${page}`,
                 { headers }
@@ -240,7 +241,7 @@ export class VoteService {
             
             // If we got fewer than perPage results, we've reached the end
             if (reactions.length < perPage) {
-                break;
+                hasMore = false;
             }
             
             page++;
@@ -248,7 +249,7 @@ export class VoteService {
             // Safety limit to prevent infinite loops
             if (page > 100) {
                 this.logger.warn(`Pagination limit reached for ${url}`);
-                break;
+                hasMore = false;
             }
         }
         

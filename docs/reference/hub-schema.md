@@ -244,6 +244,7 @@ Engagement features configuration for telemetry, ratings, and user feedback.
 |-------|------|----------|-------------|
 | `type` | string | Yes | Backend type: `file`, `github-issues`, `github-discussions`, or `api` |
 | `repository` | string | Conditional | GitHub repository in `owner/repo` format (required for `github-issues` and `github-discussions`) |
+| `collectionsUrl` | string | Optional | URL to `collections.yaml` mapping bundles to discussion numbers (for `github-discussions` backend) |
 | `apiUrl` | string | Conditional | API endpoint URL (required for `api` backend) |
 
 ### Telemetry Object
@@ -277,6 +278,7 @@ engagement:
   backend:
     type: github-discussions
     repository: myorg/prompt-registry-hub
+    collectionsUrl: https://raw.githubusercontent.com/myorg/prompt-registry-hub/main/collections.yaml
   telemetry:
     enabled: false
     anonymize: true

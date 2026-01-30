@@ -14,6 +14,7 @@
 
 import * as vscode from 'vscode';
 import axios from 'axios';
+import * as yaml from 'js-yaml';
 import { BaseEngagementBackend } from '../IEngagementBackend';
 import {
     TelemetryEvent,
@@ -124,6 +125,54 @@ export class GitHubDiscussionsBackend extends BaseEngagementBackend {
             discussionNumber,
             commentId
         });
+    }
+
+    /**
+     * Load collection mappings from collections.yaml URL
+     * Maps bundles (sourceId:bundleId) to GitHub Discussion numbers
+     */
+    async loadCollectionsMappings(collectionsUrl: string): Promise<void> {
+        this.ensureInitialized();
+
+        try {
+            this.logger.info(`Loading collections mappings from ${collectionsUrl}`);
+            
+            const response = await axios.get(collectionsUrl);
+            const collections = yaml.load(response.data) as {
+                repository: string;
+                collections: Array<{
+                    id: string;
+                    source_id: string;
+                    discussion_number: number;
+                    comment_id?: number;
+                }>;
+            };
+
+            if (!collections || !collections.collections) {
+                throw new Error('Invalid collections.yaml format: missing collections array');
+            }
+
+            let mappedCount = 0;
+            for (const collection of collections.collections) {
+                const resourceId = `${collection.source_id}:${collection.id}`;
+                this.setDiscussionMapping(
+                    resourceId,
+                    collection.discussion_number,
+                    collection.comment_id
+                );
+                mappedCount++;
+            }
+
+            this.logger.info(`Loaded ${mappedCount} collection mappings`);
+        } catch (error: any) {
+            if (error.response) {
+                throw new Error(`Failed to load collections mappings: HTTP ${error.response.status}`);
+            } else if (error.name === 'YAMLException') {
+                throw new Error(`Failed to parse collections mappings: ${error.message}`);
+            } else {
+                throw new Error(`Failed to load collections mappings: ${error.message}`);
+            }
+        }
     }
 
     /**

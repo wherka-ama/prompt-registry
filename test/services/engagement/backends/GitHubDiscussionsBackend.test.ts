@@ -286,6 +286,122 @@ suite('GitHubDiscussionsBackend', () => {
         });
     });
 
+    suite('loadCollectionsMappings()', () => {
+        test('should load mappings from collections.yaml URL', async () => {
+            await backend.initialize(mockConfig);
+
+            const collectionsYaml = `
+repository: test-owner/test-repo
+collections:
+  - id: bundle-1
+    source_id: source-1
+    discussion_number: 10
+  - id: bundle-2
+    source_id: source-2
+    discussion_number: 20
+`;
+
+            nock('https://raw.githubusercontent.com')
+                .get('/test-owner/test-repo/main/collections.yaml')
+                .reply(200, collectionsYaml);
+
+            await backend.loadCollectionsMappings('https://raw.githubusercontent.com/test-owner/test-repo/main/collections.yaml');
+
+            // Verify mappings were set by attempting to submit ratings
+            nock('https://api.github.com')
+                .get('/repos/test-owner/test-repo/discussions/10/reactions')
+                .reply(200, []);
+            nock('https://api.github.com')
+                .post('/repos/test-owner/test-repo/discussions/10/reactions')
+                .reply(201, { id: 1, content: '+1' });
+
+            const rating: Rating = {
+                id: 'rating-1',
+                resourceType: 'bundle',
+                resourceId: 'source-1:bundle-1',
+                score: 5,
+                timestamp: new Date().toISOString()
+            };
+
+            await backend.submitRating(rating);
+            const retrieved = await backend.getRating('bundle', 'source-1:bundle-1');
+            assert.ok(retrieved);
+            assert.strictEqual(retrieved.score, 5);
+        });
+
+        test('should handle HTTP errors when fetching collections.yaml', async () => {
+            await backend.initialize(mockConfig);
+
+            nock('https://raw.githubusercontent.com')
+                .get('/test-owner/test-repo/main/collections.yaml')
+                .reply(404, 'Not Found');
+
+            await assert.rejects(
+                backend.loadCollectionsMappings('https://raw.githubusercontent.com/test-owner/test-repo/main/collections.yaml'),
+                /Failed to load collections mappings/
+            );
+        });
+
+        test('should handle invalid YAML format', async () => {
+            await backend.initialize(mockConfig);
+
+            const invalidYaml = 'invalid: yaml: content:';
+
+            nock('https://raw.githubusercontent.com')
+                .get('/test-owner/test-repo/main/collections.yaml')
+                .reply(200, invalidYaml);
+
+            await assert.rejects(
+                backend.loadCollectionsMappings('https://raw.githubusercontent.com/test-owner/test-repo/main/collections.yaml'),
+                /Failed to parse collections mappings/
+            );
+        });
+
+        test('should require backend to be initialized', async () => {
+            await assert.rejects(
+                backend.loadCollectionsMappings('https://example.com/collections.yaml'),
+                /not initialized/
+            );
+        });
+
+        test('should handle collections with comment IDs', async () => {
+            await backend.initialize(mockConfig);
+
+            const collectionsYaml = `
+repository: test-owner/test-repo
+collections:
+  - id: bundle-1
+    source_id: source-1
+    discussion_number: 10
+    comment_id: 100
+`;
+
+            nock('https://raw.githubusercontent.com')
+                .get('/test-owner/test-repo/main/collections.yaml')
+                .reply(200, collectionsYaml);
+
+            await backend.loadCollectionsMappings('https://raw.githubusercontent.com/test-owner/test-repo/main/collections.yaml');
+
+            // Verify mapping with comment ID
+            nock('https://api.github.com')
+                .get('/repos/test-owner/test-repo/discussions/comments/100/reactions')
+                .reply(200, []);
+            nock('https://api.github.com')
+                .post('/repos/test-owner/test-repo/discussions/comments/100/reactions')
+                .reply(201, { id: 1, content: '+1' });
+
+            const rating: Rating = {
+                id: 'rating-1',
+                resourceType: 'bundle',
+                resourceId: 'source-1:bundle-1',
+                score: 5,
+                timestamp: new Date().toISOString()
+            };
+
+            await backend.submitRating(rating);
+        });
+    });
+
     suite('Error Handling', () => {
         test('should throw when not initialized', async () => {
             await assert.rejects(
