@@ -142,14 +142,28 @@ export class EngagementService {
             await backend.initialize(ghConfig);
 
             // Load collections mappings if collectionsUrl is provided
+            // Use a timeout to prevent blocking if the URL is slow/unreachable
             if (ghConfig.collectionsUrl) {
-                try {
-                    await (backend as GitHubDiscussionsBackend).loadCollectionsMappings(ghConfig.collectionsUrl);
-                    this.logger.info(`Loaded collections mappings for hub ${hubId} from ${ghConfig.collectionsUrl}`);
-                } catch (error: any) {
-                    this.logger.error(`Failed to load collections mappings for hub ${hubId}: ${error.message}`);
-                    // Continue without mappings - ratings will fall back to local storage
-                }
+                const collectionsUrl = ghConfig.collectionsUrl; // Capture for closure
+                const loadMappings = async () => {
+                    try {
+                        await (backend as GitHubDiscussionsBackend).loadCollectionsMappings(collectionsUrl);
+                        this.logger.info(`Loaded collections mappings for hub ${hubId} from ${collectionsUrl}`);
+                    } catch (error: any) {
+                        this.logger.error(`Failed to load collections mappings for hub ${hubId}: ${error.message}`);
+                        // Continue without mappings - ratings will fall back to local storage
+                    }
+                };
+                
+                // Load in background with 5 second timeout
+                const timeoutPromise = new Promise<void>((resolve) => {
+                    setTimeout(() => {
+                        this.logger.warn(`Collections mapping load timed out for hub ${hubId}, continuing without mappings`);
+                        resolve();
+                    }, 5000);
+                });
+                
+                await Promise.race([loadMappings(), timeoutPromise]);
             }
         } else {
             // Default to file backend
@@ -184,17 +198,23 @@ export class EngagementService {
      * Get backend for a hub (falls back to default)
      */
     private getBackend(hubId?: string): IEngagementBackend {
+        this.logger.info(`[EngagementService] getBackend called with hubId: "${hubId || 'none'}"`);
+        this.logger.info(`[EngagementService] Available hub backends: ${Array.from(this.hubBackends.keys()).join(', ') || 'none'}`);
+        
         if (hubId) {
             const hubBackend = this.hubBackends.get(hubId);
             if (hubBackend) {
+                this.logger.info(`[EngagementService] Using hub backend for: ${hubId}`);
                 return hubBackend;
             }
+            this.logger.warn(`[EngagementService] No hub backend found for: ${hubId}, falling back to default`);
         }
 
         if (!this.defaultBackend) {
             throw new Error('EngagementService not initialized');
         }
 
+        this.logger.info(`[EngagementService] Using default backend (type: ${this.defaultBackend.type})`);
         return this.defaultBackend;
     }
 

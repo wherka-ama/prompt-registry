@@ -128,6 +128,23 @@ export class GitHubDiscussionsBackend extends BaseEngagementBackend {
     }
 
     /**
+     * Get discussion mapping for a resource
+     * @param resourceId - Resource ID in format "sourceId:bundleId"
+     * @returns Discussion mapping or undefined if not found
+     */
+    getDiscussionMapping(resourceId: string): DiscussionMapping | undefined {
+        return this.discussionMappings.get(resourceId);
+    }
+
+    /**
+     * Get repository owner and name
+     */
+    getRepository(): { owner: string; repo: string } {
+        this.ensureInitialized();
+        return { owner: this.owner, repo: this.repo };
+    }
+
+    /**
      * Load collection mappings from collections.yaml URL
      * Maps bundles (sourceId:bundleId) to GitHub Discussion numbers
      */
@@ -214,7 +231,20 @@ export class GitHubDiscussionsBackend extends BaseEngagementBackend {
     async submitRating(rating: Rating): Promise<void> {
         this.ensureInitialized();
 
-        const mapping = this.discussionMappings.get(rating.resourceId);
+        // Try exact match first
+        let mapping = this.discussionMappings.get(rating.resourceId);
+        
+        // If no exact match, try to find a mapping that ends with the resourceId
+        if (!mapping) {
+            for (const [key, value] of this.discussionMappings.entries()) {
+                if (key.endsWith(`:${rating.resourceId}`)) {
+                    this.logger.debug(`[GitHubDiscussionsBackend] Found rating mapping via suffix match: ${key}`);
+                    mapping = value;
+                    break;
+                }
+            }
+        }
+        
         if (!mapping) {
             this.logger.warn(`No discussion mapping for resource: ${rating.resourceId}`);
             // Fall back to local storage
@@ -356,7 +386,19 @@ export class GitHubDiscussionsBackend extends BaseEngagementBackend {
     ): Promise<void> {
         this.ensureInitialized();
 
-        const mapping = this.discussionMappings.get(resourceId);
+        // Try exact match first
+        let mapping = this.discussionMappings.get(resourceId);
+        
+        // If no exact match, try to find a mapping that ends with the resourceId
+        if (!mapping) {
+            for (const [key, value] of this.discussionMappings.entries()) {
+                if (key.endsWith(`:${resourceId}`)) {
+                    mapping = value;
+                    break;
+                }
+            }
+        }
+        
         if (!mapping) {
             await this.localBackend.deleteRating(resourceType, resourceId);
             return;
@@ -379,8 +421,198 @@ export class GitHubDiscussionsBackend extends BaseEngagementBackend {
 
     async submitFeedback(feedback: Feedback): Promise<void> {
         this.ensureInitialized();
-        // Feedback is stored locally - could be extended to create GitHub comments
+        
+        this.logger.info(`[GitHubDiscussionsBackend] Feedback received for ${feedback.resourceType}/${feedback.resourceId}`);
+        this.logger.info(`[GitHubDiscussionsBackend] Comment: "${feedback.comment}", Rating: ${feedback.rating}`);
+        this.logger.debug(`[GitHubDiscussionsBackend] Available mappings: ${Array.from(this.discussionMappings.keys()).join(', ')}`);
+        
+        // Try exact match first
+        let mapping = this.discussionMappings.get(feedback.resourceId);
+        
+        // If no exact match, try to find a mapping that ends with the resourceId
+        // This handles the case where resourceId is just the bundle ID without source prefix
+        if (!mapping) {
+            for (const [key, value] of this.discussionMappings.entries()) {
+                if (key.endsWith(`:${feedback.resourceId}`)) {
+                    this.logger.debug(`[GitHubDiscussionsBackend] Found mapping via suffix match: ${key}`);
+                    mapping = value;
+                    break;
+                }
+            }
+        }
+        
+        if (mapping) {
+            // Try to post to GitHub Discussions
+            try {
+                await this.postFeedbackToDiscussion(feedback, mapping);
+                this.logger.info(`[GitHubDiscussionsBackend] Feedback posted to GitHub Discussion #${mapping.discussionNumber}`);
+            } catch (error: any) {
+                this.logger.warn(`[GitHubDiscussionsBackend] Failed to post to GitHub, storing locally: ${error.message}`);
+            }
+        } else {
+            this.logger.debug('[GitHubDiscussionsBackend] No discussion mapping found, storing locally only');
+        }
+        
+        // Always store locally as backup
         await this.localBackend.submitFeedback(feedback);
+        this.logger.info('[GitHubDiscussionsBackend] Feedback saved to local file backend');
+    }
+
+    /**
+     * Post feedback as a comment to a GitHub Discussion using GraphQL API
+     */
+    private async postFeedbackToDiscussion(feedback: Feedback, mapping: DiscussionMapping): Promise<void> {
+        const token = await this.getAccessToken();
+        
+        // Step 1: Get the Discussion node ID using GraphQL
+        const discussionId = await this.getDiscussionNodeId(mapping.discussionNumber, token);
+        
+        // Step 2: Format the comment body
+        const commentBody = this.formatFeedbackComment(feedback);
+        
+        // Step 3: Add comment to discussion using GraphQL mutation
+        await this.addDiscussionComment(discussionId, commentBody, token);
+    }
+
+    /**
+     * Get the GitHub Discussion node ID (required for GraphQL mutations)
+     */
+    private async getDiscussionNodeId(discussionNumber: number, token: string): Promise<string> {
+        const query = `
+            query GetDiscussionId($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                    discussion(number: $number) {
+                        id
+                    }
+                }
+            }
+        `;
+
+        const response = await axios.post<{
+            data: {
+                repository: {
+                    discussion: {
+                        id: string;
+                    };
+                };
+            };
+        }>(
+            'https://api.github.com/graphql',
+            {
+                query,
+                variables: {
+                    owner: this.owner,
+                    repo: this.repo,
+                    number: discussionNumber
+                }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        const discussionId = response.data?.data?.repository?.discussion?.id;
+        if (!discussionId) {
+            throw new Error(`Discussion #${discussionNumber} not found`);
+        }
+
+        return discussionId;
+    }
+
+    /**
+     * Add a comment to a GitHub Discussion using GraphQL mutation
+     */
+    private async addDiscussionComment(discussionId: string, body: string, token: string): Promise<void> {
+        const mutation = `
+            mutation AddDiscussionComment($discussionId: ID!, $body: String!) {
+                addDiscussionComment(input: { discussionId: $discussionId, body: $body }) {
+                    comment {
+                        id
+                        body
+                    }
+                }
+            }
+        `;
+
+        this.logger.debug(`[GitHubDiscussionsBackend] Adding comment to discussion ${discussionId}`);
+        this.logger.debug(`[GitHubDiscussionsBackend] Comment body: ${body.substring(0, 100)}...`);
+
+        const response = await axios.post<{
+            data?: {
+                addDiscussionComment?: {
+                    comment?: {
+                        id: string;
+                        body: string;
+                    };
+                };
+            };
+            errors?: Array<{ message: string; type?: string }>;
+        }>(
+            'https://api.github.com/graphql',
+            {
+                query: mutation,
+                variables: {
+                    discussionId,
+                    body
+                }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        // Check for GraphQL errors
+        if (response.data.errors && response.data.errors.length > 0) {
+            const errorMessages = response.data.errors.map(e => e.message).join(', ');
+            this.logger.error(`[GitHubDiscussionsBackend] GraphQL errors: ${errorMessages}`);
+            throw new Error(`GraphQL error: ${errorMessages}`);
+        }
+
+        // Verify comment was created
+        const commentId = response.data.data?.addDiscussionComment?.comment?.id;
+        if (!commentId) {
+            this.logger.error(`[GitHubDiscussionsBackend] No comment ID returned. Response: ${JSON.stringify(response.data)}`);
+            throw new Error('Comment was not created - no comment ID returned');
+        }
+
+        this.logger.info(`[GitHubDiscussionsBackend] Comment created with ID: ${commentId}`);
+    }
+
+    /**
+     * Format feedback into a readable GitHub comment
+     * New format:
+     * Rating: ⭐⭐⭐⭐⭐
+     * Feedback: Works great!
+     * ---
+     * Version: 1.0.0
+     */
+    private formatFeedbackComment(feedback: Feedback): string {
+        const parts: string[] = [];
+        
+        // Rating line with stars if present
+        if (feedback.rating !== undefined) {
+            const stars = '⭐'.repeat(feedback.rating);
+            parts.push(`Rating: ${stars}`);
+        }
+        
+        // Feedback line (only if comment is not empty)
+        if (feedback.comment && feedback.comment.trim()) {
+            parts.push(`Feedback: ${feedback.comment}`);
+        }
+        
+        // Add metadata footer with separator
+        if (feedback.version) {
+            parts.push('---');
+            parts.push(`Version: ${feedback.version}`);
+        }
+        
+        return parts.join('\n');
     }
 
     async getFeedback(

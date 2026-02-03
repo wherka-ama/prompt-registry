@@ -219,8 +219,8 @@ suite('GitHubDiscussionsBackend', () => {
         });
     });
 
-    suite('Feedback Operations (delegated to local)', () => {
-        test('should submit and retrieve feedback', async () => {
+    suite('Feedback Operations', () => {
+        test('should submit and retrieve feedback locally when no mapping exists', async () => {
             await backend.initialize(mockConfig);
 
             const feedback: Feedback = {
@@ -252,6 +252,183 @@ suite('GitHubDiscussionsBackend', () => {
             await backend.deleteFeedback('feedback-1');
             const retrieved = await backend.getFeedback('bundle', 'test-bundle');
             assert.strictEqual(retrieved.length, 0);
+        });
+
+        test('should post feedback as GitHub Discussion comment when mapping exists', async () => {
+            await backend.initialize(mockConfig);
+            backend.setDiscussionMapping('source-1:bundle-1', 42);
+
+            // Mock GraphQL API for getting discussion node ID
+            const graphqlScope = nock('https://api.github.com')
+                .post('/graphql')
+                .reply(200, {
+                    data: {
+                        repository: {
+                            discussion: {
+                                id: 'D_kwDOTest123'
+                            }
+                        }
+                    }
+                });
+
+            // Mock GraphQL API for adding comment
+            const commentScope = nock('https://api.github.com')
+                .post('/graphql')
+                .reply(200, {
+                    data: {
+                        addDiscussionComment: {
+                            comment: {
+                                id: 'DC_kwDOComment456',
+                                body: '**Feedback** (5 ⭐)\n\nGreat bundle!'
+                            }
+                        }
+                    }
+                });
+
+            const feedback: Feedback = {
+                id: 'feedback-1',
+                resourceType: 'bundle',
+                resourceId: 'source-1:bundle-1',
+                comment: 'Great bundle!',
+                rating: 5,
+                timestamp: new Date().toISOString()
+            };
+
+            await backend.submitFeedback(feedback);
+
+            // Verify GraphQL calls were made
+            assert.ok(graphqlScope.isDone(), 'Should have called GraphQL to get discussion ID');
+            assert.ok(commentScope.isDone(), 'Should have called GraphQL to add comment');
+
+            // Should also store locally
+            const retrieved = await backend.getFeedback('bundle', 'source-1:bundle-1');
+            assert.strictEqual(retrieved.length, 1);
+        });
+
+        test('should fall back to local storage when GitHub API fails', async () => {
+            await backend.initialize(mockConfig);
+            backend.setDiscussionMapping('source-1:bundle-1', 42);
+
+            // Mock GraphQL API failure
+            nock('https://api.github.com')
+                .post('/graphql')
+                .reply(500, { message: 'Internal Server Error' });
+
+            const feedback: Feedback = {
+                id: 'feedback-1',
+                resourceType: 'bundle',
+                resourceId: 'source-1:bundle-1',
+                comment: 'Great bundle!',
+                rating: 4,
+                timestamp: new Date().toISOString()
+            };
+
+            // Should not throw - falls back to local storage
+            await backend.submitFeedback(feedback);
+
+            // Should still be stored locally
+            const retrieved = await backend.getFeedback('bundle', 'source-1:bundle-1');
+            assert.strictEqual(retrieved.length, 1);
+            assert.strictEqual(retrieved[0].comment, 'Great bundle!');
+        });
+
+        test('should format feedback comment with rating stars', async () => {
+            await backend.initialize(mockConfig);
+            backend.setDiscussionMapping('source-1:bundle-1', 42);
+
+            let capturedBody = '';
+
+            // Mock GraphQL API for getting discussion node ID
+            nock('https://api.github.com')
+                .post('/graphql')
+                .reply(200, {
+                    data: {
+                        repository: {
+                            discussion: {
+                                id: 'D_kwDOTest123'
+                            }
+                        }
+                    }
+                });
+
+            // Mock GraphQL API for adding comment - capture the body
+            nock('https://api.github.com')
+                .post('/graphql', (body: any) => {
+                    capturedBody = body.variables?.body || '';
+                    return true;
+                })
+                .reply(200, {
+                    data: {
+                        addDiscussionComment: {
+                            comment: {
+                                id: 'DC_kwDOComment456',
+                                body: capturedBody
+                            }
+                        }
+                    }
+                });
+
+            const feedback: Feedback = {
+                id: 'feedback-1',
+                resourceType: 'bundle',
+                resourceId: 'source-1:bundle-1',
+                comment: '[+1] Works great!',
+                rating: 5,
+                timestamp: new Date().toISOString()
+            };
+
+            await backend.submitFeedback(feedback);
+
+            // Verify the comment body contains rating stars
+            assert.ok(capturedBody.includes('⭐'), 'Comment should include star rating');
+            assert.ok(capturedBody.includes('Works great!'), 'Comment should include feedback text');
+        });
+
+        test('should handle feedback without rating', async () => {
+            await backend.initialize(mockConfig);
+            backend.setDiscussionMapping('source-1:bundle-1', 42);
+
+            // Mock GraphQL API for getting discussion node ID
+            nock('https://api.github.com')
+                .post('/graphql')
+                .reply(200, {
+                    data: {
+                        repository: {
+                            discussion: {
+                                id: 'D_kwDOTest123'
+                            }
+                        }
+                    }
+                });
+
+            // Mock GraphQL API for adding comment
+            nock('https://api.github.com')
+                .post('/graphql')
+                .reply(200, {
+                    data: {
+                        addDiscussionComment: {
+                            comment: {
+                                id: 'DC_kwDOComment456',
+                                body: '**Feedback**\n\nJust a comment'
+                            }
+                        }
+                    }
+                });
+
+            const feedback: Feedback = {
+                id: 'feedback-1',
+                resourceType: 'bundle',
+                resourceId: 'source-1:bundle-1',
+                comment: 'Just a comment',
+                // No rating
+                timestamp: new Date().toISOString()
+            };
+
+            await backend.submitFeedback(feedback);
+
+            // Should store locally
+            const retrieved = await backend.getFeedback('bundle', 'source-1:bundle-1');
+            assert.strictEqual(retrieved.length, 1);
         });
     });
 
@@ -399,6 +576,81 @@ collections:
             };
 
             await backend.submitRating(rating);
+        });
+    });
+
+    suite('getDiscussionMapping()', () => {
+        test('should return discussion mapping for valid resource ID', async () => {
+            await backend.initialize(mockConfig);
+            
+            // Set a discussion mapping
+            backend.setDiscussionMapping('source-1:bundle-1', 123);
+            
+            // Get the mapping
+            const mapping = backend.getDiscussionMapping('source-1:bundle-1');
+            
+            assert.ok(mapping);
+            assert.strictEqual(mapping.resourceId, 'source-1:bundle-1');
+            assert.strictEqual(mapping.discussionNumber, 123);
+            assert.strictEqual(mapping.commentId, undefined);
+        });
+
+        test('should return discussion mapping with comment ID', async () => {
+            await backend.initialize(mockConfig);
+            
+            // Set a discussion mapping with comment ID
+            backend.setDiscussionMapping('source-1:bundle-1', 123, 456);
+            
+            // Get the mapping
+            const mapping = backend.getDiscussionMapping('source-1:bundle-1');
+            
+            assert.ok(mapping);
+            assert.strictEqual(mapping.resourceId, 'source-1:bundle-1');
+            assert.strictEqual(mapping.discussionNumber, 123);
+            assert.strictEqual(mapping.commentId, 456);
+        });
+
+        test('should return undefined for non-existent resource ID', async () => {
+            await backend.initialize(mockConfig);
+            
+            const mapping = backend.getDiscussionMapping('non-existent:bundle');
+            
+            assert.strictEqual(mapping, undefined);
+        });
+
+        test('should return updated mapping after overwrite', async () => {
+            await backend.initialize(mockConfig);
+            
+            // Set initial mapping
+            backend.setDiscussionMapping('source-1:bundle-1', 123);
+            
+            // Overwrite with new mapping
+            backend.setDiscussionMapping('source-1:bundle-1', 456, 789);
+            
+            // Get the mapping
+            const mapping = backend.getDiscussionMapping('source-1:bundle-1');
+            
+            assert.ok(mapping);
+            assert.strictEqual(mapping.discussionNumber, 456);
+            assert.strictEqual(mapping.commentId, 789);
+        });
+    });
+
+    suite('getRepository()', () => {
+        test('should return repository owner and name', async () => {
+            await backend.initialize(mockConfig);
+            
+            const repo = backend.getRepository();
+            
+            assert.strictEqual(repo.owner, 'test-owner');
+            assert.strictEqual(repo.repo, 'test-repo');
+        });
+
+        test('should throw when not initialized', () => {
+            assert.throws(
+                () => backend.getRepository(),
+                /not initialized/
+            );
         });
     });
 
