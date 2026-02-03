@@ -4,21 +4,25 @@ The Prompt Registry includes an engagement system that allows users to rate bund
 
 ## Quick Start: Providing Feedback
 
-The easiest way to engage with bundles is through the **feedback system**, which works locally without any setup.
+The easiest way to engage with bundles is through the **feedback system**.
 
 ### Submitting Feedback
 
-1. **Right-click** on any installed bundle in the Registry Explorer
-2. Select one of:
-   - **Submit Feedback** - Write detailed feedback
-   - **Quick Feedback** - Choose from predefined options (👍 Works great!, 💡 Suggestion, 🐛 Bug report, etc.)
+1. **Click the "⭐ Rate & Feedback" button** in the bundle details view, or
+2. **Right-click** on any installed bundle in the Registry Explorer and select **Rate & Feedback**
 
-Your feedback is stored locally and can be used by hub maintainers to improve their bundles.
+The unified feedback dialog guides you through:
+1. **Star Rating (1-5)** — Rate the bundle quality
+2. **Quick Feedback** — Choose from:
+   - 👍 Works great! (+1)
+   - � Couldn't make it work (-1)
+   - 📝 Report issue/suggestion — Opens GitHub Issues
+   - ⏭️ Skip — Submit rating only
 
-### Submitting Feedback with Rating
+### Where Does Feedback Go?
 
-Use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
-- **Prompt Registry: Submit Feedback with Rating** - Rate a bundle 1-5 stars and add a comment
+- **Hubs with GitHub Discussions**: Feedback is posted as a comment on the bundle's discussion thread, making it visible to the community
+- **Other hubs**: Feedback is stored locally and can be aggregated by hub maintainers
 
 ---
 
