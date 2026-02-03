@@ -799,6 +799,11 @@ export class PromptRegistryExtension {
             const engagementService = EngagementService.getInstance(this.context);
             await engagementService.initialize();
 
+            // Initialize engagement backends for all existing hubs
+            if (this.hubManager) {
+                await this.hubManager.initializeEngagementBackends();
+            }
+
             // Get RatingCache and FeedbackCache instances
             const ratingCache = RatingCache.getInstance();
             const feedbackCache = FeedbackCache.getInstance();
