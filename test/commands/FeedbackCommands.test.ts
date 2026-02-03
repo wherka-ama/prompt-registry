@@ -60,11 +60,22 @@ suite('FeedbackCommands', () => {
     });
 
     suite('submitFeedback()', () => {
-        test('should submit feedback successfully', async () => {
+        test('should submit feedback with rating and comment', async () => {
             const item = createMockItem();
-            const feedback = createMockFeedback('Great bundle!');
+            const feedback = createMockFeedback('Great bundle!', 5);
 
-            showInputBoxStub.resolves('Great bundle!');
+            // Mock rating selection
+            showQuickPickStub.onFirstCall().resolves({ 
+                label: '⭐⭐⭐⭐⭐', 
+                description: '5 stars - Excellent!' 
+            });
+            // Mock comment input
+            showInputBoxStub.onFirstCall().resolves('Great bundle!');
+            // Mock action selection (Skip)
+            showQuickPickStub.onSecondCall().resolves({ 
+                label: '⏭️ Skip', 
+                description: 'Just submit the star rating' 
+            });
             mockEngagementService.submitFeedback.resolves(feedback);
 
             const result = await commands.submitFeedback(item);
@@ -74,9 +85,9 @@ suite('FeedbackCommands', () => {
             assert.ok(showInformationMessageStub.calledOnce);
         });
 
-        test('should return cancelled when user cancels input', async () => {
+        test('should return cancelled when user cancels rating selection', async () => {
             const item = createMockItem();
-            showInputBoxStub.resolves(undefined);
+            showQuickPickStub.resolves(undefined);
 
             const result = await commands.submitFeedback(item);
 
@@ -84,163 +95,59 @@ suite('FeedbackCommands', () => {
             assert.strictEqual(result.error, 'Cancelled');
         });
 
-        test('should show warning for empty feedback', async () => {
+        test('should save rating when user cancels comment input', async () => {
             const item = createMockItem();
-            showInputBoxStub.resolves('   ');
+            const feedback = createMockFeedback('Rated 4 stars', 4);
+
+            showQuickPickStub.resolves({ 
+                label: '⭐⭐⭐⭐☆', 
+                description: '4 stars - Very good' 
+            });
+            showInputBoxStub.resolves(undefined);
+            mockEngagementService.submitFeedback.resolves(feedback);
 
             const result = await commands.submitFeedback(item);
 
-            assert.strictEqual(result.success, false);
-            assert.strictEqual(result.error, 'Empty feedback');
-            assert.ok(showWarningMessageStub.calledOnce);
+            assert.strictEqual(result.success, true);
+            const callArgs = mockEngagementService.submitFeedback.firstCall.args;
+            assert.strictEqual(callArgs[3]?.rating, 4);
         });
 
         test('should work without engagement service', async () => {
             const commandsWithoutService = new FeedbackCommands();
             const item = createMockItem();
+            
+            showQuickPickStub.resolves({ 
+                label: '⭐⭐⭐☆☆', 
+                description: '3 stars - Good' 
+            });
             showInputBoxStub.resolves('Test feedback');
+            showQuickPickStub.onSecondCall().resolves({ 
+                label: '⏭️ Skip' 
+            });
 
             const result = await commandsWithoutService.submitFeedback(item);
 
             assert.strictEqual(result.success, true);
             assert.ok(result.feedback);
             assert.strictEqual(result.feedback.comment, 'Test feedback');
+            assert.strictEqual(result.feedback.rating, 3);
         });
     });
 
-    suite('submitFeedbackWithRating()', () => {
-        test('should submit feedback with rating', async () => {
-            const item = createMockItem();
-            const feedback = createMockFeedback('Great!', 5);
-
-            showQuickPickStub.resolves({ 
-                label: '⭐⭐⭐⭐⭐', 
-                description: '5 - Excellent' 
-            });
-            showInputBoxStub.resolves('Great!');
-            mockEngagementService.submitFeedback.resolves(feedback);
-
-            const result = await commands.submitFeedbackWithRating(item);
-
-            assert.strictEqual(result.success, true);
-            assert.ok(mockEngagementService.submitFeedback.calledOnce);
-            const callArgs = mockEngagementService.submitFeedback.firstCall.args;
-            assert.strictEqual(callArgs[3]?.rating, 5);
-        });
-
-        test('should return cancelled when rating selection is cancelled', async () => {
-            const item = createMockItem();
-            showQuickPickStub.resolves(undefined);
-
-            const result = await commands.submitFeedbackWithRating(item);
-
-            assert.strictEqual(result.success, false);
-            assert.strictEqual(result.error, 'Cancelled');
-        });
-
-        test('should return cancelled when comment input is cancelled', async () => {
-            const item = createMockItem();
-            showQuickPickStub.resolves({ 
-                label: '⭐⭐⭐⭐', 
-                description: '4 - Good' 
-            });
-            showInputBoxStub.resolves(undefined);
-
-            const result = await commands.submitFeedbackWithRating(item);
-
-            assert.strictEqual(result.success, false);
-            assert.strictEqual(result.error, 'Cancelled');
-        });
-
-        test('should use default comment when empty', async () => {
-            const item = createMockItem();
-            const feedback = createMockFeedback('Rated 4 stars', 4);
-
-            showQuickPickStub.resolves({ 
-                label: '⭐⭐⭐⭐', 
-                description: '4 - Good' 
-            });
-            showInputBoxStub.resolves('');
-            mockEngagementService.submitFeedback.resolves(feedback);
-
-            const result = await commands.submitFeedbackWithRating(item);
-
-            assert.strictEqual(result.success, true);
-            const callArgs = mockEngagementService.submitFeedback.firstCall.args;
-            assert.strictEqual(callArgs[2], 'Rated 4 stars');
-        });
-    });
-
-    suite('quickFeedback()', () => {
-        test('should submit positive feedback', async () => {
-            const item = createMockItem();
-            const feedback = createMockFeedback('Works great!', 5);
-
-            showQuickPickStub.resolves({ 
-                label: '👍 Works great!', 
-                description: 'Positive feedback' 
-            });
-            mockEngagementService.submitFeedback.resolves(feedback);
-
-            const result = await commands.quickFeedback(item);
-
-            assert.strictEqual(result.success, true);
-            const callArgs = mockEngagementService.submitFeedback.firstCall.args;
-            assert.strictEqual(callArgs[2], 'Works great!');
-            assert.strictEqual(callArgs[3]?.rating, 5);
-        });
-
-        test('should redirect to full feedback for custom option', async () => {
-            const item = createMockItem();
-            const feedback = createMockFeedback('Custom feedback');
-
-            showQuickPickStub.onFirstCall().resolves({ 
-                label: '✏️ Custom feedback', 
-                description: 'Write your own feedback' 
-            });
-            showInputBoxStub.resolves('Custom feedback');
-            mockEngagementService.submitFeedback.resolves(feedback);
-
-            const result = await commands.quickFeedback(item);
-
-            assert.strictEqual(result.success, true);
-            assert.ok(showInputBoxStub.calledOnce);
-        });
-
-        test('should ask for details for suggestion', async () => {
-            const item = createMockItem();
-            const feedback = createMockFeedback('[💡] Add more features');
-
-            showQuickPickStub.resolves({ 
-                label: '💡 Suggestion', 
-                description: 'I have an idea for improvement' 
-            });
-            showInputBoxStub.resolves('Add more features');
-            mockEngagementService.submitFeedback.resolves(feedback);
-
-            const result = await commands.quickFeedback(item);
-
-            assert.strictEqual(result.success, true);
-            const callArgs = mockEngagementService.submitFeedback.firstCall.args;
-            assert.ok(callArgs[2].includes('💡'));
-            assert.ok(callArgs[2].includes('Add more features'));
-        });
-
-        test('should return cancelled when selection is cancelled', async () => {
-            const item = createMockItem();
-            showQuickPickStub.resolves(undefined);
-
-            const result = await commands.quickFeedback(item);
-
-            assert.strictEqual(result.success, false);
-            assert.strictEqual(result.error, 'Cancelled');
-        });
-    });
 
     suite('Error Handling', () => {
         test('should handle service errors gracefully', async () => {
             const item = createMockItem();
+            
+            showQuickPickStub.onFirstCall().resolves({ 
+                label: '⭐⭐⭐☆☆', 
+                description: '3 stars - Good' 
+            });
             showInputBoxStub.resolves('Test feedback');
+            showQuickPickStub.onSecondCall().resolves({ 
+                label: '⏭️ Skip' 
+            });
             mockEngagementService.submitFeedback.rejects(new Error('Service unavailable'));
 
             const result = await commands.submitFeedback(item);
@@ -252,7 +159,7 @@ suite('FeedbackCommands', () => {
     });
 
     suite('registerCommands()', () => {
-        test('should register all feedback commands', () => {
+        test('should register feedback commands', () => {
             const mockContext = {
                 subscriptions: [] as vscode.Disposable[],
             } as vscode.ExtensionContext;
@@ -263,10 +170,9 @@ suite('FeedbackCommands', () => {
 
             commands.registerCommands(mockContext);
 
-            assert.strictEqual(registerCommandStub.callCount, 3);
+            assert.strictEqual(registerCommandStub.callCount, 2);
+            assert.ok(registerCommandStub.calledWith('promptRegistry.feedback'));
             assert.ok(registerCommandStub.calledWith('promptRegistry.submitFeedback'));
-            assert.ok(registerCommandStub.calledWith('promptRegistry.submitFeedbackWithRating'));
-            assert.ok(registerCommandStub.calledWith('promptRegistry.quickFeedback'));
         });
     });
 
@@ -274,16 +180,30 @@ suite('FeedbackCommands', () => {
         test('should allow setting engagement service after construction', async () => {
             const commandsWithoutService = new FeedbackCommands();
             const item = createMockItem();
-            const feedback = createMockFeedback('Test');
+            const feedback = createMockFeedback('Test', 3);
 
             // First call without service
-            showInputBoxStub.resolves('Test');
+            showQuickPickStub.onFirstCall().resolves({ 
+                label: '⭐⭐⭐☆☆', 
+                description: '3 stars - Good' 
+            });
+            showInputBoxStub.onFirstCall().resolves('Test');
+            showQuickPickStub.onSecondCall().resolves({ 
+                label: '⏭️ Skip' 
+            });
             const result1 = await commandsWithoutService.submitFeedback(item);
             assert.strictEqual(result1.success, true);
 
             // Set service and call again
             commandsWithoutService.setEngagementService(mockEngagementService as unknown as EngagementService);
-            showInputBoxStub.resolves('Test 2');
+            showQuickPickStub.onThirdCall().resolves({ 
+                label: '⭐⭐⭐☆☆', 
+                description: '3 stars - Good' 
+            });
+            showInputBoxStub.onSecondCall().resolves('Test 2');
+            showQuickPickStub.onCall(3).resolves({ 
+                label: '⏭️ Skip' 
+            });
             mockEngagementService.submitFeedback.resolves(feedback);
             
             const result2 = await commandsWithoutService.submitFeedback(item);

@@ -174,9 +174,8 @@ This is useful when bundle files have been manually deleted but the lockfile sti
 
 | Command | Title | Description |
 |---------|-------|-------------|
-| `promptRegistry.submitFeedback` | Submit Feedback | Submit feedback for a bundle |
-| `promptRegistry.submitFeedbackWithRating` | Submit Feedback with Rating | Submit feedback with a 1-5 star rating |
-| `promptRegistry.quickFeedback` | Quick Feedback | Submit quick feedback using predefined options |
+| `promptRegistry.feedback` | Rate & Feedback | Submit feedback with star rating, optional comment, and issue redirect |
+| `promptRegistry.submitFeedback` | Submit Feedback | Alias for `promptRegistry.feedback` |
 | `promptRegistry.voteUpCollection` | Vote Up Collection | Upvote a collection via GitHub Discussions |
 | `promptRegistry.voteDownCollection` | Vote Down Collection | Downvote a collection via GitHub Discussions |
 | `promptRegistry.voteUpResource` | Vote Up Resource | Upvote a resource via GitHub Discussions |
@@ -186,11 +185,17 @@ This is useful when bundle files have been manually deleted but the lockfile sti
 
 ### Feedback Commands
 
-Available via context menu on installed bundles in the Registry Explorer:
-- **Submit Feedback** — Opens a dialog for detailed feedback
-- **Quick Feedback** — Quick options: 👍 Works great!, 💡 Suggestion, 🐛 Bug report, ❓ Question
+The unified feedback command (`promptRegistry.feedback`) provides a streamlined flow:
+1. **Star Rating (1-5)** — Rate the bundle quality
+2. **Binary Feedback** — Choose from:
+   - 👍 Works great! (+1)
+   - 👎 Couldn't make it work (-1)
+   - � Report issue/suggestion — Opens GitHub Issues with pre-filled template
+   - ⏭️ Skip — Submit rating only
 
-Feedback is stored locally via the EngagementService.
+For awesome-copilot sources, terminology uses "Skill" instead of "Bundle" and version is omitted (pulled from main branch).
+
+Feedback is stored via the EngagementService and synced to GitHub Discussions when configured.
 
 ### Voting Commands
 
