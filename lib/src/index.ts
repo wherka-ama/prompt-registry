@@ -78,3 +78,41 @@ export {
   parseArgs as parseSetupDiscussionsArgs,
   printUsage as printSetupDiscussionsUsage,
 } from './setup-discussions';
+
+// OctoStream exports
+export type {
+  OctoStreamEventAuthor,
+  OctoStreamEvent,
+  OctoStreamPage,
+  OctoStreamEventSource,
+  OctoStreamEventHandler,
+  OctoStreamDeadLetterRecord,
+  OctoStreamDeadLetterSink,
+  OctoStreamLogLevel,
+  OctoStreamLogger,
+  OctoStreamMetricsSnapshot,
+  RetryOptions,
+  OctoStreamEngineOptions,
+  OctoStreamRunResult,
+  SyntheticPayloadOptions,
+  SimulateTrafficOptions,
+  SimulateTrafficResult,
+  GitHubDiscussionsApi,
+  GitHubDiscussionsClientOptions,
+} from './octostream';
+
+export {
+  jsonConsoleLogger,
+  OctoStreamMetrics,
+  withRetry,
+  OctoStreamEngine,
+  createRepoVariableName,
+  buildDiscussionConcurrencyGroup,
+  shardForKey,
+  selectShardDiscussion,
+  generateSyntheticPayload,
+  simulateTraffic,
+  GitHubDiscussionsClient,
+  GitHubDiscussionEventSource,
+  GitHubDiscussionDeadLetterSink,
+} from './octostream';

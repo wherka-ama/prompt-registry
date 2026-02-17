@@ -116,6 +116,45 @@ GITHUB_TOKEN=ghp_xxx npx --package @prompt-registry/collection-scripts compute-r
 2. Run `compute-ratings` periodically (e.g., via GitHub Actions) to update `ratings.json`
 3. Host `ratings.json` statically and reference it in hub config's `engagement.ratings.ratingsUrl`
 
+## OctoStream
+
+OctoStream is a framework module in this package for GitHub Discussions-based append-only event streaming.
+
+It provides:
+
+- Cursor-checkpointed event processing engine
+- Retry and dead-letter hooks
+- Structured logging and metrics helpers
+- GitHub Discussions adapters (comments + repository variable cursor state)
+- Sharding and traffic simulation helpers
+
+### OctoStream Quick Example
+
+```typescript
+import {
+  OctoStreamEngine,
+  GitHubDiscussionsClient,
+  GitHubDiscussionEventSource,
+} from '@prompt-registry/collection-scripts';
+
+const client = new GitHubDiscussionsClient({
+  token: process.env.GITHUB_TOKEN!,
+  owner: 'your-org',
+  repo: 'your-repo',
+});
+
+const source = new GitHubDiscussionEventSource(client, 123, 'DISCUSSION');
+
+const engine = new OctoStreamEngine(source, {
+  async handle(event) {
+    // your processing logic
+    console.log(event.id, event.body);
+  },
+});
+
+await engine.run();
+```
+
 ## Programmatic API
 
 ```typescript
@@ -142,6 +181,20 @@ import {
   parseMultiArg,
   hasFlag,
   getPositionalArg,
+
+  // OctoStream
+  OctoStreamEngine,
+  OctoStreamMetrics,
+  withRetry,
+  GitHubDiscussionsClient,
+  GitHubDiscussionEventSource,
+  GitHubDiscussionDeadLetterSink,
+  createRepoVariableName,
+  buildDiscussionConcurrencyGroup,
+  shardForKey,
+  selectShardDiscussion,
+  generateSyntheticPayload,
+  simulateTraffic,
 } from '@prompt-registry/collection-scripts';
 ```
 

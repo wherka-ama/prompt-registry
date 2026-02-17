@@ -112,6 +112,34 @@ const collections = listCollectionFiles(repoRoot);
 const bundleId = generateBundleId('owner/repo', 'my-collection', '1.0.0');
 ```
 
+### OctoStream API
+
+The package also includes **OctoStream**, a framework for processing GitHub Discussions as append-only event streams with cursor checkpointing.
+
+```typescript
+import {
+  OctoStreamEngine,
+  GitHubDiscussionsClient,
+  GitHubDiscussionEventSource
+} from '@prompt-registry/collection-scripts';
+
+const client = new GitHubDiscussionsClient({
+  token: process.env.GITHUB_TOKEN!,
+  owner: 'your-org',
+  repo: 'your-repo'
+});
+
+const source = new GitHubDiscussionEventSource(client, 123, 'DISCUSSION');
+
+const engine = new OctoStreamEngine(source, {
+  async handle(event) {
+    console.log(event.id, event.body);
+  }
+});
+
+await engine.run();
+```
+
 ## Migration from Local Scripts
 
 If you have an existing repository with local scripts:
