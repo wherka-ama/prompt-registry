@@ -70,6 +70,90 @@ create-skill my-skill --description "A helpful skill"
 | `publish-collections` | Build and publish affected collections |
 | `list-collections` | List all collections in repo |
 | `create-skill` | Create a new skill directory structure |
+| `compute-ratings` | Compute ratings from GitHub Discussion feedback comments (star ratings) |
+| `setup-discussions` | Create GitHub Discussions for bundle ratings |
+
+## Engagement Tools
+
+These tools help set up and manage the engagement system for collecting bundle ratings and feedback.
+
+### setup-discussions
+
+Creates GitHub Discussions for all bundles in a hub configuration. The discussions are used to collect ratings and feedback via comments with star ratings (1-5 ⭐).
+
+```bash
+# Basic usage - creates discussions for all bundles
+GITHUB_TOKEN=ghp_xxx npx --package @prompt-registry/collection-scripts setup-discussions https://github.com/org/hub-config
+
+# Dry run to preview what would be created
+GITHUB_TOKEN=ghp_xxx npx --package @prompt-registry/collection-scripts setup-discussions --dry-run org/hub-config
+
+# Specify branch and output file
+GITHUB_TOKEN=ghp_xxx npx --package @prompt-registry/collection-scripts setup-discussions -b develop -o my-collections.yaml org/hub-config
+
+# Specify discussion category
+GITHUB_TOKEN=ghp_xxx npx --package @prompt-registry/collection-scripts setup-discussions --category "Bundle Ratings" org/hub-config
+```
+
+**Requirements:**
+- Hub config must have `engagement.backend.repository` configured
+- GitHub token needs `repo` and `write:discussion` scopes
+- Engagement repository must have GitHub Discussions enabled
+
+**Output:** Creates a `collections.yaml` file mapping bundles to discussion numbers.
+
+### compute-ratings
+
+Fetches feedback comments from GitHub Discussions, parses star ratings (1-5), and computes aggregate ratings. Also supports legacy thumbs up/down reactions for backward compatibility.
+
+```bash
+# Compute ratings from collections.yaml
+GITHUB_TOKEN=ghp_xxx npx --package @prompt-registry/collection-scripts compute-ratings --config collections.yaml --output ratings.json
+```
+
+**Workflow:**
+1. Run `setup-discussions` once to create discussions and generate `collections.yaml`
+2. Run `compute-ratings` periodically (e.g., via GitHub Actions) to update `ratings.json`
+3. Host `ratings.json` statically and reference it in hub config's `engagement.ratings.ratingsUrl`
+
+## OctoStream
+
+OctoStream is a framework module in this package for GitHub Discussions-based append-only event streaming.
+
+It provides:
+
+- Cursor-checkpointed event processing engine
+- Retry and dead-letter hooks
+- Structured logging and metrics helpers
+- GitHub Discussions adapters (comments + repository variable cursor state)
+- Sharding and traffic simulation helpers
+
+### OctoStream Quick Example
+
+```typescript
+import {
+  OctoStreamEngine,
+  GitHubDiscussionsClient,
+  GitHubDiscussionEventSource,
+} from '@prompt-registry/collection-scripts';
+
+const client = new GitHubDiscussionsClient({
+  token: process.env.GITHUB_TOKEN!,
+  owner: 'your-org',
+  repo: 'your-repo',
+});
+
+const source = new GitHubDiscussionEventSource(client, 123, 'DISCUSSION');
+
+const engine = new OctoStreamEngine(source, {
+  async handle(event) {
+    // your processing logic
+    console.log(event.id, event.body);
+  },
+});
+
+await engine.run();
+```
 
 ## Programmatic API
 
@@ -97,6 +181,20 @@ import {
   parseMultiArg,
   hasFlag,
   getPositionalArg,
+
+  // OctoStream
+  OctoStreamEngine,
+  OctoStreamMetrics,
+  withRetry,
+  GitHubDiscussionsClient,
+  GitHubDiscussionEventSource,
+  GitHubDiscussionDeadLetterSink,
+  createRepoVariableName,
+  buildDiscussionConcurrencyGroup,
+  shardForKey,
+  selectShardDiscussion,
+  generateSyntheticPayload,
+  simulateTraffic,
 } from '@prompt-registry/collection-scripts';
 ```
 

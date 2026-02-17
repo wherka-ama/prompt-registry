@@ -71,3 +71,116 @@ export {
   generateSkillContent,
   createSkill,
 } from './skills';
+
+// Discussion setup exports
+export {
+  setupDiscussions,
+  parseArgs as parseSetupDiscussionsArgs,
+  printUsage as printSetupDiscussionsUsage,
+} from './setup-discussions';
+
+// OctoStream exports
+export type {
+  OctoStreamEventAuthor,
+  OctoStreamEvent,
+  OctoStreamPage,
+  OctoStreamEventSource,
+  OctoStreamEventHandler,
+  OctoStreamDeadLetterRecord,
+  OctoStreamDeadLetterSink,
+  OctoStreamLogLevel,
+  OctoStreamLogger,
+  OctoStreamMetricsSnapshot,
+  RetryOptions,
+  OctoStreamEngineOptions,
+  OctoStreamRunResult,
+  SyntheticPayloadOptions,
+  SimulateTrafficOptions,
+  SimulateTrafficResult,
+  GitHubDiscussionsApi,
+  GitHubDiscussionsClientOptions,
+} from './octostream';
+
+export {
+  jsonConsoleLogger,
+  OctoStreamMetrics,
+  withRetry,
+  OctoStreamEngine,
+  createRepoVariableName,
+  buildDiscussionConcurrencyGroup,
+  shardForKey,
+  selectShardDiscussion,
+  generateSyntheticPayload,
+  simulateTraffic,
+  GitHubDiscussionsClient,
+  GitHubDiscussionEventSource,
+  GitHubDiscussionDeadLetterSink,
+} from './octostream';
+
+// OctoStream Privacy exports (GDPR-compliant rating/feedback)
+export type {
+  RatingPayload,
+  CanonicalPayload,
+  DecryptedFeedback,
+  AggregatedFeedback,
+  KeyPair,
+  CreateRatingPayloadOptions,
+  ProcessRatingOptions,
+  TimestampedSignatureResult,
+  AggregateOptions,
+} from './octostream-privacy';
+
+export {
+  canonicalizePayload,
+  signPayload,
+  verifyPayload,
+  encryptComment,
+  decryptComment,
+  hashUserId,
+  generateEncryptionKeyPair,
+  loadPublicKey,
+  loadPrivateKey,
+  createRatingPayload,
+  processRatingPayload,
+  toJsonl,
+  fromJsonl,
+  toJsonlBatch,
+  fromJsonlBatch,
+  aggregateRatings,
+  generateTimestampedSignature,
+  verifyTimestampedSignature,
+} from './octostream-privacy';
+
+// OctoStream Privacy Engine exports (GDPR-compliant with OctoStream integration)
+export type {
+  PrivacyEngineConfig,
+  PrivacyEngineOptions,
+  ValidatedRatingEvent,
+  InvalidRatingEvent,
+  PrivacyRatingEvent,
+  PrivacyRatingHandler,
+  PrivacyEngineRunResult,
+} from './octostream-privacy-engine';
+
+export {
+  PrivacyRatingEventHandler,
+  PrivacyOctoStreamEngine,
+  processPrivacyRatings,
+  processAndAggregatePrivacyRatings,
+} from './octostream-privacy-engine';
+
+// OctoStream Harvester exports (data aggregation workflow)
+export type {
+  HarvesterConfig,
+  HarvesterResult,
+  ExtensionBundleRating,
+  ExtensionRatingsOutput,
+  CollectionsCollectionRating,
+  CollectionsRatingsOutput,
+} from './octostream-harvester';
+
+export {
+  OctoStreamDataHarvester,
+  harvestRatings,
+  harvestAndSaveRatings,
+} from './octostream-harvester';
