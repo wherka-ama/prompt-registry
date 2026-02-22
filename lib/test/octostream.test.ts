@@ -394,6 +394,14 @@ describe('OctoStream', () => {
       assert.deepStrictEqual(committed, [
         { name: 'DISCUSSION_PREFIX_42_CURSOR', value: 'CURSOR_NEXT' },
       ]);
+
+      const cachedCursor = await source.getCursor();
+      assert.strictEqual(cachedCursor, 'CURSOR_NEXT');
+      assert.deepStrictEqual(
+        variableReads,
+        ['DISCUSSION_PREFIX_42_CURSOR'],
+        'cursor should be returned from local cache after first read/commit'
+      );
     });
 
     it('should format dead-letter records as discussion comments', async () => {

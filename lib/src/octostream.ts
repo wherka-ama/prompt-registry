@@ -760,6 +760,8 @@ export class GitHubDiscussionsClient implements GitHubDiscussionsApi {
 
 export class GitHubDiscussionEventSource implements OctoStreamEventSource {
   private discussionIdCache: string | null = null;
+  private cursorCache: string | null = null;
+  private cursorCacheInitialized = false;
   private readonly variableName: string;
 
   constructor(
@@ -779,7 +781,14 @@ export class GitHubDiscussionEventSource implements OctoStreamEventSource {
   }
 
   async getCursor(): Promise<string | null> {
-    return this.client.getRepositoryVariable(this.variableName);
+    if (this.cursorCacheInitialized) {
+      return this.cursorCache;
+    }
+
+    const cursor = await this.client.getRepositoryVariable(this.variableName);
+    this.cursorCache = cursor;
+    this.cursorCacheInitialized = true;
+    return cursor;
   }
 
   async fetchPage(cursor: string | null): Promise<OctoStreamPage> {
@@ -789,6 +798,8 @@ export class GitHubDiscussionEventSource implements OctoStreamEventSource {
 
   async commitCursor(cursor: string): Promise<void> {
     await this.client.upsertRepositoryVariable(this.variableName, cursor);
+    this.cursorCache = cursor;
+    this.cursorCacheInitialized = true;
   }
 }
 
