@@ -56,6 +56,36 @@
         "category": "Prompt Registry"
       },
       {
+        "command": "promptregistry.primitiveIndex.build",
+        "title": "Primitive Index: Build from installed bundles",
+        "category": "Prompt Registry"
+      },
+      {
+        "command": "promptregistry.primitiveIndex.harvestHub",
+        "title": "Primitive Index: Harvest from hub…",
+        "category": "Prompt Registry"
+      },
+      {
+        "command": "promptregistry.primitiveIndex.search",
+        "title": "Primitive Index: Search",
+        "category": "Prompt Registry"
+      },
+      {
+        "command": "promptregistry.primitiveIndex.shortlist.new",
+        "title": "Primitive Index: New shortlist",
+        "category": "Prompt Registry"
+      },
+      {
+        "command": "promptregistry.primitiveIndex.shortlist.add",
+        "title": "Primitive Index: Add primitive to shortlist",
+        "category": "Prompt Registry"
+      },
+      {
+        "command": "promptregistry.primitiveIndex.export",
+        "title": "Primitive Index: Export shortlist as profile",
+        "category": "Prompt Registry"
+      },
+      {
         "command": "promptregistry.forceGitHubAuth",
         "title": "Force GitHub Authentication",
         "category": "Prompt Registry"

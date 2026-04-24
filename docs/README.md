@@ -12,6 +12,7 @@ Marketplace and registry for Copilot prompt bundles in VS Code.
 - **[Sources](user-guide/sources.md)** — Managing bundle sources
 - **[Profiles and Hubs](user-guide/profiles-and-hubs.md)** — Profile and Hub management
 - **[Configuration](user-guide/configuration.md)** — Extension settings and telemetry
+- **[Primitive Index](user-guide/primitive-index.md)** — Local BM25 search over agentic primitives (agents, chat-modes, instructions, MCP servers, prompts, skills)
 - **[Troubleshooting](user-guide/troubleshooting.md)** — Common issues
 
 ---
@@ -43,6 +44,11 @@ Marketplace and registry for Copilot prompt bundles in VS Code.
 - **[Testing SSH Remote](contributor-guide/testing-ssh-remote.md)** — SSH testing
 - **[Validation](contributor-guide/validation.md)** — Local validation commands
 - **[Coding Standards](contributor-guide/coding-standards.md)** — Style guide
+- **[Primitive Index Architecture](contributor-guide/primitive-index-architecture.md)** — Engine-room view with Mermaid diagrams
+- **[Primitive Index Spec](contributor-guide/spec-primitive-index.md)** — Deterministic search + shortlist + profile export
+- **[Primitive Index Hub Iterations](contributor-guide/primitive-index-hub-iterations.md)** — Condensed changelog of the 50-iteration hub-harvester sprint
+- **[Primitive Index Reusable Layers](contributor-guide/primitive-index-reusable-layers.md)** — `core` / `hub` / `registry` barrels for a future generic CLI
+- **[Primitive Index Extension Integration](contributor-guide/primitive-index-extension-integration.md)** — Playbook for wiring the index into the VS Code UI
 - **[Releasing](contributor-guide/releasing.md)** — Release process
 
 ---

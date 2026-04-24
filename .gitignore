@@ -163,3 +163,4 @@ post-compile-fixes-cross-platform.js
 
 # Claude local settings file
 .claude/settings.local.json
+.primitive-index/

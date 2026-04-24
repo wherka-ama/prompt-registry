@@ -15,6 +15,51 @@ This document lists all VS Code commands provided by the Prompt Registry extensi
 | `promptRegistry.enableAutoUpdate` | Enable Auto-Update | Enable automatic updates for a bundle |
 | `promptRegistry.disableAutoUpdate` | Disable Auto-Update | Disable automatic updates for a bundle |
 
+## Primitive Index
+
+Commands for the deterministic primitive-search feature. See
+[`contributor-guide/spec-primitive-index.md`](../contributor-guide/spec-primitive-index.md)
+for the full design and [`lib/PRIMITIVE_INDEX_DESIGN.md`](../../lib/PRIMITIVE_INDEX_DESIGN.md)
+for the underlying engine.
+
+| Command | Title | Description |
+|---------|-------|-------------|
+| `promptregistry.primitiveIndex.build` | Primitive Index: Build from installed bundles | Walks every installed bundle and builds a BM25-backed searchable index of its agentic primitives |
+| `promptregistry.primitiveIndex.harvestHub` | Primitive Index: Harvest from hub… | Prompts for a GitHub hub (`owner/repo`), fetches hub-config.yml, and harvests primitives from every configured source. Also offers to inject `github/awesome-copilot` plugins/ as an extra `awesome-copilot-plugin` source. Uses conditional requests + blob cache for resumable, near-free warm runs |
+| `promptregistry.primitiveIndex.search` | Primitive Index: Search | Opens a QuickPick to search prompts, instructions, chat modes, agents, skills and MCP servers |
+| `promptregistry.primitiveIndex.shortlist.new` | Primitive Index: New shortlist | Creates a named shortlist to collect primitives across bundles |
+| `promptregistry.primitiveIndex.shortlist.add` | Primitive Index: Add primitive to shortlist | Appends a primitive to an existing (or new) shortlist |
+| `promptregistry.primitiveIndex.export` | Primitive Index: Export shortlist as profile | Emits a hub-schema-valid profile YAML (optionally with a suggested collection) from a shortlist |
+
+The persistent index lives at `<globalStorage>/primitive-index.json`. The same
+engine is available as a CLI via `npx --package @prompt-registry/collection-scripts primitive-index`.
+
+### CLI subcommands
+
+Run `primitive-index help` for the full flag reference. Highlights:
+
+| Subcommand | Purpose |
+|------------|---------|
+| `hub-harvest` | Download + index every source in a hub. Supports `--extra-source` to inject additional sources (e.g. `github/awesome-copilot` plugins) without editing `hub-config.yml` |
+| `hub-report` | Render a markdown report of the last harvest's progress log |
+| `search` | Keyword + facet search. Short flags: `-q`, `-k`, `-s`, `-b`, `-t`, `-l`, `-o` |
+| `stats` | Primitive count, byKind, bySource |
+| `shortlist new / add / remove / list` | Curate a named set of primitive IDs |
+| `export` | Emit a hub-schema-valid profile YAML (optionally with a collection) from a shortlist |
+| `eval-pattern` | Pattern-based relevance eval against `lib/fixtures/golden-queries.json` (CI-ready: non-zero exit on fail) |
+| `bench` | Run each golden query N times, report p50/p95/max + QPS |
+
+### Default paths (no flag required)
+
+```
+cache dir     $PROMPT_REGISTRY_CACHE
+              $XDG_CACHE_HOME/prompt-registry
+              ~/.cache/prompt-registry            (POSIX fallback)
+index file    <cache dir>/primitive-index.json
+hub cache     <cache dir>/hubs/<owner>_<repo>/
+progress      <hub cache>/progress.jsonl
+```
+
 ## Scope Management
 
 Commands for managing bundle installation scope. These are available via context menu on installed bundles in the Registry Explorer.

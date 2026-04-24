@@ -75,6 +75,122 @@ create-skill my-skill --description "A helpful skill"
 | `list-collections` | List all collections in repo |
 | `create-skill` | Create a new skill directory structure |
 | `hub-release-analyzer` | Analyze GitHub release download statistics for hub configs |
+| `primitive-index` | Build, search, shortlist and export agentic primitives across bundles |
+
+## Primitive Index
+
+A deterministic, LLM-free search engine over **agentic primitives** (prompts,
+instructions, chat modes, agents, skills, MCP servers) reachable from a local
+hub cache or an extension's installed bundles.
+
+```bash
+# Build an index over a folder of bundle directories
+primitive-index build --root ./my-hub-cache --out primitive-index.json
+
+# Search — stable JSON output for skills/scripts
+primitive-index search --index primitive-index.json \
+  --q "terraform module" --kinds prompt --limit 5 --json
+
+# Collect into a shortlist then export as a hub-schema profile
+primitive-index shortlist new    --index primitive-index.json --name rust-onboarding
+primitive-index shortlist add    --index primitive-index.json --id sl_... --primitive <primId>
+primitive-index export           --index primitive-index.json \
+  --shortlist sl_... --profile-id rust-onboarding --out-dir ./out --suggest-collection
+```
+
+Programmatic API:
+
+```typescript
+import {
+  PrimitiveIndex,
+  LocalFolderBundleProvider,
+  exportShortlistAsProfile,
+  saveIndex, loadIndex,
+  runEval,
+} from '@prompt-registry/collection-scripts';
+
+const provider = new LocalFolderBundleProvider({ root: './my-hub-cache' });
+const idx = await PrimitiveIndex.buildFrom(provider);
+const res = idx.search({ q: 'review pull request', kinds: ['prompt'], limit: 10 });
+```
+
+See [`PRIMITIVE_INDEX_DESIGN.md`](./PRIMITIVE_INDEX_DESIGN.md) for the full
+design, tech choices, eval thresholds and extension points (including the
+pluggable `EmbeddingProvider` hook for hybrid ranking).
+
+### Harvesting a real hub over GitHub
+
+When you point the engine at a hub repo (one containing `hub-config.yml`)
+it can walk every configured source, fetch primitives directly from the
+GitHub API and assemble the index end-to-end:
+
+```bash
+# Token resolution: explicit flag > GITHUB_TOKEN > GH_TOKEN > `gh auth token`
+primitive-index hub-harvest \
+  --hub-repo Amadeus-xDLC/genai.prompt-registry-config \
+  --cache-dir .primitive-index/cache \
+  --concurrency 8 --json
+
+# Post-run markdown report (per-source status, commit shas, blob-cache size)
+primitive-index hub-report \
+  --progress .primitive-index/cache/progress.jsonl \
+  --cache-dir .primitive-index/cache
+```
+
+Design highlights:
+
+- **Resumable**: append-only JSONL progress log survives SIGKILL.
+- **Smart rebuild**: commit-sha comparison + `If-None-Match` 304 replay
+  keeps warm runs near-free.
+- **Content-addressed cache**: every git blob cached by its SHA1, with
+  a tamper guard on insertion. Cross-source dedup is free.
+- **Rate-limit aware**: primary + secondary rate limits handled with
+  exponential + jittered backoff; `lastRateLimit` surfaced for
+  observability.
+- **Optional integrity**: `PRIMITIVE_INDEX_SIGN_KEY` env var enables a
+  HMAC-SHA256 sidecar file, detectable via `verifyIndexIntegrity()`.
+- **Resulting speed** on the 19-source Amadeus hub: **7.2s cold**
+  (vs 86.2s serial baseline, 12×), **1.7s warm** (10×). 0 errors.
+
+#### Plugin-format sources (`awesome-copilot-plugin`)
+
+A second source type handles the awesome-copilot plugin layout (one
+`plugin.json` per `plugins/<id>/.github/plugin/` directory, introduced
+by PR #245). One repo = N bundles (one per plugin), all sharing the
+repo commit sha for smart-rebuild.
+
+Enable in `hub-config.yml`:
+
+```yaml
+sources:
+  - id: upstream-ac
+    type: awesome-copilot-plugin
+    url: https://github.com/github/awesome-copilot
+    enabled: true
+    config:
+      branch: main
+      pluginsPath: plugins
+```
+
+Or inject on the CLI without touching the hub config:
+
+```bash
+primitive-index hub-harvest --no-hub-config \
+  --cache-dir .primitive-index/cache \
+  --extra-source 'id=upstream-ac,type=awesome-copilot-plugin,url=https://github.com/github/awesome-copilot,branch=main,pluginsPath=plugins'
+```
+
+Live benchmark on `github/awesome-copilot` (55 plugins, 133 skills):
+
+| Optimisation | Cold |
+|---|---:|
+| Serial plugins + serial manifests | 44.8s |
+| Parallel plugins | 28.4s |
+| + Parallel manifests | **7.1s** |
+
+Warm run: 1.7s (source-level smart-rebuild short-circuits the entire
+55-plugin enumeration via one conditional `/commits/` 304).
+
 
 ## Programmatic API
 
