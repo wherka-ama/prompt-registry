@@ -163,3 +163,13 @@ post-compile-fixes-cross-platform.js
 
 # Claude local settings file
 .claude/settings.local.json
+.primitive-index/
+
+# Phase 4 iter 27: untracked artifacts that historically got accidentally
+# included via `git add -A` (key files, ratings outputs, env files).
+lib/.env.test
+lib/.prompt-registry.engagement.pem
+lib/.prompt-registry.engagement.pub
+lib/ratings-output/
+analytics-output/
+.kiro/specs/

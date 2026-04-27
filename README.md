@@ -35,6 +35,7 @@ The extension automatically adds the Awesome Copilot source and syncs your selec
 - **📦 Version Management** — Track versions, detect updates, and enable automatic background updates ([details](./docs/user-guide/configuration.md))
 - **👥 Profiles & Hubs** — Organize bundles by project/team and share configurations across your organization ([details](./docs/user-guide/profiles-and-hubs.md))
 - **🤖 Built-in Copilot Skill** — Ask GitHub Copilot questions about Prompt Registry directly in chat — setup, authoring, troubleshooting, and more
+- **🔎 Primitive Index** — Local BM25 search over every agent / chat-mode / instruction / MCP server / prompt / skill across all your hubs. 343 primitives indexed in 7.3s, 19,410 queries/sec ([details](./docs/user-guide/primitive-index.md))
 - **🌍 Cross-Platform** — Works on macOS, Linux, and Windows with all VS Code flavors
 
 ---

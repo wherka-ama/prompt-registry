@@ -1,0 +1,405 @@
+prompt-registry CLI restructure — cross-session notes
+======================================================
+
+Program: 6 phases, ~190 iterations.
+Phase 1 status: COMPLETE (iter 30 locked) — SIGNED OFF on 2026-04-25.
+Phase 2 status: COMPLETE (iter 10 of 10 complete) — COMPLETED on 2026-04-25.
+Phase 3 status: STRUCTURAL COMPLETE (iter 10 of 20; 11 reserved for Phase 4 spillover).
+Phase 4 status: COMPLETE (iter 50 of 50). All 11 legacy bins reachable; framework polish + Phase 5 stubs in place.
+  Phase 3 Iter 1 (2026-04-25): Domain layer extraction (bundle, primitive, hub).
+                       Created lib/src/domain/ with three sub-packages.
+                       Extracted types from primitive-index/types.ts.
+                       Updated lib/src/core/index.ts to import from domain.
+                       Updated lib/src/primitive-index/types.ts to re-export from domain.
+                       Updated lib/src/index.ts to re-export domain types.
+                       All 374 tests passing.
+                       Satisfies spec §14.2 invariant #1: domain layer separation.
+                       Files: lib/src/domain/bundle/types.ts, lib/src/domain/bundle/index.ts
+                              lib/src/domain/primitive/types.ts, lib/src/domain/primitive/index.ts
+                              lib/src/domain/hub/types.ts, lib/src/domain/hub/index.ts
+                              lib/src/domain/index.ts
+                              lib/src/core/index.ts
+                              lib/src/primitive-index/types.ts
+                              lib/src/index.ts
+
+  Phase 3 Iter 2 (2026-04-25): Domain barrel shape regression test + invariant #1 ESLint rule.
+                       Pins public surface (PRIMITIVE_KINDS + 8 type exports).
+                       New ESLint rule no-feature-imports-in-domain enforces spec sec 14.2 invariant 1
+                       (domain layer cannot import from feature layers).
+                       Verified rule fires on synthetic violation; passes on real domain files.
+                       9 new tests; 383 passing total; lint clean.
+                       Files: lib/test/domain/domain-shape.test.ts (new)
+                              lib/eslint-rules/no-feature-imports-in-domain.js (new)
+                              lib/eslint.config.mjs (rule wired for src/domain/**)
+
+  Phase 3 Iter 3 (2026-04-25): Domain audit + dead-aspirational-type cleanup.
+                       Removed HubSourceSpec, PluginItem, PluginItemKind, PluginManifest from
+                       lib/src/domain/hub/ — zero consumers and shapes conflicted with the real
+                       types in primitive-index/hub/. Deleted empty hub/ dir.
+                       Added lib/src/domain/README.md documenting the cut line:
+                       what belongs in domain, what stays in feature, audit table.
+                       Iter-2 shape test trimmed to remove dead-type assertions.
+                       7 tests removed (assertions for removed types); 381 passing total; lint clean.
+                       Files: lib/src/domain/index.ts (hub re-exports removed)
+                              lib/src/domain/hub/ (deleted)
+                              lib/src/domain/README.md (new)
+                              lib/test/domain/domain-shape.test.ts (trimmed)
+
+  Phase 3 Iter 4 (2026-04-25): Domain layering verification (defense-in-depth).
+                       Runtime test scans every .ts file under lib/src/domain/ and fails on
+                       imports from feature-layer prefixes (../primitive-index/, ../cli/, etc.).
+                       Catches violations even if the iter-2 ESLint rule is bypassed.
+                       Second test ensures every domain source file is reachable from index.ts
+                       (no orphans).
+                       Verified failure mode: synthetic violation file triggers both checks.
+                       Auto-fix corrected stale import ordering in primitive-index/types.ts.
+                       2 new tests; 383 passing total; lint clean.
+                       Files: lib/test/domain/layering.test.ts (new)
+                              lib/src/primitive-index/types.ts (lint auto-fix)
+
+  Phase 3 Iter 5 (2026-04-25): Promoted real HubSourceSpec into domain/hub.
+                       9-field parsed-config shape (id, name, type, url, owner, repo, branch,
+                       collectionsPath?, pluginsPath?, rawConfig?). Consumers: hub-harvester,
+                       github-bundle-provider, plugin-bundle-provider, extra-source, cli.
+                       Companion parser parseHubConfig and URL helper normalizeRepoFromUrl
+                       stay in primitive-index/hub/hub-config.ts (feature-layer IO).
+                       Original module re-exports the type for back-compat (zero call-site changes).
+                       Iter-3 README audit table updated to reflect the migration.
+                       1 new shape test; 384 passing total; lint clean; tsc clean.
+                       Files: lib/src/domain/hub/types.ts (new, real shape)
+                              lib/src/domain/hub/index.ts (new, barrel)
+                              lib/src/domain/index.ts (re-export)
+                              lib/src/primitive-index/hub/hub-config.ts (type now from domain)
+                              lib/src/domain/README.md (audit row updated)
+                              lib/test/domain/domain-shape.test.ts (HubSourceSpec assertion)
+
+  Phase 3 Iter 6 (2026-04-25): Promoted PluginItemKind/PluginItem/PluginManifest into domain/hub.
+                       Real awesome-copilot plugin-format types moved from
+                       primitive-index/hub/plugin-manifest.ts into domain. Parsers
+                       (parsePluginManifest, derivePluginItems, resolvePluginItemEntryPath,
+                       extractPluginMcpServers) stay in feature layer (read-only behavior, not shapes).
+                       Original module re-exports types for back-compat.
+                       Iter-3 README audit table updated to reflect the migration.
+                       2 new shape tests; 386 passing total; lint clean; tsc clean.
+                       Files: lib/src/domain/hub/types.ts (added 3 types)
+                              lib/src/domain/hub/index.ts (re-exports)
+                              lib/src/domain/index.ts (barrel re-exports)
+                              lib/src/primitive-index/hub/plugin-manifest.ts (types from domain)
+                              lib/src/domain/README.md (audit row updated)
+                              lib/test/domain/domain-shape.test.ts (+2 tests)
+
+  Phase 3 Iter 7 (2026-04-25): Re-route public package barrels through domain types.
+                       lib/src/index.ts and lib/src/hub/index.ts now re-export
+                       HubSourceSpec/PluginItem/PluginItemKind/PluginManifest from
+                       domain rather than from primitive-index/hub/. Parsers stay in
+                       feature layer. Several feature-layer files (cli.ts,
+                       github-bundle-provider.ts) and 4 test files migrated to import
+                       types directly from domain.
+                       Back-compat re-exports in hub-config.ts/plugin-manifest.ts
+                       remain in place for the few feature-layer call sites that
+                       eslint --fix kept on the local-path. Both paths compile.
+                       0 new tests; 386 passing total; lint clean; tsc clean.
+                       Files: lib/src/index.ts (public barrel re-routed)
+                              lib/src/hub/index.ts (sub-barrel re-routed)
+                              lib/src/primitive-index/cli.ts (domain dynamic import)
+                              lib/src/primitive-index/hub/github-bundle-provider.ts
+                              4 test files (HubSourceSpec/PluginItem from domain)
+
+Phase 2 iterations (iter 1-10):
+  Phase 2 Iter 1 (2026-04-25): Context interface skeleton + createTestContext() factory.
+                       13 new tests; 306 passing total; lint clean for src/cli + test/cli.
+  Phase 2 Iter 2 (2026-04-25): Production Context wiring (node:fs, global fetch, Date.now).
+                       node engine bumped 18→20. Zero new deps (global fetch native).
+                       13 new tests; 319 passing total; lint clean.
+                       Files: lib/src/cli/framework/production-context.ts
+                              lib/test/cli/framework/production-context.test.ts
+  Phase 2 Iter 3 (2026-04-25): clipanion framework adapter (defineCommand, runCli).
+                       Added clipanion@4.0.0-rc.4 + typanion@3.14.0 deps.
+                       Bypasses cli.run for proper EX_USAGE/EX_SOFTWARE codes.
+                       10 new tests; 329 passing total; lint clean.
+                       Files: lib/src/cli/framework/cli.ts
+                              lib/test/cli/framework/cli.test.ts
+  Phase 2 Iter 4 (2026-04-25): Layered YAML config loader (loadConfig). 5 of 8 layers wired:
+                       defaults, user (XDG), project (Cargo-style upward walk), env, --config FILE.
+                       Hand-rolled (c12 deferred per design re-eval); zero new deps.
+                       Env-var convention locked: __ = path separator, _ = camelCase within segment.
+                       12 new tests; 341 passing total; lint clean.
+                       Files: lib/src/cli/framework/config.ts
+                              lib/test/cli/framework/config.test.ts
+  Phase 2 Iter 5 (2026-04-25): Output formatter (text/json/yaml/ndjson) + JSON envelope.
+                       Markdown and table modes deferred to Phase 4 with their commands.
+                       12 new tests; 353 passing total; lint clean.
+                       Files: lib/src/cli/framework/output.ts
+                              lib/test/cli/framework/output.test.ts
+  Phase 2 Iter 6 (2026-04-25): RegistryError class + renderError text renderer.
+                       11 namespaces locked. toJSON() produces iter-5 OutputError shape.
+                       13 new tests; 366 passing total; lint clean.
+                       Files: lib/src/cli/framework/error.ts
+                              lib/test/cli/framework/error.test.ts
+  Phase 2 Iter 7 (2026-04-25): runCommand() golden-test convenience helper.
+                       Returns {exitCode, stdout, stderr} in one call.
+                       4 new tests; 370 passing total; lint clean.
+                       Files: lib/src/cli/framework/golden.ts
+                              lib/test/cli/framework/golden.test.ts
+  Phase 2 Iter 8 (2026-04-25): doctor command (first leaf command) + status naming fix.
+                       Fixed status naming to align with spec §9.1.1: 'partial' → 'warning', 'success' → 'ok'.
+                       Added fs option to TestContextOptions for mock fs in tests.
+                       4 new tests; 374 passing total; lint clean.
+                       Files: lib/src/cli/commands/doctor.ts
+                              lib/test/cli/commands/doctor.test.ts
+                              lib/src/cli/framework/output.ts (status type fix)
+                              lib/test/cli/framework/output.test.ts (status fix)
+                              lib/src/cli/framework/test-context.ts (fs option)
+  Phase 2 Iter 9 (2026-04-25): ESLint rule for architectural invariants (no-framework-imports).
+                       Enforces spec §14.2: no direct clipanion/node:fs/process.env/process.exit in commands.
+                       Added rule to eslint.config.mjs for src/cli/commands/** files.
+                       Fixed linting errors in doctor.ts.
+                       0 new tests (rule verified via lint on actual code); 374 passing total; lint clean.
+                       Files: lib/eslint-rules/no-framework-imports.js
+                              lib/eslint.config.mjs
+  Phase 2 Iter 10 (2026-04-25): Phase 2 completion.
+                       Full test suite passing (374 tests).
+                       All architectural invariants verified (doctor command follows spec §14.2).
+                       Documentation updated (progress.txt, iterations.md).
+                       Ready for Phase 3 (domain extraction).
+
+Phase 4 iterations (iter 1-16):
+  Iter  1 (2026-04-25): collection list (native).
+  Iter  2 (2026-04-25): collection validate (native).
+  Iter  3 (2026-04-25): collection affected (native).
+  Iter  4 (2026-04-25): version compute (native; gitTagsProvider injection).
+  Iter  5 (2026-04-25): skill new (native; non-interactive path only).
+  Iter  6 (2026-04-25): skill validate (native).
+  Iter  7 (2026-04-25): bundle manifest (native; preserves MCP Servers count text).
+  Iter  8 (2026-04-25): wired all ported commands into prompt-registry binary.
+  Iter  9 (2026-04-25): deprecation shims for 7 ported binaries.
+  Iter 10 (2026-04-25): bundle build (native; archiver-based reproducible zip).
+  Iter 11 (2026-04-25): wired bundle build + shim; publish-collections envelope unwrapping.
+  Iter 12 (2026-04-25): proxy index <verb> to legacy primitive-index/cli.
+  Iter 13 (2026-04-25): proxy hub analyze + collection publish to legacy bins.
+  Iter 14 (2026-04-25): end-to-end CLI smoke test (6 tests against built binary).
+  Iter 15 (2026-04-25): docs/.../phase-4-migration-guide.md.
+  Iter 16 (2026-04-25): --json deprecated alias for -o json.
+
+  Iter 17 (2026-04-25): docs update (progress.txt + iterations.md for iter 1-16).
+  Iter 18 (2026-04-25): --cwd flag (production Context cwd override).
+  Iter 19 (2026-04-25): explain command + initial RegistryError catalog (10 entries).
+  Iter 20 (2026-04-25): explain command tests (4).
+  Iter 21 (2026-04-25): --version reads lib/package.json.
+  Iter 22 (2026-04-25): config get subcommand (dotted-key reader).
+  Iter 23 (2026-04-25): config list subcommand + wired both config commands.
+  Iter 24 (2026-04-25): plugins list (PATH discovery, kubectl-style).
+  Iter 25 (2026-04-25): plugins list tests (3).
+  Iter 26 (2026-04-25): config commands tests (5).
+  Iter 27 (2026-04-25): .gitignore Phase 4 untracked artifacts (keys, ratings).
+  Iter 28 (2026-04-25): target list stub (Phase 5 preview).
+  Iter 29 (2026-04-25): target add stub.
+  Iter 30 (2026-04-25): target remove stub.
+  Iter 31 (2026-04-25): install stub (Phase 5 preview).
+  Iter 32 (2026-04-25): target stubs tests (6).
+  Iter 33 (2026-04-25): install stub tests (3).
+  Iter 34 (2026-04-25): e2e smoke extended (config plugins target reachability).
+  Iter 35 (2026-04-25): production-context cwd override tests (2).
+  Iter 36 (2026-04-25): docs/reference/commands.md unified-CLI section.
+  Iter 37 (2026-04-25): lib/README.md prompt-registry usage section.
+  Iter 38 (2026-04-25): bin/prompt-registry.js + package.json bin entry.
+  Iter 39 (2026-04-25): --quiet flag (ctx.stdout sink override).
+  Iter 40 (2026-04-25): --no-color flag (NO_COLOR convention).
+
+Phase 4 mid-checkpoint: all 11 legacy bins reachable through prompt-registry.
+8 native commands + 3 proxies. 419 tests passing; lint clean; tsc clean.
+Iters 17-50 reserved for: (a) per-verb migration of the 8 index verbs to
+native commands, (b) native ports of hub-analyze and collection-publish,
+(c) clipanion-native option wiring (replaces hand-rolled parser in
+src/cli/index.ts), (d) integration tests against real CI flows.
+  Iter 41 (2026-04-25): progress.txt mid-checkpoint update for iters 17-40.
+  Iter 42 (2026-04-25): lint cleanup pass (55 errors fixed; manual fix of readPackageVersion).
+  Iter 43 (2026-04-25): --cwd e2e smoke test against built binary.
+  Iter 44 (2026-04-25): explain e2e smoke test (3 tests).
+  Iter 45 (2026-04-25): --quiet e2e smoke test (2 tests).
+  Iter 46 (2026-04-25): per-command "replaces <legacy>" descriptions.
+  Iter 47 (2026-04-25): decisions D8 (proxy strategy) + D9 (hand-rolled parser).
+  Iter 48 (2026-04-25): Phase 4 mid-checkpoint document (phase-4-checkpoint.md).
+  Iter 49 (2026-04-25): iterations.md log for iters 17-48.
+  Iter 50 (2026-04-25): Phase 4 completion. 448 tests, lint clean, tsc clean.
+
+Phase 4 final state: 8 native commands + 3 proxies + 5 net-new commands
+(doctor, explain, config, plugins, target, install) + 6 cross-cutting flags
+(-o, --json, --cwd, --quiet, --no-color, --version) + 11 deprecation shims.
+Tests: 448 passing (374 baseline -> 448; +74 new). Lint: clean. TSC: clean.
+Phase 5 entry conditions: all 5 met.
+
+  Iter 41 (2026-04-26): iterations.md log for iters 1-39.
+  Iter 42 (2026-04-26): phase-5-checkpoint.md (mid-phase document).
+  Iter 43 (2026-04-26): lint sweep (130 errors collapsed to 0).
+  Iter 44 (2026-04-26): lib/README.md install section.
+  Iter 45 (2026-04-26): spec-parser edge case tests (2).
+  Iter 46 (2026-04-26): lockfile upsert immutability test.
+  Iter 47 (2026-04-26): decisions D12 (lockfile schema).
+  Iter 48 (2026-04-26): final lint verification (0 errors src+test).
+  Iter 49 (2026-04-26): Phase 5 completion document.
+  Iter 50 (2026-04-26): Phase 5 final consolidation.
+
+Phase 5 final state: 519 tests passing (448 baseline -> 519; +71 new
+in Phase 5). Lint: clean across src+test; 39 unrelated warnings
+in src/primitive-index/. TSC: clean.
+
+Phase 5 ships: target persistence (5 types), bundle resolution
+interfaces (resolver/downloader/extractor/validator/writer/pipeline),
+local-dir install path (--from), lockfile read/write+upsert,
+--allow-target gate, --dry-run, doctor extensions (project-config +
+install-targets), explain catalog +8 install codes, install
+user-guide doc, install reference doc, decisions D10/D11/D12.
+
+Phase 5 spillover (intentionally deferred): remote resolver,
+HTTPS downloader, zip extractor, lockfile replay body. Interfaces
+are stable; impls drop in without surface changes.
+
+
+Locked architectural decisions (see decisions.md):
+- Single binary: `prompt-registry` (11 bin/*.js become subcommands).
+- Framework (locked iter 13): primary = clipanion, fallback = oclif, eliminated = citty/commander/yargs.
+- Config loader: c12 (UnJS) + YAML; cargo-style upward walk; defaults<user<project<env<--config FILE<--config KEY=VALUE<flags (8-step chain locked iter 18).
+- Output flag: unified `-o, --output {text,json,yaml,markdown,table,ndjson}` with auto-detect (text on TTY, json off-TTY) and stable JSON envelope `{schemaVersion, command, status, data, warnings, errors, meta}` (locked iter 20).
+- Exit codes: 3-tier scheme — POSIX (0–2), sysexits.h (64–78), domain (100+) (locked iter 21).
+- Errors: `RegistryError {code, message, hint, docsUrl, cause, context}` with 11 dotted-path namespaces, ~60 codes (locked iter 23).
+- Plugin model: PATH-binary discovery (`prompt-registry-<name>`, gh/kubectl model) primary; npm-plugins opt-in only via `plugins.allowNpm: true` with lockfile-pinning requirement (locked iter 27–28).
+- Phase 2 architectural invariants: leaf commands never import clipanion directly; only `lib/src/cli/framework/` does. `Context` is the only IO surface; ESLint forbids direct `node:fs`/`node:net`/`process.env`/`process.exit`. (Locked iter 13 + iter 25.)
+- Test tiers: unit / framework / command / golden / e2e. Coverage targets: framework 90%, command 70%, e2e narrow (install + one-per-noun). (Locked iter 25.)
+- Migration: 6-line shims under `lib/bin/<old-name>.js` generated from a single `_shims.json` manifest. Deprecation lifecycle Phase 4→5→next-major; `--exit-on-deprecation` is the CI-strictness lever. (Locked iter 29.)
+
+Working folder: docs/contributor-guide/cli-restructure/
+  spec.md         — authoritative spec, §§0–14 populated (87 KB, ~1560 lines)
+  iterations.md   — per-iteration delta log + reflection (iter 1–30; ~80 KB)
+  decisions.md    — locked architectural calls with rationale (D1–D7)
+  migration-plan.md — per-binary mapping, shim implementation, deprecation lifecycle, test strategy
+  progress.txt    — this file
+
+Checkpoints completed: 6 (after iter 5, 10, 15, 20, 25, 30).
+Reflect&correct rule: full rewrite of prior iterations when later research invalidates them; spec.md stays consistent at all times. Throughout Phase 1, ~12 cross-iteration corrections applied (mostly small extensions, one rename of §8→§7.4 in iter 15, version-vs-version disambiguation in iter 16, framework path corrections in iter 17–19).
+
+Phase 2 entry criteria (per spec §14.6):
+1. User signs off this Phase 1 spec.
+2. lib/src/cli/framework/ layout approved.
+3. First Phase 2 deliverable list: framework adapter + Context + ESLint rule + minimum golden-test runner.
+
+Do not delete this file. It is the durable anchor across sessions.
+
+Phase 5 status: COMPLETE (iter 50 of 50). install command works
+end-to-end for local-dir bundles; remote resolver/downloader/zip
+pending Phase 5 spillover (interfaces stable).
+
+  Iter 1  (2026-04-26): Target tagged union (rclone-style; 5 types).
+  Iter 2  (2026-04-26): target-store: read/write targets[] in project config.
+  Iter 3  (2026-04-26): target add wires actual persistence.
+  Iter 4  (2026-04-26): target remove wires actual persistence.
+  Iter 5  (2026-04-26): target-store unit tests (7).
+  Iter 6  (2026-04-26): install validates --target against config.
+  Iter 7  (2026-04-26): target list table renderer.
+  Iter 8  (2026-04-26): Installable + BundleSpec domain types.
+  Iter 9  (2026-04-26): BundleSpec parser (3 shapes; kebab-case bundleId).
+  Iter 10 (2026-04-26): BundleSpec parser tests (10).
+  Iter 11 (2026-04-26): BundleResolver + MapBundleResolver + tests.
+  Iter 12 (2026-04-26): BundleDownloader + MemoryBundleDownloader + sha256.
+  Iter 13 (2026-04-26): BundleExtractor interface + DictBundleExtractor.
+  Iter 14 (2026-04-26): ManifestValidator (id/version/name + match checks).
+  Iter 15 (2026-04-26): extractor + validator tests (8).
+  Iter 16 (2026-04-26): TargetWriter interface; WriterFs subset.
+  Iter 17 (2026-04-26): FileTreeTargetWriter (one impl, 5 target types).
+  Iter 18 (2026-04-26): TargetWriter tests (5; layouts, allowedKinds).
+  Iter 19 (2026-04-26): TargetWriter mkdir-recursive test.
+  Iter 20 (2026-04-26): InstallPipeline orchestrator (resolve→download→extract→validate→write).
+  Iter 21 (2026-04-26): InstallPipeline tests (4).
+  Iter 22 (2026-04-26): readLocalBundle (skip download/extract for local-dir installs).
+  Iter 23 (2026-04-26): install --from <localDir> works end-to-end.
+  Iter 24 (2026-04-26): install integration tests (3).
+  Iter 25 (2026-04-26): Lockfile schema + read/write/upsertEntry helpers.
+  Iter 26 (2026-04-26): Lockfile tests (6).
+  Iter 27 (2026-04-26): install writes prompt-registry.lock.json on success.
+  Iter 28 (2026-04-26): install --lockfile reads + validates (replay body Phase 5 spillover).
+  Iter 29 (2026-04-26): --allow-target gating (CI lever).
+  Iter 30 (2026-04-26): --allow-target tests.
+  Iter 31 (2026-04-26): doctor extensions (project-config + install-targets checks).
+  Iter 32 (2026-04-26): explain catalog +8 install codes.
+  Iter 33 (2026-04-26): docs/user-guide/install.md.
+  Iter 34 (2026-04-26): install e2e smoke tests (3).
+  Iter 35 (2026-04-26): all-commands e2e extended for install.
+  Iter 36 (2026-04-26): lockfile e2e roundtrip.
+  Iter 37 (2026-04-26): docs/reference/commands.md install + targets sections.
+  Iter 38 (2026-04-26): decisions D10 (pipeline composition) + D11 (spillover scope).
+  Iter 39 (2026-04-26): bundle build + install integration (boundary documented).
+  Iter 40 (2026-04-26): progress.txt update for iters 1-39.
+
+
+Phase 5 spillover status: COMPLETE (iter 50 of 50). The remote
+install stack is live; the `prompt-registry` CLI is now
+iso-functional with the VS Code extension's `installBundle` flow
+for the GitHub source type. claude-code is the 6th reserved Target.
+
+  Iter 1-2  (2026-04-26): Discovery - codemaps, core flows, installation flow.
+  Iter 3-5  (2026-04-26): Survey extension's GitHubAdapter / LockfileManager / BundleInstaller.
+  Iter 6    (2026-04-26): Spillover design doc (phase-5-spillover-design.md).
+  Iter 7    (2026-04-26): Decisions D13-D18 locked.
+  Iter 8    (2026-04-26): Extension-CLI parity matrix scaffolded.
+  Iter 9-10 (2026-04-26): generateSourceId helper + parity tests (10).
+  Iter 11   (2026-04-26): Lockfile additive sections (sources, hubs, profiles, fileChecksums).
+  Iter 12   (2026-04-26): upsertSource/upsertHub/upsertProfile helpers.
+  Iter 13   (2026-04-26): Lockfile additive-shape tests (4).
+  Iter 14   (2026-04-26): checksum.ts (SHA-256 helpers).
+  Iter 15   (2026-04-26): install populates lockfile.sources + fileChecksums.
+  Iter 16   (2026-04-26): HttpClient + TokenProvider + envTokenProvider.
+  Iter 17   (2026-04-26): NodeHttpClient (node:https + redirects).
+  Iter 18   (2026-04-26): RecordingHttpClient test double + tests (7).
+  Iter 19-20(2026-04-26): GitHubBundleResolver (releases API, asset match, cache).
+  Iter 21   (2026-04-26): GitHubBundleResolver tests (9).
+  Iter 22   (2026-04-26): Parity matrix sweep.
+  Iter 23-25(2026-04-26): HttpsBundleDownloader (auth, integrity).
+  Iter 26   (2026-04-26): HttpsBundleDownloader tests (6).
+  Iter 27-28(2026-04-26): YauzlBundleExtractor + isUnsafeZipPath (zip-slip).
+  Iter 29   (2026-04-26): YauzlBundleExtractor tests (6).
+  Iter 30   (2026-04-26): D16 revised in decisions log (yauzl over adm-zip).
+  Iter 31-32(2026-04-26): install command - imperative remote pipeline.
+  Iter 33-34(2026-04-26): install (remote) integration tests (3).
+  Iter 35-37(2026-04-26): install --lockfile replay body.
+  Iter 38   (2026-04-26): install --lockfile replay e2e (wipe+replay).
+  Iter 39-41(2026-04-26): claude-code 6th Target type + writer layout.
+  Iter 42   (2026-04-26): claude-code writer tests (2).
+  Iter 43   (2026-04-26): claude-code docs + parity matrix sweep.
+  Iter 44   (2026-04-26): docs/reference/commands.md spillover section.
+  Iter 45   (2026-04-26): Lint sweep (36 -> 0 errors).
+  Iter 46   (2026-04-26): iterations.md log for iters 1-45.
+  Iter 47   (2026-04-26): progress.txt update.
+  Iter 48   (2026-04-26): phase-5-spillover-checkpoint.md.
+  Iter 49   (2026-04-26): Phase 5 spillover completion document.
+  Iter 50   (2026-04-26): Final consolidation.
+
+Phase 5 spillover final state: 566 tests passing (519 baseline at
+start of spillover -> 566; +47 new). Lint: 0 errors across src/+
+test/. TSC: clean.
+
+Phase 5 spillover ships:
+  - Lockfile shape parity with extension (sources, hubs, profiles,
+    per-file SHA-256, sha256 of bundle bytes, sourceId via the
+    same hash algorithm)
+  - HttpClient + TokenProvider abstractions (extension-pluggable)
+  - NodeHttpClient with redirect chain
+  - GitHubBundleResolver (mirrors GitHubAdapter.fetchBundles +
+    getDownloadUrl)
+  - HttpsBundleDownloader (mirrors GitHubAdapter.downloadBundle)
+  - YauzlBundleExtractor (yauzl already in lib's dep tree)
+  - install <bundle> --source <owner/repo> end-to-end
+  - install --lockfile replay (true re-installation, not validate-only)
+  - claude-code 6th reserved Target type (D18)
+  - Full parity matrix tracked in extension-cli-parity.md
+
+Phase 5 spillover deferred to post-50 (still tracked in matrix):
+  - awesome-copilot resolver  (extension-only adapter today)
+  - apm           resolver  (extension-only adapter today)
+  - skills        resolver  (extension-only adapter today)
+  - dual-lockfile mode (committed + local-only)  (git-aware UI)
+
+Iso-functionality with the extension reaches the GitHub-source
+boundary today. The remaining adapters (awesome-copilot, apm,
+skills) compose against the same BundleResolver/Downloader/
+Extractor interfaces; adding each is one-impl-per-source work.
+

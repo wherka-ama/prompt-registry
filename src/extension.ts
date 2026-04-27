@@ -24,6 +24,9 @@ import {
   HubProfileCommands,
 } from './commands/hub-profile-commands';
 import {
+  PrimitiveIndexCommands,
+} from './commands/primitive-index-commands';
+import {
   ProfileCommands,
 } from './commands/profile-commands';
 import {
@@ -77,6 +80,9 @@ import {
 import {
   NotificationManager,
 } from './services/notification-manager';
+import {
+  PrimitiveIndexManager,
+} from './services/primitive-index-manager';
 import {
   RegistryManager,
 } from './services/registry-manager';
@@ -144,6 +150,8 @@ export class PromptRegistryExtension {
   private profileCommands: ProfileCommands | undefined;
   private sourceCommands: SourceCommands | undefined;
   private bundleCommands: BundleCommands | undefined;
+  private primitiveIndexCommands: PrimitiveIndexCommands | undefined;
+  private primitiveIndexManager: PrimitiveIndexManager | undefined;
   private bundleScopeCommands: BundleScopeCommands | undefined;
   private settingsCommands: SettingsCommands | undefined;
   private hubCommands: HubCommands | undefined;
@@ -237,6 +245,11 @@ export class PromptRegistryExtension {
     this.sourceCommands = new SourceCommands(this.registryManager);
     this.settingsCommands = new SettingsCommands(this.registryManager);
     this.bundleCommands = new BundleCommands(this.registryManager);
+
+    // Primitive Index (agentic primitive search over installed bundles)
+    this.primitiveIndexManager = PrimitiveIndexManager.getInstance(this.context, this.registryManager);
+    this.primitiveIndexCommands = new PrimitiveIndexCommands(this.primitiveIndexManager);
+    this.primitiveIndexCommands.register(this.context);
 
     // Initialize hub infrastructure
     const hubStoragePath = this.context.globalStorageUri.fsPath;
