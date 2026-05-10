@@ -53,76 +53,67 @@ export interface TargetCommon {
 }
 
 /**
- * vscode / vscode-insiders entry.
+ * Common fields for repository-scoped targets.
  */
-export interface VsCodeTarget extends TargetCommon {
-  type: 'vscode' | 'vscode-insiders';
-  /** Primary scope: 'user' (host User dir) or 'repository' (.github/). */
-  scope: 'user' | 'repository';
-  /** Override path; falls back to platform default if omitted. */
-  path?: string;
-  /** Restrict which primitive kinds this target accepts. */
-  allowedKinds?: string[];
+export interface RepositoryTargetFields {
   /** Commit mode for repository scope: tracked by git or excluded. */
   commitMode?: 'commit' | 'local-only';
   /** Workspace root path (required for repository scope). */
   workspaceRoot?: string;
+}
+
+/**
+ * Common fields for targets that support path override and kind filtering.
+ */
+export interface PathAndKindsTargetFields {
+  /** Override path; falls back to platform default if omitted. */
+  path?: string;
+  /** Restrict which primitive kinds this target accepts. */
+  allowedKinds?: string[];
+}
+
+/**
+ * Base interface for all targets with scope field.
+ */
+export interface ScopedTargetBase extends TargetCommon {
+  /** Primary scope: 'user' (host User dir) or 'repository' (.github/). */
+  scope: 'user' | 'repository';
+}
+
+/**
+ * vscode / vscode-insiders entry.
+ */
+export interface VsCodeTarget extends ScopedTargetBase, PathAndKindsTargetFields, RepositoryTargetFields {
+  type: 'vscode' | 'vscode-insiders';
 }
 
 /**
  * copilot-cli entry.
  */
-export interface CopilotCliTarget extends TargetCommon {
+export interface CopilotCliTarget extends TargetCommon, PathAndKindsTargetFields, RepositoryTargetFields {
   type: 'copilot-cli';
   scope: 'user';
-  path?: string;
-  allowedKinds?: string[];
-  /** Commit mode for repository scope: tracked by git or excluded. */
-  commitMode?: 'commit' | 'local-only';
-  /** Workspace root path (required for repository scope). */
-  workspaceRoot?: string;
 }
 
 /**
  * Kiro IDE entry.
  */
-export interface KiroTarget extends TargetCommon {
+export interface KiroTarget extends ScopedTargetBase, PathAndKindsTargetFields, RepositoryTargetFields {
   type: 'kiro';
-  scope: 'user' | 'repository';
-  path?: string;
-  allowedKinds?: string[];
-  /** Commit mode for repository scope: tracked by git or excluded. */
-  commitMode?: 'commit' | 'local-only';
-  /** Workspace root path (required for repository scope). */
-  workspaceRoot?: string;
 }
 
 /**
  * Windsurf editor entry.
  */
-export interface WindsurfTarget extends TargetCommon {
+export interface WindsurfTarget extends ScopedTargetBase, PathAndKindsTargetFields, RepositoryTargetFields {
   type: 'windsurf';
-  scope: 'user' | 'repository';
-  path?: string;
-  allowedKinds?: string[];
-  /** Commit mode for repository scope: tracked by git or excluded. */
-  commitMode?: 'commit' | 'local-only';
-  /** Workspace root path (required for repository scope). */
-  workspaceRoot?: string;
 }
 
 /**
  * Anthropic Claude Code entry. (D18 / iter 39)
  */
-export interface ClaudeCodeTarget extends TargetCommon {
+export interface ClaudeCodeTarget extends ScopedTargetBase, PathAndKindsTargetFields, RepositoryTargetFields {
   type: 'claude-code';
-  scope: 'user' | 'repository';
-  path?: string;
-  allowedKinds?: string[];
-  /** Commit mode for repository scope: tracked by git or excluded. */
-  commitMode?: 'commit' | 'local-only';
-  /** Workspace root path (required for repository scope). */
-  workspaceRoot?: string;
 }
 
 /**

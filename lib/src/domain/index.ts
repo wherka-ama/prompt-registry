@@ -20,6 +20,11 @@ export type { PrimitiveKind, Primitive } from './primitive';
 
 export type {
   HubSourceSpec,
+  HubSourceType,
+} from './source/types';
+
+export type {
+  HubSourceSpec as HubSourceSpecLegacy,
   PluginItem,
   PluginItemKind,
   PluginManifest,
