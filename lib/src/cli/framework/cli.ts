@@ -193,6 +193,7 @@ export const runCli = async (argv: string[], opts: RunCliOptions): Promise<numbe
     format: (c: any) => cli.format(c),
 
     process: (input: any, subContext: any) => cli.process({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- clipanion process() accepts any input
       input,
       context: { ...clipanionCtx, ...(subContext as object) }
     }),
