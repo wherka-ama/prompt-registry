@@ -1,0 +1,7 @@
+.scannerwork/
+.primitive-index/
+ratings-output/
+eslint-report.json
+sonar-issues*
+.env.test
+

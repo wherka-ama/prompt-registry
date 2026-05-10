@@ -1,0 +1,264 @@
+/**
+ * Phase 6 / Iter 81-84 — `source` commands (D23 default-local-hub UX).
+ *
+ * Subcommands:
+ *   source add --type {github|local} --url <ref> [--id <id>] [--name <n>]
+ *                                                     [--enabled true|false]
+ *   source list [--hub <id>]
+ *   source remove <sourceId>
+ *
+ * Converted to clipanion class-based commands with property initializers.
+ */
+import {
+  envTokenProvider,
+  type HttpClient,
+  type TokenProvider,
+} from '../../install/http';
+import {
+  NodeHttpClient,
+} from '../../install/node-http-client';
+import {
+  generateSourceId,
+} from '../../install/source-id';
+import {
+  ActiveHubStore,
+  CompositeHubResolver,
+  GitHubHubResolver,
+  HubManager,
+  HubStore,
+  LocalHubResolver,
+  resolveUserConfigPaths,
+  UrlHubResolver,
+} from '../../registry-config';
+import {
+  Command,
+  Option,
+} from '../framework';
+import {
+  type CommandClass,
+  type Context,
+  formatOutput,
+  type OutputFormat,
+  RegistryError,
+  renderError,
+} from '../framework';
+
+/**
+ * Build HubManager instance.
+ * @param ctx CLI context.
+ * @param http HTTP client (optional test seam).
+ * @param tokens Token provider (optional test seam).
+ * @returns HubManager instance.
+ */
+const buildMgr = (ctx: Context, http?: HttpClient, tokens?: TokenProvider): HubManager => {
+  const paths = resolveUserConfigPaths(ctx.env);
+  const httpClient = http ?? new NodeHttpClient();
+  const tokenProvider = tokens ?? envTokenProvider(ctx.env);
+  const resolver = new CompositeHubResolver(
+    new GitHubHubResolver(httpClient, tokenProvider),
+    new LocalHubResolver(ctx.fs),
+    new UrlHubResolver(httpClient, tokenProvider)
+  );
+  return new HubManager(
+    new HubStore(paths.hubs, ctx.fs),
+    new ActiveHubStore(paths.activeHub, ctx.fs),
+    resolver
+  );
+};
+
+/**
+ * Context passed to source command execute methods.
+ */
+interface SourceCommandContext {
+  ctx: Context;
+  http?: HttpClient;
+  tokens?: TokenProvider;
+}
+
+/**
+ * Base class for source commands with shared context.
+ */
+abstract class BaseSourceCommand extends Command {
+  /**
+   * Get the CLI context. This needs to be set by the CLI entry point.
+   */
+  public commandContext!: SourceCommandContext;
+
+  public output = Option.String('--output');
+}
+
+/**
+ * source add - add a detached source to the default-local hub
+ */
+export class SourceAddCommand extends BaseSourceCommand {
+  public static readonly paths = [['source', 'add']];
+  public sourceType = Option.String('--type');
+  public url = Option.String('--url');
+  public sourceId = Option.String('--id');
+  public name = Option.String('--name');
+  public enabled = Option.Boolean('--enabled');
+
+  public async execute() {
+    const { ctx, http, tokens } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const mgr = buildMgr(ctx, http, tokens);
+
+    if (!this.url) {
+      return renderError(new RegistryError({
+        code: 'USAGE.MISSING_FLAG',
+        message: 'source add: --url <owner/repo|path> is required'
+      }), ctx);
+    }
+
+    const type = (this.sourceType ?? 'github') as 'github' | 'local';
+    const id = this.sourceId ?? generateSourceId(type, this.url);
+    const added = await mgr.addDetachedSource({
+      id, name: this.name ?? id, type, url: this.url,
+      enabled: this.enabled ?? true, priority: 0
+    });
+    formatOutput({
+      ctx, command: 'source.add', output: fmt, status: 'ok',
+      data: { source: added },
+      textRenderer: (d) => `Added source "${d.source.id}" (${d.source.type}: ${d.source.url}) to default-local hub.\n`
+    });
+    return 0;
+  }
+}
+
+/**
+ * source list - list sources across all hubs or a specific hub
+ */
+export class SourceListCommand extends BaseSourceCommand {
+  public static readonly paths = [['source', 'list']];
+  public hubId = Option.String('--hub');
+
+  public async execute() {
+    const { ctx, http, tokens } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const mgr = buildMgr(ctx, http, tokens);
+
+    try {
+      const sources = (this.hubId && this.hubId.length > 0)
+        ? await mgr.listSources(this.hubId)
+        : await mgr.listSourcesAcrossAllHubs();
+
+      formatOutput({
+        ctx, command: 'source.list', output: fmt, status: 'ok',
+        data: { sources },
+        textRenderer: (d) => d.sources.length === 0
+          ? 'No sources.\n'
+          : d.sources.map((s) => `${String(s.id)}  [${String(s.hubId)}]  ${String(s.type)}: ${String(s.url)}\n`).join('')
+      });
+      return 0;
+    } catch (err) {
+      ctx.stderr.write(`Error in source list: ${err instanceof Error ? err.message : String(err)}\n`);
+      if (err instanceof Error) {
+        ctx.stderr.write(`${err.stack}\n`);
+      }
+      return 1;
+    }
+  }
+}
+
+/**
+ * source remove - remove a detached source from the default-local hub
+ */
+export class SourceRemoveCommand extends BaseSourceCommand {
+  public static readonly paths = [['source', 'remove']];
+  public sourceId = Option.String();
+
+  public async execute() {
+    const { ctx, http, tokens } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const mgr = buildMgr(ctx, http, tokens);
+
+    if (!this.sourceId) {
+      return renderError(new RegistryError({
+        code: 'USAGE.MISSING_FLAG',
+        message: 'source remove: <sourceId> required'
+      }), ctx);
+    }
+
+    const removed = await mgr.removeDetachedSource(this.sourceId);
+    if (!removed) {
+      return renderError(new RegistryError({
+        code: 'BUNDLE.NOT_FOUND',
+        message: `source remove: "${this.sourceId}" not in default-local hub`
+      }), ctx);
+    }
+    formatOutput({
+      ctx, command: 'source.remove', output: fmt, status: 'ok',
+      data: { id: this.sourceId },
+      textRenderer: (d) => `Removed source "${d.id}".\n`
+    });
+    return 0;
+  }
+}
+
+/**
+ * Create a CommandDefinition wrapper for a source command class.
+ * This adapts native clipanion classes to the framework's CommandDefinition pattern.
+ * @param sourceCommandClass The source command class.
+ * @param ctx CLI context.
+ * @param http HTTP client (optional test seam).
+ * @param tokens Token provider (optional test seam).
+ * @param defaultOutput Default output format (optional).
+ * @returns CommandDefinition.
+ */
+const createSourceCommandDefinition = (
+  sourceCommandClass: new () => BaseSourceCommand & Command,
+  ctx: Context,
+  http?: HttpClient,
+  tokens?: TokenProvider,
+  defaultOutput?: string
+): CommandClass => {
+  class ConfiguredCommand extends (sourceCommandClass as any) {
+    public execute(): Promise<number | void> {
+      this.commandContext = { ctx, http, tokens };
+      if (defaultOutput !== undefined && !this.output) {
+        this.output = defaultOutput;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- dynamic subclass super delegation
+      return super.execute();
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- dynamic class static property
+  (ConfiguredCommand as any).paths = (sourceCommandClass as any).paths;
+  // eslint-disable-next-line new-cap, @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
+  (ConfiguredCommand as any).usage = Command.Usage({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- dynamic paths access
+    description: `source ${(sourceCommandClass as any).paths[0][1]}`,
+    category: 'Source Management'
+  });
+  return ConfiguredCommand as unknown as CommandClass;
+};
+
+/**
+ * Create source add command definition.
+ * @param ctx
+ * @param http
+ * @param tokens
+ * @param defaultOutput
+ */
+export const createSourceAddCommand = (ctx: Context, http?: HttpClient, tokens?: TokenProvider, defaultOutput?: string): CommandClass =>
+  createSourceCommandDefinition(SourceAddCommand, ctx, http, tokens, defaultOutput);
+
+/**
+ * Create source list command definition.
+ * @param ctx
+ * @param http
+ * @param tokens
+ * @param defaultOutput
+ */
+export const createSourceListCommand = (ctx: Context, http?: HttpClient, tokens?: TokenProvider, defaultOutput?: string): CommandClass =>
+  createSourceCommandDefinition(SourceListCommand, ctx, http, tokens, defaultOutput);
+
+/**
+ * Create source remove command definition.
+ * @param ctx
+ * @param http
+ * @param tokens
+ * @param defaultOutput
+ */
+export const createSourceRemoveCommand = (ctx: Context, http?: HttpClient, tokens?: TokenProvider, defaultOutput?: string): CommandClass =>
+  createSourceCommandDefinition(SourceRemoveCommand, ctx, http, tokens, defaultOutput);

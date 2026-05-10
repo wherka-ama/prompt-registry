@@ -29,9 +29,12 @@ export function loadItemKindsFromSchema(schemaDir?: string): string[] {
     const schemaPath = schemaDir
       ? path.join(schemaDir, 'collection.schema.json')
       : path.join(__dirname, '..', '..', 'schemas', 'collection.schema.json');
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSON.parse returns any
     const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- Dynamic schema access
     const kinds = schema?.properties?.items?.items?.properties?.kind?.enum;
     if (Array.isArray(kinds) && kinds.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Schema enum is string[]
       return kinds;
     }
   } catch {
@@ -162,7 +165,7 @@ export function normalizeRepoRelativePath(p: string): string {
     throw new Error('path must be a non-empty string');
   }
 
-  const s = String(p).trim().replace(/\\/g, '/').replace(/^\//, '');
+  const s = String(p).trim().replaceAll('\\', '/').replace(/^\//, '');
   if (!s) {
     throw new Error('path must be a non-empty string');
   }
@@ -279,7 +282,7 @@ export function validateCollectionFile(
   repoRoot: string,
   collectionFile: string
 ): FileValidationResult {
-  const rel = collectionFile.replace(/\\/g, '/');
+  const rel = collectionFile.replaceAll('\\', '/');
   const abs = path.isAbsolute(collectionFile)
     ? collectionFile
     : path.join(repoRoot, collectionFile);

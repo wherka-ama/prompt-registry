@@ -60,7 +60,7 @@ function listFilesRecursively(dirPath: string, basePath: string): string[] {
     if (entry.isDirectory()) {
       results.push(...listFilesRecursively(fullPath, basePath));
     } else {
-      const relPath = path.relative(basePath, fullPath).replace(/\\/g, '/');
+      const relPath = path.relative(basePath, fullPath).replaceAll('\\', '/');
       results.push(relPath);
     }
   }
@@ -79,7 +79,7 @@ export function resolveCollectionItemPaths(repoRoot: string, collection: Collect
   const allPaths: string[] = [];
 
   for (const item of items) {
-    if (!item || !item.path) {
+    if (!item?.path) {
       continue;
     }
 

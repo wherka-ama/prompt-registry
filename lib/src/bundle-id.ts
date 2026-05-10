@@ -22,6 +22,6 @@
  */
 export function generateBundleId(repoSlug: string, collectionId: string, version: string): string {
   // Normalize repo slug to use hyphens (consistent with runtime)
-  const normalizedSlug = repoSlug.replace('/', '-');
+  const normalizedSlug = repoSlug.replaceAll('/', '-');
   return `${normalizedSlug}-${collectionId}-v${version}`;
 }
