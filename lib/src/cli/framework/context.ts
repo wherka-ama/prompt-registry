@@ -5,42 +5,21 @@
  * subcommand performs IO. Spec §11.2 calls this "Context-only IO" and
  * §14.2 invariant #3 makes it ESLint-enforced (rule lands in iter 9).
  *
- * Shape captured here is the smallest contract that lets us:
- *   - run commands in unit tests with captured stdout/stderr,
- *   - inject a fake clock for cache/retry/timestamp determinism,
- *   - inject a fake filesystem in iter 2 (memfs),
- *   - inject a fake network in iter 2 (undici MockAgent),
- *   - record the requested exit code without terminating the process.
- *
- * This file deliberately holds *only* type definitions plus the abstraction
- * sub-interfaces (Fs, Net, Clock). Concrete production implementations of
- * those sub-interfaces are written in iter 2 (production-context.ts) and
- * the in-memory test factory lives in test-context.ts.
- *
- * Why this layout:
- *   - keeping interfaces in one file gives a stable surface to import from
- *     anywhere in `lib/src/cli/framework/` without circular imports;
- *   - command code only ever imports the interface, not the implementation,
- *     so the eslint rule in iter 9 can ban concrete imports;
- *   - the same shape is used in both production and tests, ruling out
- *     drift between what we test and what ships.
+ * `FileSystem` and `Clock` are defined in `../../ports/` and re-exported
+ * here as backward-compatible type aliases (`FsAbstraction`, `ClockAbstraction`).
+ * Feature layers (install/, registry-config/) import directly from ports;
+ * CLI-layer code may continue to import from this file via the framework barrel.
  */
+import type {
+  Clock,
+  FileSystem,
+} from '../../ports';
 
 /**
- * Filesystem abstraction — eight operations cover every read/write pattern
- * found in the existing 11 binaries (per spec §11.2 inventory). Concrete
- * implementations land in iter 2; iter 1 only nails down the shape.
+ * Filesystem abstraction — backward-compatible alias for {@link FileSystem}.
+ * New code should import `FileSystem` from `../../ports/filesystem` directly.
  */
-export interface FsAbstraction {
-  readFile(path: string): Promise<string>;
-  writeFile(path: string, contents: string): Promise<void>;
-  readJson<T = unknown>(path: string): Promise<T>;
-  writeJson(path: string, value: unknown): Promise<void>;
-  exists(path: string): Promise<boolean>;
-  mkdir(path: string, opts?: { recursive?: boolean }): Promise<void>;
-  readDir(path: string): Promise<string[]>;
-  remove(path: string, opts?: { recursive?: boolean }): Promise<void>;
-}
+export type FsAbstraction = FileSystem;
 
 /**
  * Network abstraction — single fetch-like call returning a streaming body.
@@ -66,22 +45,14 @@ export interface NetResponse {
 }
 
 /**
- * Clock abstraction — `now()` returns epoch milliseconds. Iter 2 wraps
- * `Date.now()`; the test factory in this iter offers a manual `advance()`
- * lever so we can pin the clock and step it forward deterministically.
+ * Clock abstraction — backward-compatible alias for {@link Clock}.
+ * New code should import `Clock` from `../../ports/clock` directly.
  */
-export interface ClockAbstraction {
-  now(): number;
-}
+export type ClockAbstraction = Clock;
 
-/**
- * Test-clock extension — the manual `advance()` lever used by golden
- * tests. Production code never sees this type; only the test factory
- * upcasts to `ClockAbstraction` when handing it to commands.
- */
-export interface TestClock extends ClockAbstraction {
-  advance(ms: number): void;
-}
+export type {
+  TestClock,
+} from '../../ports/clock';
 
 /**
  * Output stream abstraction — `write()` is the only sink, mirroring the
@@ -112,7 +83,7 @@ export interface InputStream {
  * surface the command might need plus environment/cwd/exit hooks.
  */
 export interface Context {
-  fs: FsAbstraction;
+  fs: FileSystem;
   net: NetAbstraction;
   clock: ClockAbstraction;
   stdin: InputStream;

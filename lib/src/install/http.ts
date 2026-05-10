@@ -1,69 +1,23 @@
 /**
  * Phase 5 spillover / Iter 16 — HttpClient + TokenProvider.
  *
- * Two small interfaces decouple the resolver/downloader from a
- * concrete network stack:
- *
- *   - `HttpClient`     — the surface we use against GitHub's REST
- *                        and against arbitrary asset URLs. Honors
- *                        redirects up to a depth limit.
- *   - `TokenProvider`  — supplies an auth bearer token for a host.
- *                        The CLI ships a default impl backed by env
- *                        vars + a config file; the extension can
- *                        plug in its own (vscode auth -> gh CLI -> …).
+ * Interfaces are defined in `../ports/http` and re-exported here for
+ * backward compatibility. Concrete implementations (NULL_TOKEN_PROVIDER,
+ * envTokenProvider, etc.) remain in this file.
  *
  * Spec/decisions: D14 (resolver = non-VS-Code slice of adapter),
  * D17 (pluggable token provider).
  */
+import type {
+  TokenProvider,
+} from '../ports/http';
 
-/**
- * A single HTTP response surfaced by HttpClient.
- */
-export interface HttpResponse {
-  /** Status code as returned by the upstream after redirect handling. */
-  statusCode: number;
-  /** Raw response body bytes. */
-  body: Uint8Array;
-  /** Final URL after redirect chain (matches statusCode). */
-  finalUrl: string;
-  /** Lower-cased response headers. */
-  headers: Record<string, string>;
-}
-
-/**
- * Request options accepted by `HttpClient.fetch`.
- */
-export interface HttpRequest {
-  /** Absolute URL. */
-  url: string;
-  /** HTTP method; defaults to 'GET'. */
-  method?: 'GET' | 'HEAD';
-  /** Request headers (case-insensitive). */
-  headers?: Record<string, string>;
-  /** Maximum redirect chain length; defaults to 5. */
-  maxRedirects?: number;
-}
-
-/**
- * The minimal HTTP surface the install pipeline needs.
- */
-export interface HttpClient {
-  fetch(req: HttpRequest): Promise<HttpResponse>;
-}
-
-/**
- * Supplies an auth token (or null) for a given host.
- */
-export interface TokenProvider {
-  /**
-   * Resolve a token for a host (e.g. 'github.com', 'api.github.com').
-   * Implementations may consult env vars, a credentials file, or a
-   * VS-Code authentication session.
-   * @param host Lower-case hostname.
-   * @returns Token string or null when no auth is available.
-   */
-  getToken(host: string): Promise<string | null>;
-}
+export type {
+  HttpClient,
+  HttpRequest,
+  HttpResponse,
+  TokenProvider,
+} from '../ports/http';
 
 /**
  * Token provider that always returns null (public-only).

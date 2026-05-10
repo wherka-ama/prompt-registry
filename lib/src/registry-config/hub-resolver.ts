@@ -14,9 +14,6 @@
 import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import {
-  type FsAbstraction,
-} from '../cli/framework';
-import {
   type HubConfig,
   type HubReference,
   isHubConfig,
@@ -25,6 +22,9 @@ import {
   type HttpClient,
   type TokenProvider,
 } from '../install/http';
+import type {
+  FileSystem,
+} from '../ports/filesystem';
 
 export interface ResolvedHub {
   config: HubConfig;
@@ -86,7 +86,7 @@ export class LocalHubResolver implements HubResolver {
    * Construct a LocalHubResolver instance.
    * @param fs Filesystem abstraction.
    */
-  public constructor(private readonly fs: FsAbstraction) {}
+  public constructor(private readonly fs: FileSystem) {}
 
   private async findConfig(location: string): Promise<string> {
     if (await this.fs.exists(location)) {

@@ -19,11 +19,11 @@
  */
 
 import type {
-  FsAbstraction,
-} from '../cli/framework';
-import type {
   RegistrySource,
 } from '../domain/registry';
+import type {
+  FileSystem,
+} from '../ports/filesystem';
 import {
   AwesomeCopilotBundleResolver,
 } from './awesome-copilot-resolver';
@@ -49,7 +49,7 @@ export interface SourceDispatcherOptions {
   /** Token provider for authenticated requests. */
   tokens: TokenProvider;
   /** Filesystem abstraction for local sources. */
-  fs: FsAbstraction;
+  fs: FileSystem;
 }
 
 /**
@@ -58,7 +58,7 @@ export interface SourceDispatcherOptions {
 export class SourceDispatcher {
   private readonly http: HttpClient;
   private readonly tokens: TokenProvider;
-  private readonly fs: FsAbstraction;
+  private readonly fs: FileSystem;
 
   public constructor(opts: SourceDispatcherOptions) {
     this.http = opts.http;

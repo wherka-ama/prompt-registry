@@ -22,9 +22,6 @@
  */
 import * as path from 'node:path';
 import {
-  type FsAbstraction,
-} from '../cli/framework';
-import {
   type Profile,
   type ProfileActivationState,
   type RegistrySource,
@@ -61,10 +58,13 @@ import {
 import {
   YauzlBundleExtractor,
 } from '../install/yauzl-extractor';
+import type {
+  FileSystem,
+} from '../ports/filesystem';
 
 export interface ProfileActivatorDeps {
   /** Filesystem abstraction. */
-  fs: FsAbstraction;
+  fs: FileSystem;
   /** Env (passed to FileTreeTargetWriter for ${HOME} expansion). */
   env: Record<string, string | undefined>;
   /** HttpClient for github resolves + downloads. */

@@ -12,11 +12,11 @@
  */
 
 import type {
-  FsAbstraction,
-} from '../cli/framework';
-import type {
   Target,
 } from '../domain/install';
+import type {
+  FileSystem,
+} from '../ports/filesystem';
 import type {
   LockfileEntry,
 } from './lockfile';
@@ -34,7 +34,7 @@ import type {
  */
 export interface UninstallPipelineOptions {
   /** Filesystem abstraction. */
-  fs: FsAbstraction;
+  fs: FileSystem;
   /** Target to uninstall from. */
   target: Target;
   /** Lockfile path. */
@@ -71,7 +71,7 @@ export interface UninstallResult {
  * Uninstall pipeline for bundle removal.
  */
 export class UninstallPipeline {
-  private readonly fs: FsAbstraction;
+  private readonly fs: FileSystem;
   private readonly target: Target;
   private readonly lockfile: string;
   private readonly writerFactory: (target: Target) => TargetWriter;

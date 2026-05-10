@@ -21,12 +21,12 @@
 import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import {
-  type FsAbstraction,
-} from '../cli/framework';
-import {
   type BundleSpec,
   type Installable,
 } from '../domain/install';
+import type {
+  FileSystem,
+} from '../ports/filesystem';
 import {
   type HttpClient,
   type TokenProvider,
@@ -201,11 +201,11 @@ export interface LocalSkillsResolverOptions {
   /** Path on disk to the skills repo root. */
   rootPath: string;
   skillsPath?: string;
-  fs: FsAbstraction;
+  fs: FileSystem;
 }
 
 /**
- * Same as SkillsBundleResolver but reads from a local clone of the
+ * Local-filesystem skills resolver. Same convention but reads from a local clone of the
  * skills repo. The `rootPath` may be absolute or `file://`-prefixed.
  */
 export class LocalSkillsBundleResolver implements BundleResolver {
@@ -280,7 +280,7 @@ export class LocalSkillsBundleResolver implements BundleResolver {
 export interface LocalAwesomeCopilotResolverOptions {
   rootPath: string;
   collectionsPath?: string;
-  fs: FsAbstraction;
+  fs: FileSystem;
 }
 
 /**

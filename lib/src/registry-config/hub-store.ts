@@ -9,14 +9,14 @@
 import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import {
-  type FsAbstraction,
-} from '../cli/framework';
-import {
   type HubConfig,
   type HubReference,
   isHubConfig,
   sanitizeHubId,
 } from '../domain/registry';
+import type {
+  FileSystem,
+} from '../ports/filesystem';
 
 /**
  * Sidecar metadata stored next to each hub-config YAML.
@@ -48,7 +48,7 @@ export class HubStore {
    */
   public constructor(
     private readonly hubsDir: string,
-    private readonly fs: FsAbstraction
+    private readonly fs: FileSystem
   ) {}
 
   private configPath(safeId: string): string {

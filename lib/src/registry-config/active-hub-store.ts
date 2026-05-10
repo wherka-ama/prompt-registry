@@ -5,9 +5,9 @@
  * Singleton across all hubs (D21 mirror at the hub level: the
  * profile invariant builds on top of the active-hub invariant).
  */
-import {
-  type FsAbstraction,
-} from '../cli/framework';
+import type {
+  FileSystem,
+} from '../ports/filesystem';
 
 interface ActiveHubFile {
   hubId: string | null;
@@ -26,7 +26,7 @@ export class ActiveHubStore {
    */
   public constructor(
     private readonly activeHubPath: string,
-    private readonly fs: FsAbstraction
+    private readonly fs: FileSystem
   ) {}
 
   /**

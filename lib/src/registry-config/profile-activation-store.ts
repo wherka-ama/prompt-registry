@@ -8,11 +8,11 @@
  */
 import * as path from 'node:path';
 import {
-  type FsAbstraction,
-} from '../cli/framework';
-import {
   type ProfileActivationState,
 } from '../domain/registry';
+import type {
+  FileSystem,
+} from '../ports/filesystem';
 
 /**
  * Filesystem-backed profile-activation store. Lives at
@@ -26,7 +26,7 @@ export class ProfileActivationStore {
    */
   public constructor(
     private readonly dir: string,
-    private readonly fs: FsAbstraction
+    private readonly fs: FileSystem
   ) {}
 
   private statePath(hubId: string, profileId: string): string {

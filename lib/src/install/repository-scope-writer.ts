@@ -19,11 +19,11 @@ import {
   load as parseYaml,
 } from 'js-yaml';
 import type {
-  FsAbstraction,
-} from '../cli/framework';
-import type {
   Target,
 } from '../domain/install';
+import type {
+  FileSystem,
+} from '../ports/filesystem';
 import type {
   ExtractedFiles,
 } from './extractor';
@@ -47,7 +47,7 @@ export type RepositoryCommitMode = 'commit' | 'local-only';
  */
 export interface RepositoryScopeWriterOptions {
   /** Filesystem abstraction. */
-  fs: FsAbstraction;
+  fs: FileSystem;
   /** Workspace root (repository root). */
   workspaceRoot: string;
   /** Commit mode for this installation. */
@@ -87,7 +87,7 @@ interface WriteResult {
  * - skills → .github/skills/<skill-name>/
  */
 export class RepositoryScopeWriter {
-  private readonly fs: FsAbstraction;
+  private readonly fs: FileSystem;
   private readonly workspaceRoot: string;
   private readonly commitMode: RepositoryCommitMode;
 

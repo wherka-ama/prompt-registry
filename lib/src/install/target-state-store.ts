@@ -12,8 +12,8 @@
  */
 
 import type {
-  FsAbstraction,
-} from '../cli/framework';
+  FileSystem,
+} from '../ports/filesystem';
 
 /**
  * State for a single target's last installation.
@@ -44,7 +44,7 @@ export interface TargetStateData {
  */
 export interface TargetStateStoreOptions {
   /** Filesystem abstraction. */
-  fs: FsAbstraction;
+  fs: FileSystem;
   /** Path to the state file (per-project or user-level). */
   statePath: string;
 }
@@ -53,7 +53,7 @@ export interface TargetStateStoreOptions {
  * Store for persisting and loading target state.
  */
 export class TargetStateStore {
-  private readonly fs: FsAbstraction;
+  private readonly fs: FileSystem;
   private readonly statePath: string;
 
   public constructor(opts: TargetStateStoreOptions) {
