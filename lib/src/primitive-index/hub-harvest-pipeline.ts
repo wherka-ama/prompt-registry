@@ -11,7 +11,7 @@
  * CLI command pipes those into stderr; tests can capture them.
  * @module primitive-index/hub-harvest-pipeline
  */
-import * as fs from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type {
   HubSourceSpec,
@@ -177,7 +177,7 @@ async function loadBaseSources(
   client: GitHubApiClient
 ): Promise<HubSourceSpec[]> {
   if (hubConfigFile !== undefined) {
-    return parseHubConfig(fs.readFileSync(hubConfigFile, 'utf8'));
+    return parseHubConfig(await readFile(hubConfigFile, 'utf8'));
   }
   if (noHubConfig) {
     return [];
