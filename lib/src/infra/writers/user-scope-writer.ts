@@ -16,7 +16,7 @@ import type {
 } from '../../domain/install';
 import type {
   ExtractedFiles,
-} from '../../install/extractor';
+} from '../../ports/bundle-extractor';
 import type {
   TargetWriter,
   TargetWriteResult,

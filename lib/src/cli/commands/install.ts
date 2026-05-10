@@ -47,22 +47,22 @@ import {
 } from '../../infra/writers/repo-scope-writer';
 import {
   checksumFiles,
-} from '../../install/checksum';
+} from '../../infra/checksum';
 import {
-  envTokenProvider,
-} from '../../install/http';
+  defaultTokenProvider,
+} from '../../infra/github/token';
 import {
   validateManifest,
-} from '../../install/manifest-validator';
+} from '../../domain/collection/manifest-validator';
 import {
   parseBundleSpec,
-} from '../../install/spec-parser';
+} from '../../domain/spec-parser';
 import {
   TargetStateStore,
-} from '../../install/target-state-store';
+} from '../../infra/stores/target-state-store';
 import {
   readTargets,
-} from '../../install/target-store';
+} from '../../infra/stores/target-store';
 import {
   type HttpClient,
   type TokenProvider,
@@ -121,7 +121,7 @@ export interface InstallOptions {
   /**
    * Phase 5 spillover / iter 31: dependency-injection seam for
    * tests. Production callers leave this undefined; the install
-   * command then constructs an `envTokenProvider(ctx.env)`.
+   * command then constructs an `defaultTokenProvider(ctx.env)`.
    */
   tokens?: TokenProvider;
   /**
@@ -374,7 +374,7 @@ async function performLockfileInstall(
   const matching = lock.entries.filter((e) => e.target === target.name);
   const sources = lock.sources ?? {};
   const http = opts.http ?? new NodeHttpClient();
-  const tokens = opts.tokens ?? envTokenProvider(ctx.env);
+  const tokens = opts.tokens ?? defaultTokenProvider(ctx.env);
   const writerFactory = createWriterFactory(ctx, opts);
   const writer = writerFactory(target);
 
@@ -454,7 +454,7 @@ async function performRemoteInstall(
       });
     }
     const http = opts.http ?? new NodeHttpClient();
-    const tokens = opts.tokens ?? envTokenProvider(ctx.env);
+    const tokens = opts.tokens ?? defaultTokenProvider(ctx.env);
     const resolver = new GitHubBundleResolver({ repoSlug, http, tokens });
     const downloader = new HttpsBundleDownloader(http, tokens);
     const extractor = new YauzlBundleExtractor();

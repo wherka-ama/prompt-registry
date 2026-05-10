@@ -18,7 +18,7 @@ import {
 import {
   type BundleDownloader,
   type DownloadResult,
-} from '../../install/downloader';
+} from '../../ports/bundle-downloader';
 import {
   type HttpClient,
   type TokenProvider,

@@ -26,13 +26,13 @@ import {
 } from '../../infra/stores/json-lockfile-store';
 import {
   envTokenProvider,
-} from '../../install/http';
+} from '../../infra/github/token';
 import {
   generateSourceId,
-} from '../../install/source-id';
+} from '../../domain/source-id';
 import {
   readTargets,
-} from '../../install/target-store';
+} from '../../infra/stores/target-store';
 import {
   type HttpClient,
   type TokenProvider,

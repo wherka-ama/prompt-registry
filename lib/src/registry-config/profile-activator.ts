@@ -50,10 +50,10 @@ import {
 } from '../infra/writers/file-tree-writer';
 import {
   type ExtractedFiles,
-} from '../install/extractor';
+} from '../ports/bundle-extractor';
 import {
   validateManifest,
-} from '../install/manifest-validator';
+} from '../domain/collection/manifest-validator';
 import type {
   FileSystem,
 } from '../ports/filesystem';

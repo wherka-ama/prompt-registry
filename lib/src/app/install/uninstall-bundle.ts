@@ -13,7 +13,7 @@ import {
   UninstallPipeline,
   type UninstallPlan,
   type UninstallResult,
-} from '../../install/uninstall-pipeline';
+} from '../../app/install/uninstall-pipeline';
 import type {
   FileSystem,
 } from '../../ports/filesystem';

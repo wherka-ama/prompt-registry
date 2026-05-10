@@ -15,7 +15,7 @@
 import * as path from 'node:path';
 import type {
   ExtractedFiles,
-} from '../../install/extractor';
+} from '../../ports/bundle-extractor';
 
 export interface LocalDirFs {
   readDir(p: string): Promise<string[]>;

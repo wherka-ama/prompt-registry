@@ -9,6 +9,7 @@
 export * from './public';
 
 // Legacy exports for backward compatibility (Phase 1 Step 1.9: will be phased out)
+/** @deprecated Use curated public API from ./public instead */
 export type {
   ValidationResult,
   ObjectValidationResult,
@@ -21,6 +22,7 @@ export type {
   BundleInfo,
 } from './domain/collection/types';
 
+/** @deprecated Use curated public API from ./public instead */
 export {
   DEFAULT_VALIDATION_RULES as VALIDATION_RULES,
   validateCollectionId,
@@ -31,6 +33,7 @@ export {
   validateCollectionObject,
 } from './domain/collection/validate';
 
+/** @deprecated Use curated public API from ./public instead */
 export {
   loadItemKindsFromSchema,
   validateCollectionFile,
@@ -41,14 +44,17 @@ export {
   resolveCollectionItemPaths,
 } from './app/collection/read-collection';
 
+/** @deprecated Use curated public API from ./public instead */
 export { generateBundleId } from './domain/bundle/id';
 
+/** @deprecated Use curated public API from ./public instead */
 export type {
   SkillMetadata,
   SkillValidationResult,
   AllSkillsValidationResult,
 } from './domain/skill/validate';
 
+/** @deprecated Use curated public API from ./public instead */
 export {
   SKILL_NAME_MAX_LENGTH,
   SKILL_DESCRIPTION_MIN_LENGTH,
@@ -59,6 +65,7 @@ export {
   validateSkillDescription,
 } from './domain/skill/validate';
 
+/** @deprecated Use curated public API from ./public instead */
 export {
   validateSkillFolder,
   validateAllSkills,
@@ -67,6 +74,7 @@ export {
 } from './app/collection/generate-skill';
 
 // Domain layer exports - curated namespace
+/** @internal Internal domain layer - use public API instead */
 export * as domain from './domain';
 
 // Primitive Index API

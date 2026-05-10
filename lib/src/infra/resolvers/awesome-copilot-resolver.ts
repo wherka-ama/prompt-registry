@@ -20,10 +20,10 @@ import {
 } from '../../domain/install';
 import {
   generateSourceId,
-} from '../../install/source-id';
+} from '../../domain/source-id';
 import {
   buildZip,
-} from '../../install/zip-writer';
+} from '../../infra/writers/zip-writer';
 import {
   type HttpClient,
   type TokenProvider,

@@ -26,7 +26,7 @@ import * as yauzl from 'yauzl';
 import {
   type BundleExtractor,
   type ExtractedFiles,
-} from '../../install/extractor';
+} from '../../ports/bundle-extractor';
 
 /**
  * YauzlBundleExtractor - extracts bundle zips using yauzl.

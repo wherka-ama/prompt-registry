@@ -28,13 +28,13 @@ import {
 } from '../../infra/writers/repo-scope-writer';
 import {
   TargetStateStore,
-} from '../../install/target-state-store';
+} from '../../infra/stores/target-state-store';
 import {
   readTargets,
-} from '../../install/target-store';
+} from '../../infra/stores/target-store';
 import {
   UninstallPipeline,
-} from '../../install/uninstall-pipeline';
+} from '../../app/install/uninstall-pipeline';
 import {
   type CommandDefinition,
   type Context,

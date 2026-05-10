@@ -8,7 +8,7 @@
  */
 import {
   removeTargetByName,
-} from '../../install/target-store';
+} from '../../infra/stores/target-store';
 import {
   type CommandDefinition,
   type Context,

@@ -2,7 +2,7 @@
  * Phase 4 / Iter 29 → Phase 5 / Iter 3 — `target add`.
  *
  * Iter-3 wires the persist side: parse + validate input, then
- * delegate to `addTarget()` from the install/target-store module.
+ * delegate to `addTarget()` from the infra/stores/target-store module.
  * The command writes to the nearest project config (cargo upward
  * walk), creating one in `cwd` when none exists.
  *
@@ -20,7 +20,7 @@ import {
 } from '../../domain/install';
 import {
   addTarget,
-} from '../../install/target-store';
+} from '../../infra/stores/target-store';
 import {
   type CommandDefinition,
   type Context,

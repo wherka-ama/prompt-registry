@@ -13,13 +13,13 @@ import {
   envTokenProvider,
   type HttpClient,
   type TokenProvider,
-} from '../../install/http';
+} from '../../infra/github/token';
 import {
   NodeHttpClient,
-} from '../../install/node-http-client';
+} from '../../infra/http/node-http-client';
 import {
   generateSourceId,
-} from '../../install/source-id';
+} from '../../domain/source-id';
 import {
   ActiveHubStore,
   CompositeHubResolver,

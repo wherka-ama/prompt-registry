@@ -15,7 +15,7 @@ import {
   type InstallOutcome,
   InstallPipeline,
   type PipelineEvent,
-} from '../../install/pipeline';
+} from '../../app/install/pipeline';
 import type {
   BundleDownloader,
 } from '../../ports/bundle-downloader';

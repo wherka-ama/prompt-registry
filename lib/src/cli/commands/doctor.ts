@@ -20,14 +20,14 @@
  */
 import {
   envTokenProvider,
-} from '../../install/http';
+} from '../../infra/github/token';
 import {
   NodeHttpClient,
-} from '../../install/node-http-client';
+} from '../../infra/http/node-http-client';
 import {
   findProjectConfigPath,
   readTargets,
-} from '../../install/target-store';
+} from '../../infra/stores/target-store';
 import {
   ActiveHubStore,
   HubStore,

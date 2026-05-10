@@ -15,7 +15,7 @@ import {
 } from '../../domain/install';
 import {
   generateSourceId,
-} from '../../install/source-id';
+} from '../../domain/source-id';
 import {
   type HttpClient,
   type TokenProvider,
