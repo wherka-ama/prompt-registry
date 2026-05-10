@@ -62,6 +62,8 @@ export interface Profile {
  * (modulo the storage location difference per D20).
  */
 export interface ProfileActivationState {
+  /** Schema version for migration support. */
+  schemaVersion: 1;
   hubId: string;
   profileId: string;
   /** ISO-8601 timestamp of activation. */

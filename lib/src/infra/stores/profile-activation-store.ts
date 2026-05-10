@@ -48,13 +48,21 @@ export class ProfileActivationStore {
    * @param hubId Hub id.
    * @param profileId Profile id.
    * @returns State or null when no activation file exists.
+   * @throws Error if schema version is unsupported.
    */
   public async load(hubId: string, profileId: string): Promise<ProfileActivationState | null> {
     const p = this.statePath(hubId, profileId);
     if (!(await this.fs.exists(p))) {
       return null;
     }
-    return this.fs.readJson<ProfileActivationState>(p);
+    const state = await this.fs.readJson<ProfileActivationState>(p);
+    // Validate schema version
+    if (state.schemaVersion !== 1) {
+      throw new Error(
+        `Unsupported profile activation schema version: ${state.schemaVersion}. Expected version 1.`
+      );
+    }
+    return state;
   }
 
   /**
@@ -74,6 +82,7 @@ export class ProfileActivationStore {
    * Throws if more than one activation file is present (corrupt
    * state); callers may catch and remediate.
    * @returns The active state or null.
+   * @throws Error if schema version is unsupported.
    */
   public async getActive(): Promise<ProfileActivationState | null> {
     if (!(await this.fs.exists(this.dir))) {
@@ -88,12 +97,20 @@ export class ProfileActivationStore {
         `D21 violation: ${String(files.length)} active profiles on disk, expected at most 1: ${files.join(', ')}`
       );
     }
-    return this.fs.readJson<ProfileActivationState>(path.join(this.dir, files[0]));
+    const state = await this.fs.readJson<ProfileActivationState>(path.join(this.dir, files[0]));
+    // Validate schema version
+    if (state.schemaVersion !== 1) {
+      throw new Error(
+        `Unsupported profile activation schema version: ${state.schemaVersion}. Expected version 1.`
+      );
+    }
+    return state;
   }
 
   /**
    * List all activation states (debug / diagnostics).
    * @returns All on-disk activation states.
+   * @throws Error if schema version is unsupported.
    */
   public async listAll(): Promise<ProfileActivationState[]> {
     if (!(await this.fs.exists(this.dir))) {
@@ -102,7 +119,14 @@ export class ProfileActivationStore {
     const files = (await this.fs.readDir(this.dir)).filter((f) => f.endsWith('.json'));
     const out: ProfileActivationState[] = [];
     for (const f of files) {
-      out.push(await this.fs.readJson<ProfileActivationState>(path.join(this.dir, f)));
+      const state = await this.fs.readJson<ProfileActivationState>(path.join(this.dir, f));
+      // Validate schema version
+      if (state.schemaVersion !== 1) {
+        throw new Error(
+          `Unsupported profile activation schema version: ${state.schemaVersion}. Expected version 1.`
+        );
+      }
+      out.push(state);
     }
     return out;
   }
