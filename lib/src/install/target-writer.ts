@@ -27,24 +27,26 @@ import type {
 } from '../domain/install';
 import type {
   ExtractedFiles,
-} from './extractor';
+} from '../ports/bundle-extractor';
+import type {
+  TargetWriteResult,
+  TargetWriter,
+} from '../ports/target-writer';
+
+export type {
+  ExtractedFiles,
+} from '../ports/bundle-extractor';
+
+export type {
+  TargetWriteResult,
+  TargetWriter,
+} from '../ports/target-writer';
 
 export interface WriterFs {
   writeFile(p: string, contents: string): Promise<void>;
   mkdir(p: string, opts?: { recursive?: boolean }): Promise<void>;
   remove(p: string): Promise<void>;
   exists(p: string): Promise<boolean>;
-}
-
-/**
- * Result of a write operation.
- * Contains written and skipped file paths.
- */
-export interface TargetWriteResult {
-  /** Absolute paths of files written. */
-  written: string[];
-  /** Files in the bundle that were skipped (kind not allowed). */
-  skipped: string[];
 }
 
 /**
@@ -59,26 +61,9 @@ export interface TargetRemoveResult {
 }
 
 /**
- * Interface for writing bundle files to a target.
- * Supports write and remove operations with target-specific layouts.
+ * @deprecated Use {@link TargetWriter} from `../ports/target-writer` directly.
+ * This re-exported interface stays here for backward compatibility.
  */
-export interface TargetWriter {
-  /**
-   * Write the bundle into the target.
-   * @param target - Target chosen via `--target <name>`.
-   * @param files - Extracted bundle files.
-   * @returns TargetWriteResult.
-   */
-  write(target: Target, files: ExtractedFiles): Promise<TargetWriteResult>;
-
-  /**
-   * Phase 1 Step 1.8: Remove files from the target.
-   * @param target - Target chosen via `--target <name>`.
-   * @param filePath - Relative file path to remove (from bundle root).
-   * @returns Promise that resolves when file is removed or skipped.
-   */
-  remove(target: Target, filePath: string): Promise<void>;
-}
 
 /**
  * Mapping from a primitive kind to a relative subdirectory.

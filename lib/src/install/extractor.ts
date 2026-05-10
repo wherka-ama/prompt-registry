@@ -1,35 +1,19 @@
 /**
  * Phase 5 / Iter 13 — BundleExtractor interface + dictionary impl.
  *
- * Extractor = "given zip bytes, produce a map<relative-path, bytes>".
- * The real impl uses a zip-reader library (adm-zip is the candidate
- * for Phase 5 spillover); this iter ships the interface plus a
- * dictionary impl that takes already-extracted contents directly.
- *
- * The pipeline calls `extract(bytes)` and uses the returned map to
- * (a) read `deployment-manifest.yml`, (b) feed primitive files to
- * the target writers. Streaming isn't a concern because Copilot
- * bundles are small (<1 MB typical).
+ * `ExtractedFiles` and `BundleExtractor` are defined in `../ports/bundle-extractor`
+ * and re-exported here for backward compatibility. Concrete implementations
+ * (`DictBundleExtractor`, `filesFromRecord`) remain in this file.
  */
+import type {
+  BundleExtractor,
+  ExtractedFiles,
+} from '../ports/bundle-extractor';
 
-/**
- * Type for extracted bundle files.
- * Map of relative paths to file bytes.
- */
-export type ExtractedFiles = ReadonlyMap<string, Uint8Array>;
-
-/**
- * Interface for extracting bundle bytes into file maps.
- * Used by the install pipeline to decode zip bytes into a path → bytes map.
- */
-export interface BundleExtractor {
-  /**
-   * Decode bundle bytes into a path → bytes map.
-   * @param bytes - Bytes (typically zip) from the downloader.
-   * @returns ExtractedFiles map.
-   */
-  extract(bytes: Uint8Array): Promise<ExtractedFiles>;
-}
+export type {
+  BundleExtractor,
+  ExtractedFiles,
+} from '../ports/bundle-extractor';
 
 /**
  * Test-double extractor that returns a pre-supplied file map.

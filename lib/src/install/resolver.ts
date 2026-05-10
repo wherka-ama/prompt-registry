@@ -1,33 +1,21 @@
 /**
  * Phase 5 / Iter 11 — BundleResolver interface + in-memory impl.
  *
- * Resolver = "given a parsed BundleSpec, where is the bundle and
- * what version are we installing?". Real resolvers (GitHub-API,
- * hub-catalog) talk to network; this iter ships only the interface
- * plus an in-memory implementation that's enough to drive the
- * install pipeline tests deterministically.
- *
- * The real GitHub-API resolver and hub-catalog resolver are
- * Phase-5-spillover deliverables; the install pipeline (iter 23)
- * is decoupled from them via this interface.
+ * `BundleResolver` is defined in `../ports/source-resolver` and
+ * re-exported here for backward compatibility. `MapBundleResolver`
+ * (the in-memory test double) remains in this file.
  */
+import type {
+  BundleResolver,
+} from '../ports/source-resolver';
 import type {
   BundleSpec,
   Installable,
 } from '../domain/install';
 
-/**
- * Interface for resolving bundle specs to installables.
- * Given a parsed BundleSpec, determines where the bundle is and what version to install.
- */
-export interface BundleResolver {
-  /**
-   * Resolve a parsed BundleSpec to a downloadable Installable.
-   * @param spec - Parsed install positional.
-   * @returns Resolved Installable, or null when not found.
-   */
-  resolve(spec: BundleSpec): Promise<Installable | null>;
-}
+export type {
+  BundleResolver,
+} from '../ports/source-resolver';
 
 /**
  * Test-double resolver backed by an in-memory map.

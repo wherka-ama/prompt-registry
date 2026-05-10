@@ -1,44 +1,22 @@
 /**
  * Phase 5 / Iter 12 — BundleDownloader interface + memory impl.
  *
- * Downloader = "given an Installable, fetch the bundle bytes and
- * verify integrity". Real impls use HTTP / signed URLs; this iter
- * ships only the interface plus an in-memory double sufficient for
- * piping the install pipeline's tests.
- *
- * The downloader returns raw bytes (a `Uint8Array`); zip extraction
- * is the next stage (iter 13/14). Splitting download from extract
- * lets us test integrity verification in isolation and lets future
- * iters add caching by URL without changing the downstream API.
+ * `BundleDownloader` and `DownloadResult` are defined in `../ports/bundle-downloader`
+ * and re-exported here for backward compatibility. `MemoryBundleDownloader`
+ * and `sha256Hex` remain in this file.
  */
+import type {
+  BundleDownloader,
+  DownloadResult,
+} from '../ports/bundle-downloader';
 import type {
   Installable,
 } from '../domain/install';
 
-/**
- * Result of a download operation.
- * Contains the raw bytes and their SHA-256 digest.
- */
-export interface DownloadResult {
-  /** Raw bundle bytes (zip). */
-  bytes: Uint8Array;
-  /** SHA-256 hex digest of bytes (computed by the impl). */
-  sha256: string;
-}
-
-/**
- * Interface for downloading bundle bytes.
- * Fetches bundle bytes and verifies integrity.
- */
-export interface BundleDownloader {
-  /**
-   * Download the bundle's bytes and compute their SHA-256.
-   * @param installable - Resolved Installable from the resolver.
-   * @returns DownloadResult.
-   * @throws {Error} On network failure or integrity mismatch.
-   */
-  download(installable: Installable): Promise<DownloadResult>;
-}
+export type {
+  BundleDownloader,
+  DownloadResult,
+} from '../ports/bundle-downloader';
 
 /**
  * Test-double downloader backed by an in-memory map keyed on

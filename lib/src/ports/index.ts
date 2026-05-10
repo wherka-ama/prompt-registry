@@ -30,3 +30,22 @@ export type {
   GitHubApi,
   RateLimitTelemetry,
 } from './github-api';
+
+export type {
+  BundleDownloader,
+  DownloadResult,
+} from './bundle-downloader';
+
+export type {
+  BundleExtractor,
+  ExtractedFiles,
+} from './bundle-extractor';
+
+export type {
+  BundleResolver,
+} from './source-resolver';
+
+export type {
+  TargetWriteResult,
+  TargetWriter,
+} from './target-writer';
