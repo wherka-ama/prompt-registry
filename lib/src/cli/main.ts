@@ -14,6 +14,12 @@
 import * as nodeFs from 'node:fs';
 import * as nodePath from 'node:path';
 import {
+  envTokenProvider,
+} from '../infra/github/token';
+import {
+  NodeHttpClient,
+} from '../infra/http/node-http-client';
+import {
   createBundleBuildCommand,
 } from './commands/bundle-build';
 import {
@@ -137,6 +143,10 @@ export const main = async (argv: string[]): Promise<number> => {
   // Parse common flags
   const parsed = parseArgs(argv);
 
+  // Create HTTP client and token provider for hub/profile commands
+  const httpClient = new NodeHttpClient();
+  const tokenProvider = envTokenProvider(ctx.env);
+
   const commands = [
     createBundleBuildCommand({
       output: parsed.output,
@@ -209,27 +219,29 @@ export const main = async (argv: string[]): Promise<number> => {
   ];
 
   const commandClasses = [
-    createHubListCommand(ctx, undefined, undefined, parsed.output),
-    createHubAddCommand(ctx, undefined, undefined, parsed.output),
-    createHubUseCommand(ctx, undefined, undefined, parsed.output),
-    createHubRemoveCommand(ctx, undefined, undefined, parsed.output),
-    createHubSyncCommand(ctx, undefined, undefined, parsed.output),
-    createSourceAddCommand(ctx, undefined, undefined, parsed.output),
-    createSourceListCommand(ctx, undefined, undefined, parsed.output),
-    createSourceRemoveCommand(ctx, undefined, undefined, parsed.output),
-    createProfileListCommand(ctx, undefined, undefined, parsed.output),
-    createProfileShowCommand(ctx, undefined, undefined, parsed.output),
-    createProfileActivateCommand(ctx, undefined, undefined, parsed.output),
-    createProfileDeactivateCommand(ctx, undefined, undefined, parsed.output),
-    createProfileCurrentCommand(ctx, undefined, undefined, parsed.output)
+    createHubListCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createHubAddCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createHubUseCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createHubRemoveCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createHubSyncCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createSourceAddCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createSourceListCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createSourceRemoveCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createProfileListCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createProfileShowCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createProfileActivateCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createProfileDeactivateCommand(ctx, httpClient, tokenProvider, parsed.output),
+    createProfileCurrentCommand(ctx, httpClient, tokenProvider, parsed.output)
   ];
 
-  return runCli(parsed.positional, {
+  return runCli(argv, {
     ctx,
     commands,
     commandClasses,
     name: 'prompt-registry',
-    version: readPackageVersion()
+    version: readPackageVersion(),
+    http: httpClient,
+    tokens: tokenProvider
   });
 };
 

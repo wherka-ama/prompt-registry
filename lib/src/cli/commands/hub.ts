@@ -91,7 +91,7 @@ abstract class BaseHubCommand extends Command {
    */
   public commandContext!: HubCommandContext;
 
-  public output = Option.String('--output');
+  public output = Option.String('-o,--output');
 }
 
 /**
@@ -309,7 +309,7 @@ const createHubCommandDefinition = (
   defaultOutput?: string
 ): CommandClass => {
   class ConfiguredCommand extends (hubCommandClass as any) {
-    public execute(): Promise<number | void> {
+    public async execute(): Promise<number | void> {
       this.commandContext = { ctx, http, tokens };
       if (defaultOutput !== undefined && !this.output) {
         this.output = defaultOutput;
@@ -318,6 +318,7 @@ const createHubCommandDefinition = (
       return super.execute();
     }
   }
+  // Copy all static properties from the original class
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- dynamic class config
   (ConfiguredCommand as any).paths = (hubCommandClass as any).paths;
 

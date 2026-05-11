@@ -58,6 +58,10 @@ export interface RunCliOptions {
   name: string;
   /** Binary version reported by --version. */
   version: string;
+  /** Optional HTTP client for hub/profile commands. */
+  http?: any;
+  /** Optional token provider for hub/profile commands. */
+  tokens?: any;
 }
 
 /**
@@ -202,6 +206,13 @@ export const runCli = async (argv: string[], opts: RunCliOptions): Promise<numbe
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- clipanion internal API accepts any
     usage: (c: any, o: any) => cli.usage(c, o)
   };
+
+  // Inject commandContext for hub/profile/source commands that need it
+
+  if (opts.http !== undefined || opts.tokens !== undefined) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- dynamic property assignment on native clipanion command instance
+    (command as any).commandContext = { ctx: opts.ctx, http: opts.http, tokens: opts.tokens };
+  }
 
   // Per-command --help: clipanion sets `command.help = true` when -h/
   // --help follows a registered command path. Honour that by printing

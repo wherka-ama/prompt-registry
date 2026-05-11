@@ -136,7 +136,7 @@ abstract class BaseProfileCommand extends Command {
    */
   public commandContext!: ProfileCommandContext;
 
-  public output = Option.String('--output');
+  public output = Option.String('-o,--output');
   public hubId = Option.String('--hub');
 }
 
