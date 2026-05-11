@@ -16,28 +16,28 @@
  * - Factory routes to RepositoryScopeWriter for repository scope, FileTreeTargetWriter for user scope
  * - Enables lockfile updates to include commitMode for repository scope
  */
+import {
+  type ValidatedManifest,
+  validateManifest,
+} from '../../domain';
 import type {
   BundleSpec,
   Installable,
   Target,
-} from '../domain/install';
+} from '../../domain/install';
 import type {
   TargetWriter,
   TargetWriteResult,
-} from '../infra/writers/file-tree-writer';
+} from '../../infra/writers/file-tree-writer';
 import type {
   BundleDownloader,
-} from './downloader';
+} from '../../ports/bundle-downloader';
 import type {
   BundleExtractor,
-} from './extractor';
-import {
-  type ValidatedManifest,
-  validateManifest,
-} from './manifest-validator';
+} from '../../ports/bundle-extractor';
 import type {
   BundleResolver,
-} from './resolver';
+} from '../../ports/source-resolver';
 
 /**
  * Pipeline events emitted during install.

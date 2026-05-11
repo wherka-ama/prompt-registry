@@ -417,6 +417,8 @@ test/fixtures/
 └── golden-queries.json
 ```
 
+**Note:** The golden-queries.json file is now located at `test/fixtures/golden-queries.json`.
+
 ## Coverage
 
 ### Running with Coverage

@@ -43,14 +43,11 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:legacy": "npm run compile-tests && mocha 'dist-test/test/**/*.test.js'",
-    "bench": "RUN_BENCH=1 vitest run 'test-new/github-bench.test.ts'",
+    "bench": "RUN_BENCH=1 vitest run 'test/github-bench.test.ts'",
     "test:with-bench": "npm test && npm run bench",
-    "lint": "eslint src test-new",
-    "lint:fix": "eslint src test-new --fix",
-    "lint:report": "eslint src test test-new --format json --output-file eslint-report.json || true",
-    "lint:legacy-tests": "eslint test",
-    "lint:legacy-tests-fix": "eslint test --fix",
-    "lint:legacy-tests-report": "eslint test --format json --output-file eslint-report-legacy.json || true",
+    "lint": "eslint src test",
+    "lint:fix": "eslint src test --fix",
+    "lint:report": "eslint src test --format json --output-file eslint-report.json || true",
     "prepublishOnly": "npm run build"
   },
   "repository": {

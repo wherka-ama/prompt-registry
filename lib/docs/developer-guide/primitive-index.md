@@ -340,7 +340,7 @@ const idx = await PrimitiveIndex.buildFrom(mockProvider);
 ### Golden Query Testing
 
 ```typescript
-import goldenQueries from '../fixtures/golden-queries.json';
+import goldenQueries from '../../test/fixtures/golden-queries.json';
 
 for (const query of goldenQueries) {
   const results = idx.search({ q: query.q, limit: 5 });

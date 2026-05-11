@@ -21,11 +21,8 @@ import {
   dump as stringifyYaml,
 } from 'js-yaml';
 import type {
-  ConfigFs,
-} from '../cli/framework/config';
-import type {
   Target,
-} from '../domain/install';
+} from '../../domain/install';
 
 const PROJECT_CONFIG_NAMES = ['prompt-registry.yml', 'prompt-registry.yaml'];
 
@@ -33,7 +30,9 @@ export interface TargetStoreOptions {
   /** Working directory; upward walk starts here. */
   cwd: string;
   /** ConfigFs adapter (read+write subset). */
-  fs: ConfigFs & {
+  fs: {
+    readFile(path: string): Promise<string>;
+    exists(path: string): Promise<boolean>;
     writeFile(path: string, contents: string): Promise<void>;
     mkdir?(path: string, opts?: { recursive?: boolean }): Promise<void>;
   };

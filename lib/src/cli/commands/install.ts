@@ -10,15 +10,27 @@
  *   prompt-registry install --lockfile <path>   (declarative from a lockfile)
  */
 import * as path from 'node:path';
+import {
+  validateManifest,
+} from '../../domain';
 import type {
   Target,
 } from '../../domain/install';
+import {
+  parseBundleSpec,
+} from '../../domain/spec-parser';
+import {
+  checksumFiles,
+} from '../../infra/checksum';
 import {
   HttpsBundleDownloader,
 } from '../../infra/downloaders/https-downloader';
 import {
   YauzlBundleExtractor,
 } from '../../infra/extractors/yauzl-extractor';
+import {
+  defaultTokenProvider,
+} from '../../infra/github/token';
 import {
   NodeHttpClient,
 } from '../../infra/http/node-http-client';
@@ -37,6 +49,12 @@ import {
   writeLockfile,
 } from '../../infra/stores/json-lockfile-store';
 import {
+  TargetStateStore,
+} from '../../infra/stores/target-state-store';
+import {
+  readTargets,
+} from '../../infra/stores/target-store';
+import {
   FileTreeTargetWriter,
   type TargetWriter,
 } from '../../infra/writers/file-tree-writer';
@@ -45,24 +63,6 @@ import {
   RepositoryScopeWriter,
   RepositoryScopeWriterAdapter,
 } from '../../infra/writers/repo-scope-writer';
-import {
-  checksumFiles,
-} from '../../infra/checksum';
-import {
-  defaultTokenProvider,
-} from '../../infra/github/token';
-import {
-  validateManifest,
-} from '../../domain/collection/manifest-validator';
-import {
-  parseBundleSpec,
-} from '../../domain/spec-parser';
-import {
-  TargetStateStore,
-} from '../../infra/stores/target-state-store';
-import {
-  readTargets,
-} from '../../infra/stores/target-store';
 import {
   type HttpClient,
   type TokenProvider,

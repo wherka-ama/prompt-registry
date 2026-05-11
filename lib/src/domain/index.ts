@@ -50,6 +50,10 @@ export {
   isSafeRepoRelativePath,
   validateCollectionObject,
 } from './collection/validate';
+export { validateManifest } from './collection/manifest-validator';
+export type { ValidatedManifest } from './collection/manifest-validator';
+export { generateSourceId } from './source-id';
+export { parseBundleSpec, type BundleSpecParseError } from './spec-parser';
 
 export type {
   SkillMetadata,

@@ -18,7 +18,7 @@ import {
 } from 'js-yaml';
 import type {
   ExtractedFiles,
-} from './extractor';
+} from '../../ports/bundle-extractor';
 
 export const MANIFEST_FILENAME = 'deployment-manifest.yml';
 

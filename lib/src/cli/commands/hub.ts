@@ -13,12 +13,14 @@
 import * as path from 'node:path';
 import {
   envTokenProvider,
-  type HttpClient,
   type TokenProvider,
 } from '../../infra/github/token';
 import {
   NodeHttpClient,
 } from '../../infra/http/node-http-client';
+import type {
+  HttpClient,
+} from '../../ports/http';
 import {
   ActiveHubStore,
   CompositeHubResolver,

@@ -28,6 +28,9 @@ import {
   type Target,
 } from '../domain';
 import {
+  validateManifest,
+} from '../domain';
+import {
   type Installable,
 } from '../domain/install';
 import {
@@ -51,9 +54,6 @@ import {
 import {
   type ExtractedFiles,
 } from '../ports/bundle-extractor';
-import {
-  validateManifest,
-} from '../domain/collection/manifest-validator';
 import type {
   FileSystem,
 } from '../ports/filesystem';
@@ -265,6 +265,7 @@ export class ProfileActivator {
       versions[m.bundleId] = m.bundleVersion;
     }
     const state: ProfileActivationState = {
+      schemaVersion: 1,
       hubId: input.hubId,
       profileId: input.profile.id,
       activatedAt: new Date().toISOString(),

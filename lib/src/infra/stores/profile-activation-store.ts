@@ -48,7 +48,7 @@ export class ProfileActivationStore {
    * @param hubId Hub id.
    * @param profileId Profile id.
    * @returns State or null when no activation file exists.
-   * @throws Error if schema version is unsupported.
+   * @throws {Error} If schema version is unsupported.
    */
   public async load(hubId: string, profileId: string): Promise<ProfileActivationState | null> {
     const p = this.statePath(hubId, profileId);
@@ -59,7 +59,7 @@ export class ProfileActivationStore {
     // Validate schema version
     if (state.schemaVersion !== 1) {
       throw new Error(
-        `Unsupported profile activation schema version: ${state.schemaVersion}. Expected version 1.`
+        `Unsupported profile activation schema version: ${String(state.schemaVersion)}. Expected version 1.`
       );
     }
     return state;
@@ -69,6 +69,7 @@ export class ProfileActivationStore {
    * Delete an activation state. No-op when missing.
    * @param hubId Hub id.
    * @param profileId Profile id.
+   * @throws {Error} If deletion fails.
    */
   public async remove(hubId: string, profileId: string): Promise<void> {
     const p = this.statePath(hubId, profileId);
@@ -82,7 +83,7 @@ export class ProfileActivationStore {
    * Throws if more than one activation file is present (corrupt
    * state); callers may catch and remediate.
    * @returns The active state or null.
-   * @throws Error if schema version is unsupported.
+   * @throws {Error} If schema version is unsupported.
    */
   public async getActive(): Promise<ProfileActivationState | null> {
     if (!(await this.fs.exists(this.dir))) {
@@ -101,16 +102,16 @@ export class ProfileActivationStore {
     // Validate schema version
     if (state.schemaVersion !== 1) {
       throw new Error(
-        `Unsupported profile activation schema version: ${state.schemaVersion}. Expected version 1.`
+        `Unsupported profile activation schema version: ${String(state.schemaVersion)}. Expected version 1.`
       );
     }
     return state;
   }
 
   /**
-   * List all activation states (debug / diagnostics).
-   * @returns All on-disk activation states.
-   * @throws Error if schema version is unsupported.
+   * List all activation states.
+   * @returns Array of activation states.
+   * @throws {Error} If listing fails.
    */
   public async listAll(): Promise<ProfileActivationState[]> {
     if (!(await this.fs.exists(this.dir))) {
@@ -123,7 +124,7 @@ export class ProfileActivationStore {
       // Validate schema version
       if (state.schemaVersion !== 1) {
         throw new Error(
-          `Unsupported profile activation schema version: ${state.schemaVersion}. Expected version 1.`
+          `Unsupported profile activation schema version: ${String(state.schemaVersion)}. Expected version 1.`
         );
       }
       out.push(state);

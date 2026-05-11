@@ -10,6 +10,8 @@ import type {
   HttpResponse,
 } from '../../ports/http';
 
+export type { HttpClient, HttpRequest, HttpResponse } from '../../ports/http';
+
 /**
  * Production HTTP client using global fetch (Node 18+).
  */

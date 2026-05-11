@@ -4,7 +4,7 @@ import path from 'path';
 export default defineConfig({
   test: {
     root: './',
-    include: ['test-new/**/*.test.ts'],
+    include: ['test/**/*.test.ts'],
     exclude: [
       'node_modules',
       'dist',
@@ -27,8 +27,7 @@ export default defineConfig({
         'node_modules',
         'dist',
         'dist-test',
-        'test',
-        'test-new'
+        'test'
       ],
     },
   },

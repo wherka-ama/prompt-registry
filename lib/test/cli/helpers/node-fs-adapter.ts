@@ -1,41 +1,48 @@
 /**
- * Phase 4 helper — `createNodeFsAdapter()`.
- *
- * Many Phase 4 command tests need an `FsAbstraction` that proxies to
- * the real node:fs/promises against a temp directory. This helper
- * factors that bridge out of every `*.test.ts`. It is only used in
- * tests; the production Context wires `node:fs` via
- * `lib/src/cli/framework/production-context.ts`.
+ * Node.js filesystem adapter for CLI tests.
+ * Wraps node:fs/promises to match the FsAbstraction interface.
  */
+
 import * as fs from 'node:fs/promises';
 import type {
   FsAbstraction,
-} from '../../../src/cli/framework';
+} from '../../src/cli/framework/context';
 
 /**
- * Build an FsAbstraction backed by node:fs/promises. Suitable for
- * tests that operate against a tmpdir created with `fs.mkdtemp`.
- * @returns FsAbstraction proxying to node:fs/promises.
+ * Create a real filesystem adapter using node:fs/promises.
  */
-export const createNodeFsAdapter = (): FsAbstraction => ({
-  readFile: (p) => fs.readFile(p, 'utf8'),
-  writeFile: (p, c) => fs.writeFile(p, c, 'utf8'),
-  readJson: async <T = unknown>(p: string): Promise<T> =>
-    JSON.parse(await fs.readFile(p, 'utf8')) as T,
-  writeJson: (p, v) => fs.writeFile(p, JSON.stringify(v, null, 2), 'utf8'),
-  exists: async (p) => {
-    try {
-      await fs.access(p);
-      return true;
-    } catch {
-      return false;
+export function createNodeFsAdapter(): FsAbstraction {
+  return {
+    readFile: async (path: string): Promise<string> => {
+      return await fs.readFile(path, 'utf8');
+    },
+    writeFile: async (path: string, content: string): Promise<void> => {
+      await fs.writeFile(path, content, 'utf8');
+    },
+    readJson: async <T = unknown>(path: string): Promise<T> => {
+      const content = await fs.readFile(path, 'utf8');
+      return JSON.parse(content) as T;
+    },
+    writeJson: async (path: string, data: unknown): Promise<void> => {
+      await fs.writeFile(path, JSON.stringify(data, null, 2), 'utf8');
+    },
+    exists: async (path: string): Promise<boolean> => {
+      try {
+        await fs.access(path);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    mkdir: async (path: string): Promise<void> => {
+      await fs.mkdir(path, { recursive: true });
+    },
+    readDir: async (path: string): Promise<string[]> => {
+      const entries = await fs.readdir(path, { withFileTypes: true });
+      return entries.map((e) => e.name);
+    },
+    remove: async (path: string): Promise<void> => {
+      await fs.rm(path, { recursive: true, force: true });
     }
-  },
-  mkdir: async (p) => {
-    await fs.mkdir(p, { recursive: true });
-  },
-  readDir: (p) => fs.readdir(p),
-  remove: async (p) => {
-    await fs.rm(p, { recursive: true, force: true });
-  }
-});
+  };
+}

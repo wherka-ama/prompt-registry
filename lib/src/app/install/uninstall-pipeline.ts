@@ -13,21 +13,21 @@
 
 import type {
   Target,
-} from '../domain/install';
+} from '../../domain/install';
 import type {
   LockfileEntry,
-} from '../infra/stores/json-lockfile-store';
+} from '../../infra/stores/json-lockfile-store';
 import {
   readLockfile,
   removeEntry,
   writeLockfile,
-} from '../infra/stores/json-lockfile-store';
+} from '../../infra/stores/json-lockfile-store';
 import type {
   TargetWriter,
-} from '../infra/writers/file-tree-writer';
+} from '../../infra/writers/file-tree-writer';
 import type {
   FileSystem,
-} from '../ports/filesystem';
+} from '../../ports/filesystem';
 
 /**
  * Options for uninstall pipeline.

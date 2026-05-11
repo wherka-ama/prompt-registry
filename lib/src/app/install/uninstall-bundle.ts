@@ -6,14 +6,14 @@
  * classes; it only calls port interface methods.
  * @module app/install/uninstall-bundle
  */
-import type {
-  Target,
-} from '../../domain/install';
 import {
   UninstallPipeline,
   type UninstallPlan,
   type UninstallResult,
 } from '../../app/install/uninstall-pipeline';
+import type {
+  Target,
+} from '../../domain/install';
 import type {
   FileSystem,
 } from '../../ports/filesystem';

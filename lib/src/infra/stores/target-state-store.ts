@@ -13,7 +13,7 @@
 
 import type {
   FileSystem,
-} from '../ports/filesystem';
+} from '../../ports/filesystem';
 
 /**
  * State for a single target's last installation.

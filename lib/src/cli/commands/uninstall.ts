@@ -9,6 +9,9 @@
  * Uses UninstallPipeline for orchestration and updates lockfile entries.
  */
 import * as path from 'node:path';
+import {
+  UninstallPipeline,
+} from '../../app/install/uninstall-pipeline';
 import type {
   Target,
 } from '../../domain/install';
@@ -18,6 +21,12 @@ import {
   writeLockfile,
 } from '../../infra/stores/json-lockfile-store';
 import {
+  TargetStateStore,
+} from '../../infra/stores/target-state-store';
+import {
+  readTargets,
+} from '../../infra/stores/target-store';
+import {
   FileTreeTargetWriter,
   type TargetWriter,
 } from '../../infra/writers/file-tree-writer';
@@ -26,15 +35,6 @@ import {
   RepositoryScopeWriter,
   RepositoryScopeWriterAdapter,
 } from '../../infra/writers/repo-scope-writer';
-import {
-  TargetStateStore,
-} from '../../infra/stores/target-state-store';
-import {
-  readTargets,
-} from '../../infra/stores/target-store';
-import {
-  UninstallPipeline,
-} from '../../app/install/uninstall-pipeline';
 import {
   type CommandDefinition,
   type Context,

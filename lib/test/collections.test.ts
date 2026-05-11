@@ -1,15 +1,18 @@
-/**
- * Collections module tests
- */
-import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
+import {
   listCollectionFiles,
   readCollection,
   resolveCollectionItemPaths,
-} from '../src/collections';
+} from '../src/app/collection/read-collection';
 
 function createTempDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -44,10 +47,10 @@ describe('Collections Module', () => {
 
       const files = listCollectionFiles(tempDir);
 
-      assert.strictEqual(files.length, 2);
-      assert.ok(files.every((f: string) => f.endsWith('.collection.yml')));
-      assert.ok(files.some((f: string) => f.includes('first.collection.yml')));
-      assert.ok(files.some((f: string) => f.includes('second.collection.yml')));
+      expect(files.length).toBe(2);
+      expect(files.every((f: string) => f.endsWith('.collection.yml'))).toBe(true);
+      expect(files.some((f: string) => f.includes('first.collection.yml'))).toBe(true);
+      expect(files.some((f: string) => f.includes('second.collection.yml'))).toBe(true);
     });
 
     it('should return empty array when no collections exist', () => {
@@ -56,7 +59,7 @@ describe('Collections Module', () => {
 
       const files = listCollectionFiles(tempDir);
 
-      assert.strictEqual(files.length, 0);
+      expect(files.length).toBe(0);
     });
   });
 
@@ -74,10 +77,10 @@ items:
 
       const collection = readCollection(tempDir, 'collections/test.collection.yml');
 
-      assert.strictEqual(collection.id, 'test-collection');
-      assert.strictEqual(collection.name, 'Test Collection');
-      assert.ok(Array.isArray(collection.items));
-      assert.strictEqual(collection.items.length, 1);
+      expect(collection.id).toBe('test-collection');
+      expect(collection.name).toBe('Test Collection');
+      expect(Array.isArray(collection.items)).toBe(true);
+      expect(collection.items.length).toBe(1);
     });
 
     it('should handle optional fields', () => {
@@ -89,10 +92,10 @@ items: []
 
       const collection = readCollection(tempDir, 'collections/minimal.collection.yml');
 
-      assert.strictEqual(collection.id, 'minimal');
-      assert.strictEqual(collection.name, 'Minimal');
-      assert.deepStrictEqual(collection.items, []);
-      assert.strictEqual(collection.version, undefined);
+      expect(collection.id).toBe('minimal');
+      expect(collection.name).toBe('Minimal');
+      expect(collection.items).toStrictEqual([]);
+      expect(collection.version).toBeUndefined();
     });
 
     it('should throw for invalid YAML', () => {
@@ -102,10 +105,7 @@ name: Test
 items: [unclosed bracket
 `);
 
-      assert.throws(
-        () => readCollection(tempDir, 'collections/invalid.collection.yml'),
-        /yaml|parse/i
-      );
+      expect(() => readCollection(tempDir, 'collections/invalid.collection.yml')).toThrow();
     });
 
     it('should accept absolute paths', () => {
@@ -118,7 +118,7 @@ items: []
       const absPath = path.join(tempDir, 'collections/test.collection.yml');
       const collection = readCollection(tempDir, absPath);
 
-      assert.strictEqual(collection.id, 'test');
+      expect(collection.id).toBe('test');
     });
   });
 
@@ -136,10 +136,10 @@ items: []
 
       const paths = resolveCollectionItemPaths(tempDir, collection);
 
-      assert.strictEqual(paths.length, 3);
-      assert.ok(paths.every((p: string) => !p.startsWith('..')));
-      assert.ok(paths.every((p: string) => !p.startsWith('/')));
-      assert.deepStrictEqual(paths, [
+      expect(paths.length).toBe(3);
+      expect(paths.every((p: string) => !p.startsWith('..'))).toBe(true);
+      expect(paths.every((p: string) => !p.startsWith('/'))).toBe(true);
+      expect(paths).toStrictEqual([
         'prompts/first.md',
         'prompts/second.md',
         'instructions/inst.md'
@@ -155,7 +155,7 @@ items: []
 
       const paths = resolveCollectionItemPaths(tempDir, collection);
 
-      assert.deepStrictEqual(paths, []);
+      expect(paths).toStrictEqual([]);
     });
 
     it('should normalize Windows-style paths', () => {
@@ -167,8 +167,8 @@ items: []
 
       const paths = resolveCollectionItemPaths(tempDir, collection);
 
-      assert.strictEqual(paths.length, 1);
-      assert.ok(!paths[0].includes('\\'));
+      expect(paths.length).toBe(1);
+      expect(!paths[0].includes('\\')).toBe(true);
     });
 
     it('should filter out items without path', () => {
@@ -185,8 +185,8 @@ items: []
 
       const paths = resolveCollectionItemPaths(tempDir, collection);
 
-      assert.strictEqual(paths.length, 2);
-      assert.deepStrictEqual(paths, ['prompts/valid.md', 'prompts/another.md']);
+      expect(paths.length).toBe(2);
+      expect(paths).toStrictEqual(['prompts/valid.md', 'prompts/another.md']);
     });
 
     it('should include all files in skill directory when kind is skill', () => {
@@ -204,11 +204,11 @@ items: []
 
       const paths = resolveCollectionItemPaths(tempDir, collection);
 
-      assert.ok(paths.length >= 4, `Should include all skill files, got ${paths.length}`);
-      assert.ok(paths.includes('skills/my-skill/SKILL.md'));
-      assert.ok(paths.includes('skills/my-skill/assets/diagram.png'));
-      assert.ok(paths.includes('skills/my-skill/references/doc.md'));
-      assert.ok(paths.includes('skills/my-skill/scripts/helper.js'));
+      expect(paths.length).toBeGreaterThanOrEqual(4);
+      expect(paths.includes('skills/my-skill/SKILL.md')).toBe(true);
+      expect(paths.includes('skills/my-skill/assets/diagram.png')).toBe(true);
+      expect(paths.includes('skills/my-skill/references/doc.md')).toBe(true);
+      expect(paths.includes('skills/my-skill/scripts/helper.js')).toBe(true);
     });
 
     it('should include skill directory files alongside regular prompts', () => {
@@ -230,9 +230,9 @@ items: []
 
       const paths = resolveCollectionItemPaths(tempDir, collection);
 
-      assert.ok(paths.includes('skills/my-skill/SKILL.md'));
-      assert.ok(paths.includes('skills/my-skill/assets/image.png'));
-      assert.ok(paths.includes('prompts/simple.prompt.md'));
+      expect(paths.includes('skills/my-skill/SKILL.md')).toBe(true);
+      expect(paths.includes('skills/my-skill/assets/image.png')).toBe(true);
+      expect(paths.includes('prompts/simple.prompt.md')).toBe(true);
     });
   });
 });

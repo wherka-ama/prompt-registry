@@ -92,7 +92,7 @@ export class GitHubClient {
   private readonly tokens: TokenProvider;
   private readonly baseUrl: string;
   private readonly userAgent: string;
-  private readonly fetchImpl: FetchLike;
+  public readonly fetchImpl: FetchLike;
   private readonly maxRetries: number;
   private readonly backoffBaseMs: number;
   private readonly jitterMs: number;

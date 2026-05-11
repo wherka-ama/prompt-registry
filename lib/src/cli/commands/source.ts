@@ -10,16 +10,18 @@
  * Converted to clipanion class-based commands with property initializers.
  */
 import {
+  generateSourceId,
+} from '../../domain/source-id';
+import {
   envTokenProvider,
-  type HttpClient,
   type TokenProvider,
 } from '../../infra/github/token';
 import {
   NodeHttpClient,
 } from '../../infra/http/node-http-client';
-import {
-  generateSourceId,
-} from '../../domain/source-id';
+import type {
+  HttpClient,
+} from '../../ports/http';
 import {
   ActiveHubStore,
   CompositeHubResolver,

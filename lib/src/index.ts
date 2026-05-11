@@ -74,7 +74,7 @@ export {
 } from './app/collection/generate-skill';
 
 // Domain layer exports - curated namespace
-/** @internal Internal domain layer - use public API instead */
+// @internal
 export * as domain from './domain';
 
 // Primitive Index API

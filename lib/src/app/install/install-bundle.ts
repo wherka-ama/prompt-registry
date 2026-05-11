@@ -7,15 +7,15 @@
  * classes; it only calls port interface methods.
  * @module app/install/install-bundle
  */
-import type {
-  BundleSpec,
-  Target,
-} from '../../domain/install';
 import {
   type InstallOutcome,
   InstallPipeline,
   type PipelineEvent,
 } from '../../app/install/pipeline';
+import type {
+  BundleSpec,
+  Target,
+} from '../../domain/install';
 import type {
   BundleDownloader,
 } from '../../ports/bundle-downloader';

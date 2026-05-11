@@ -12,6 +12,12 @@
  */
 import * as path from 'node:path';
 import {
+  generateSourceId,
+} from '../../domain/source-id';
+import {
+  envTokenProvider,
+} from '../../infra/github/token';
+import {
   NodeHttpClient,
 } from '../../infra/http/node-http-client';
 import {
@@ -24,12 +30,6 @@ import {
   upsertUseProfile,
   writeLockfile,
 } from '../../infra/stores/json-lockfile-store';
-import {
-  envTokenProvider,
-} from '../../infra/github/token';
-import {
-  generateSourceId,
-} from '../../domain/source-id';
 import {
   readTargets,
 } from '../../infra/stores/target-store';
