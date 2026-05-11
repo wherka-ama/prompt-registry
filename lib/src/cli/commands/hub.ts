@@ -91,7 +91,7 @@ abstract class BaseHubCommand extends Command {
    */
   public commandContext!: HubCommandContext;
 
-  public output = Option.String('--output');
+  public output = Option.String('-o,--output');
 }
 
 /**

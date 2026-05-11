@@ -234,7 +234,7 @@ export const main = async (argv: string[]): Promise<number> => {
     createProfileCurrentCommand(ctx, httpClient, tokenProvider, parsed.output)
   ];
 
-  return runCli(argv, {
+  return runCli(parsed.positional, {
     ctx,
     commands,
     commandClasses,

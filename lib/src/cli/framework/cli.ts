@@ -144,6 +144,10 @@ export const runCli = async (argv: string[], opts: RunCliOptions): Promise<numbe
   cli.register(Builtins.HelpCommand);
   cli.register(Builtins.VersionCommand);
 
+  for (const def of opts.commands) {
+    cli.register(toClipanionCommandClass(def, opts.ctx));
+  }
+
   for (const cls of opts.commandClasses ?? []) {
     cli.register(cls);
   }
@@ -156,27 +160,18 @@ export const runCli = async (argv: string[], opts: RunCliOptions): Promise<numbe
     colorDepth: 0
   };
 
-  // Check if argv matches a defineCommand path first (bypass clipanion parsing)
-  for (const def of opts.commands) {
-    const defPath = def.path;
-    if (JSON.stringify(argv.slice(0, defPath.length)) === JSON.stringify(defPath)) {
-      // Direct execution of defineCommand with pre-parsed args
-      try {
-        const exitCode = await def.run({ ctx: opts.ctx });
-        return exitCode ?? 0;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        opts.ctx.stderr.write(`${message}\n`);
-        return 70; // EX_SOFTWARE
-      }
-    }
-  }
-
-  // Fall through to clipanion for native commands
+  // We bypass clipanion's `cli.run` because (a) it always returns 0/1,
+  // collapsing the EX_USAGE / EX_SOFTWARE distinction we need per
+  // spec §9.2, and (b) it writes errors to stdout instead of stderr.
+  // Instead we use `cli.process()` to parse argv into a Command, wire
+  // up the bindings clipanion's run() would otherwise set, then call
+  // validateAndExecute() ourselves with a try/catch around each phase.
   let command;
   try {
     command = cli.process({ input: argv, context: clipanionCtx });
   } catch (err) {
+    // process() throws on unknown command, bad flags, missing arg, etc.
+    // Per spec §9.2 that's EX_USAGE = 64.
     const message = err instanceof Error ? err.message : String(err);
     opts.ctx.stderr.write(`${message}\n`);
     return 64;

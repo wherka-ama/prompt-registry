@@ -92,7 +92,7 @@ abstract class BaseSourceCommand extends Command {
    */
   public commandContext!: SourceCommandContext;
 
-  public output = Option.String('--output');
+  public output = Option.String('-o,--output');
 }
 
 /**
