@@ -13,6 +13,9 @@ import {
 import {
   GitHubBundleResolver,
 } from '../src/infra/resolvers/github-resolver';
+import type {
+  HttpResponse,
+} from '../src/ports/http';
 import {
   okResponse,
   RecordingHttpClient,
@@ -25,7 +28,7 @@ const release = (tag: string, assetName = 'bundle.zip', extra: Partial<{ draft: 
   ...extra
 });
 
-const releasesResponse = (releases: unknown[]): Response =>
+const releasesResponse = (releases: unknown[]): HttpResponse =>
   okResponse(JSON.stringify(releases));
 
 describe('GitHubBundleResolver', () => {

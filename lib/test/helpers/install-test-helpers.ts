@@ -78,7 +78,7 @@ export class MapBundleResolver implements BundleResolver {
         return null;
       }
       // Return the latest by version
-      return firstItems.at(-1);
+      return firstItems.at(-1) ?? null;
     }
 
     const key = `${spec.sourceId}:${spec.bundleId}`;
@@ -94,7 +94,7 @@ export class MapBundleResolver implements BundleResolver {
     }
 
     // Return the latest by default
-    return secondItems.at(-1);
+    return secondItems.at(-1) ?? null;
   }
 }
 

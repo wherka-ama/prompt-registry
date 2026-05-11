@@ -1,17 +1,17 @@
 /**
  * Node.js filesystem adapter for CLI tests.
- * Wraps node:fs/promises to match the FsAbstraction interface.
+ * Wraps node:fs/promises to match the FileSystem interface.
  */
 
 import * as fs from 'node:fs/promises';
 import type {
-  FsAbstraction,
-} from '../../src/cli/framework/context';
+  FileSystem,
+} from '../../../src/ports/filesystem';
 
 /**
  * Create a real filesystem adapter using node:fs/promises.
  */
-export function createNodeFsAdapter(): FsAbstraction {
+export function createNodeFsAdapter(): FileSystem {
   return {
     readFile: async (path: string): Promise<string> => {
       return await fs.readFile(path, 'utf8');
