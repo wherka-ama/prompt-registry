@@ -204,15 +204,6 @@ export const main = async (argv: string[]): Promise<number> => {
         ? parsed.positional[2]
         : ''
     }),
-    createIndexSearchCommand(),
-    createIndexStatsCommand(),
-    createIndexBuildCommand({ root: '' }),
-    createIndexShortlistCommand({ subcommand: 'new' }),
-    createIndexExportCommand({ shortlistId: '', profileId: '' }),
-    createIndexEvalCommand({ goldFile: '' }),
-    createIndexBenchCommand({ goldFile: '' }),
-    createIndexHarvestCommand(),
-    createIndexReportCommand(),
     createTargetAddCommand({ name: '', type: '' }),
     createTargetRemoveCommand({ name: '' })
   ];
