@@ -358,6 +358,24 @@ scenario_4_add_hub() {
     fi
 }
 
+scenario_4a_activate_hub() {
+    log_section "Scenario 4a: Activate Hub"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Activating local hub"
+    local output
+    output=$(run_cmd "$PR_BIN hub use $HUB_ID -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "Hub activated successfully"
+    else
+        log_error "Failed to activate hub"
+        echo "$output"
+        return 1
+    fi
+}
+
 scenario_5_sync_hub() {
     log_section "Scenario 5: Sync Hub"
 
@@ -630,6 +648,7 @@ main() {
     scenario_2_create_synthetic_bundle || failures=$((failures + 1))
     scenario_3_create_local_hub || failures=$((failures + 1))
     scenario_4_add_hub || failures=$((failures + 1))
+    scenario_4a_activate_hub || failures=$((failures + 1))
     scenario_5_sync_hub || failures=$((failures + 1))
     scenario_6_activate_profile || failures=$((failures + 1))
     scenario_7_verify_resources_installed || failures=$((failures + 1))
