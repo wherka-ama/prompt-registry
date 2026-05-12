@@ -9,6 +9,10 @@
  * `config set` / `config list` (iters 23-24) follow the same shape.
  */
 import {
+  Command,
+  Option,
+} from '../framework';
+import {
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -28,6 +32,152 @@ export interface ConfigGetOptions {
   /** Dotted key path (e.g., 'output.json.indent'). Required. */
   key: string;
 }
+
+/**
+ * Command context for config get command.
+ */
+interface ConfigGetContext {
+  ctx: Context;
+}
+
+/**
+ * Base class for config get command.
+ */
+abstract class BaseConfigGetCommand extends Command {
+  public commandContext: ConfigGetContext = { ctx: null as any };
+}
+
+/**
+ * Native clipanion class command for config get.
+ */
+export class ConfigGetCommand extends BaseConfigGetCommand {
+  public static readonly paths = [['config', 'get']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'Read a config value by dotted key path (e.g., `output.json.indent`).',
+    category: 'Configuration',
+    details: `
+      Usage: prompt-registry config get <dotted.key> [options]
+
+      Options:
+        -o, --output <format>  Output format (text, json, yaml, ndjson)
+    `
+  });
+
+  public output = Option.String('-o', '--output') as OutputFormat | undefined;
+  public key = Option.String(); // Positional argument
+
+  public async execute(): Promise<number> {
+    const { ctx } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const key = this.key ?? '';
+
+    if (key.length === 0) {
+      const err = new RegistryError({
+        code: 'USAGE.MISSING_FLAG',
+        message: 'config get: missing key',
+        hint: 'Usage: `prompt-registry config get <dotted.key>`'
+      });
+      emitError(ctx, fmt, err);
+      return 1;
+    }
+    try {
+      const config = await loadConfig({
+        cwd: ctx.cwd(),
+        env: ctx.env,
+        fs: ctx.fs
+      });
+      const value = readDottedKey(config, key);
+      formatOutput({
+        ctx,
+        command: 'config.get',
+        output: fmt,
+        status: 'ok',
+        data: { key, value },
+        textRenderer: (d) => {
+          let valueStr: string;
+          if (d.value === undefined) {
+            valueStr = '(unset)\n';
+          } else if (typeof d.value === 'string') {
+            valueStr = d.value;
+          } else {
+            valueStr = JSON.stringify(d.value);
+          }
+          return `${d.key}: ${valueStr}\n`;
+        }
+      });
+      return 0;
+    } catch (err) {
+      const re = err instanceof RegistryError
+        ? err
+        : new RegistryError({
+          code: 'CONFIG.LOAD_FAILED',
+          message: err instanceof Error ? err.message : String(err),
+          cause: err
+        });
+      emitError(ctx, fmt, re);
+      return 1;
+    }
+  }
+}
+
+/**
+ * Create a CommandDefinition wrapper for the config get command class.
+ * This adapts native clipanion classes to the framework's CommandDefinition pattern.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultKey Default key (optional).
+ * @returns CommandClass.
+ */
+const createConfigGetCommandDefinition = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultKey?: string
+): typeof ConfigGetCommand => {
+  class ConfiguredCommand extends ConfigGetCommand {
+    public execute(): Promise<number> {
+      this.commandContext = { ctx };
+      if (defaultOutput !== undefined && !this.output) {
+        this.output = defaultOutput as OutputFormat;
+      }
+      if (defaultKey !== undefined && !this.key) {
+        this.key = defaultKey;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- dynamic subclass super delegation
+      return super.execute();
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- dynamic class static property
+  (ConfiguredCommand as any).paths = ConfigGetCommand.paths;
+
+  // Copy all property descriptors from the base class to ensure clipanion discovers options
+  const baseDescriptors = Object.getOwnPropertyDescriptors(ConfigGetCommand.prototype);
+  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
+    if (key !== 'constructor') {
+      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
+    }
+  }
+
+  // eslint-disable-next-line new-cap, @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
+  (ConfiguredCommand as any).usage = ConfigGetCommand.usage;
+
+  return ConfiguredCommand as unknown as typeof ConfigGetCommand;
+};
+
+/**
+ * Factory function to create a configured config get command class.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultKey Default key (optional).
+ * @returns CommandClass.
+ */
+export const createConfigGetCommandClass = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultKey?: string
+): typeof ConfigGetCommand => {
+  return createConfigGetCommandDefinition(ctx, defaultOutput, defaultKey);
+};
 
 /**
  * Build the `config get` command.

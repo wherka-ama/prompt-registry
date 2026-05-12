@@ -36,6 +36,8 @@ import {
 } from './commands/collection-validate';
 import {
   createConfigGetCommand,
+  createConfigGetCommandClass,
+  ConfigGetCommand,
 } from './commands/config-get';
 import {
   createConfigListCommand,
@@ -226,14 +228,14 @@ export const main = async (argv: string[]): Promise<number> => {
     //   collectionFile: parsed.collectionFile ?? ''
     // }),
     // createPluginsListCommand({ output: parsed.output }), // Removed: PluginsListCommand is now registered as a class
-    createConfigGetCommand({
-      output: parsed.output,
-      key: parsed.positional.length >= 3
-        && parsed.positional[0] === 'config'
-        && parsed.positional[1] === 'get'
-        ? parsed.positional[2]
-        : ''
-    }),
+    // createConfigGetCommand({ // Removed: ConfigGetCommand is now registered as a class
+    //   output: parsed.output,
+    //   key: parsed.positional.length >= 3
+    //     && parsed.positional[0] === 'config'
+    //     && parsed.positional[1] === 'get'
+    //     ? parsed.positional[2]
+    //     : ''
+    // }),
     createTargetRemoveCommand({ name: '' })
   ];
 
@@ -242,6 +244,7 @@ export const main = async (argv: string[]): Promise<number> => {
     DoctorCommand,
     PluginsListCommand,
     VersionComputeCommand,
+    ConfigGetCommand,
     TargetAddCommand,
     TargetListCommand,
     IndexSearchCommand,
