@@ -19,6 +19,10 @@ import {
   readCollection,
 } from '../..';
 import {
+  Command,
+  Option,
+} from '../framework';
+import {
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -55,6 +59,138 @@ export interface VersionComputeOptions {
    */
   gitTagsProvider?: (cwd: string) => string[];
 }
+
+/**
+ * Command context for version compute command.
+ */
+interface VersionComputeContext {
+  ctx: Context;
+  gitTagsProvider?: (cwd: string) => string[];
+}
+
+/**
+ * Base class for version compute command.
+ */
+abstract class BaseVersionComputeCommand extends Command {
+  public commandContext: VersionComputeContext = { ctx: null as any, gitTagsProvider: undefined };
+}
+
+/**
+ * Native clipanion class command for version compute.
+ */
+export class VersionComputeCommand extends BaseVersionComputeCommand {
+  public static readonly paths = [['version', 'compute']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'Compute the next semver version + git tag for a collection. (Replaces `compute-collection-version`.)',
+    category: 'Bundle Management',
+    details: `
+      Usage: prompt-registry version compute [options]
+
+      Options:
+        -o, --output <format>           Output format (text, json, yaml, ndjson)
+        --collection-file <path>        Collection file path (repo-relative)
+    `
+  });
+
+  public output = Option.String('-o', '--output') as OutputFormat | undefined;
+  public collectionFile = Option.String('--collection-file');
+
+  public async execute(): Promise<number> {
+    const { ctx, gitTagsProvider } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const cwd = ctx.cwd();
+    try {
+      const provider = gitTagsProvider ?? defaultGitTagsProvider;
+      const data = computeNextVersion({
+        repoRoot: cwd,
+        collectionFile: this.collectionFile ?? '',
+        allTags: provider(cwd)
+      });
+      formatOutput({
+        ctx,
+        command: 'version.compute',
+        output: fmt,
+        status: 'ok',
+        data,
+        textRenderer: renderText
+      });
+      return 0;
+    } catch (err) {
+      const re = err instanceof RegistryError
+        ? err
+        : new RegistryError({
+          code: 'INTERNAL.UNEXPECTED',
+          message: err instanceof Error ? err.message : String(err),
+          cause: err
+        });
+      emitError(ctx, fmt, re);
+      return 1;
+    }
+  }
+}
+
+/**
+ * Create a CommandDefinition wrapper for the version compute command class.
+ * This adapts native clipanion classes to the framework's CommandDefinition pattern.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param collectionFile Collection file path.
+ * @param gitTagsProvider Optional git tags provider for testing.
+ * @returns CommandClass.
+ */
+const createVersionComputeCommandDefinition = (
+  ctx: Context,
+  defaultOutput?: string,
+  collectionFile?: string,
+  gitTagsProvider?: (cwd: string) => string[]
+): typeof VersionComputeCommand => {
+  class ConfiguredCommand extends VersionComputeCommand {
+    public execute(): Promise<number> {
+      this.commandContext = { ctx, gitTagsProvider };
+      if (defaultOutput !== undefined && !this.output) {
+        this.output = defaultOutput as OutputFormat;
+      }
+      if (collectionFile !== undefined && !this.collectionFile) {
+        this.collectionFile = collectionFile;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- dynamic subclass super delegation
+      return super.execute();
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- dynamic class static property
+  (ConfiguredCommand as any).paths = VersionComputeCommand.paths;
+
+  // Copy all property descriptors from the base class to ensure clipanion discovers options
+  const baseDescriptors = Object.getOwnPropertyDescriptors(VersionComputeCommand.prototype);
+  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
+    if (key !== 'constructor') {
+      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
+    }
+  }
+
+  // eslint-disable-next-line new-cap, @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
+  (ConfiguredCommand as any).usage = VersionComputeCommand.usage;
+
+  return ConfiguredCommand as unknown as typeof VersionComputeCommand;
+};
+
+/**
+ * Factory function to create a configured version compute command class.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param collectionFile Collection file path.
+ * @param gitTagsProvider Optional git tags provider for testing.
+ * @returns CommandClass.
+ */
+export const createVersionComputeCommandClass = (
+  ctx: Context,
+  defaultOutput?: string,
+  collectionFile?: string,
+  gitTagsProvider?: (cwd: string) => string[]
+): typeof VersionComputeCommand => {
+  return createVersionComputeCommandDefinition(ctx, defaultOutput, collectionFile, gitTagsProvider);
+};
 
 /**
  * Build the `version compute` command.

@@ -144,6 +144,8 @@ import {
 } from './commands/target-remove';
 import {
   createVersionComputeCommand,
+  createVersionComputeCommandClass,
+  VersionComputeCommand,
 } from './commands/version-compute';
 import {
   runCli,
@@ -219,10 +221,10 @@ export const main = async (argv: string[]): Promise<number> => {
       skillsDir: parsed.skillsDir,
       verbose: parsed.verbose
     }),
-    createVersionComputeCommand({
-      output: parsed.output,
-      collectionFile: parsed.collectionFile ?? ''
-    }),
+    // createVersionComputeCommand({ // Removed: VersionComputeCommand is now registered as a class
+    //   output: parsed.output,
+    //   collectionFile: parsed.collectionFile ?? ''
+    // }),
     // createPluginsListCommand({ output: parsed.output }), // Removed: PluginsListCommand is now registered as a class
     createConfigGetCommand({
       output: parsed.output,
@@ -239,6 +241,7 @@ export const main = async (argv: string[]): Promise<number> => {
     ExplainCommand,
     DoctorCommand,
     PluginsListCommand,
+    VersionComputeCommand,
     TargetAddCommand,
     TargetListCommand,
     IndexSearchCommand,
