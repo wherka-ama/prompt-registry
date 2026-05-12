@@ -15,6 +15,10 @@ import {
   normalizeRepoRelativePath,
 } from '../..';
 import {
+  Command,
+  Option,
+} from '../framework';
+import {
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -52,6 +56,141 @@ export interface BundleManifestOptions {
   /** Output deployment manifest path. Default 'deployment-manifest.yml'. */
   outFile?: string;
 }
+
+/**
+ * Command context for bundle manifest command.
+ */
+interface BundleManifestContext {
+  ctx: Context;
+}
+
+/**
+ * Base class for bundle manifest command.
+ */
+abstract class BaseBundleManifestCommand extends Command {
+  public commandContext: BundleManifestContext = { ctx: null as any };
+}
+
+/**
+ * Native clipanion class command for bundle manifest.
+ */
+export class BundleManifestCommand extends BaseBundleManifestCommand {
+  public static readonly paths = [['bundle', 'manifest']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'Generate a deployment-manifest.yml from a collection.yml + the referenced item files. (Replaces `generate-manifest`.)',
+    category: 'Bundle Management',
+    details: `
+      Usage: prompt-registry bundle manifest [options]
+
+      Options:
+        -o, --output <format>       Output format (text, json, yaml, ndjson)
+        --version <version>         Bundle version (e.g. 1.0.0)
+        --collection-file <path>    Collection file path (repo-relative)
+        --out-file <path>          Output file path (default: deployment-manifest.yml)
+    `
+  });
+
+  public output = Option.String('-o', '--output') as OutputFormat | undefined;
+  public version = Option.String('--version');
+  public collectionFile = Option.String('--collection-file');
+  public outFile = Option.String('--out-file');
+
+  public async execute(): Promise<number> {
+    const { ctx } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const version = this.version ?? '';
+    const collectionFile = this.collectionFile;
+    const outFile = this.outFile ?? 'deployment-manifest.yml';
+    const cwd = ctx.cwd();
+    try {
+      await generateBundleManifest(ctx, cwd, { version, collectionFile, output: fmt }, outFile);
+      return 0;
+    } catch (err) {
+      const re = err instanceof RegistryError
+        ? err
+        : new RegistryError({
+          code: 'INTERNAL.UNEXPECTED',
+          message: err instanceof Error ? err.message : String(err),
+          cause: err
+        });
+      emitError(ctx, fmt, re);
+      return 1;
+    }
+  }
+}
+
+/**
+ * Create a CommandDefinition wrapper for the bundle manifest command class.
+ * This adapts native clipanion classes to the framework's CommandDefinition pattern.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultVersion Default version (optional).
+ * @param defaultCollectionFile Default collection file (optional).
+ * @param defaultOutFile Default output file (optional).
+ * @returns CommandClass.
+ */
+const createBundleManifestCommandDefinition = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultVersion?: string,
+  defaultCollectionFile?: string,
+  defaultOutFile?: string
+): typeof BundleManifestCommand => {
+  class ConfiguredCommand extends BundleManifestCommand {
+    public execute(): Promise<number> {
+      this.commandContext = { ctx };
+      if (defaultOutput !== undefined && !this.output) {
+        this.output = defaultOutput as OutputFormat;
+      }
+      if (defaultVersion !== undefined && !this.version) {
+        this.version = defaultVersion;
+      }
+      if (defaultCollectionFile !== undefined && !this.collectionFile) {
+        this.collectionFile = defaultCollectionFile;
+      }
+      if (defaultOutFile !== undefined && !this.outFile) {
+        this.outFile = defaultOutFile;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- dynamic subclass super delegation
+      return super.execute();
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- dynamic class static property
+  (ConfiguredCommand as any).paths = BundleManifestCommand.paths;
+
+  // Copy all property descriptors from the base class to ensure clipanion discovers options
+  const baseDescriptors = Object.getOwnPropertyDescriptors(BundleManifestCommand.prototype);
+  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
+    if (key !== 'constructor') {
+      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
+    }
+  }
+
+  // eslint-disable-next-line new-cap, @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
+  (ConfiguredCommand as any).usage = BundleManifestCommand.usage;
+
+  return ConfiguredCommand as unknown as typeof BundleManifestCommand;
+};
+
+/**
+ * Factory function to create a configured bundle manifest command class.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultVersion Default version (optional).
+ * @param defaultCollectionFile Default collection file (optional).
+ * @param defaultOutFile Default output file (optional).
+ * @returns CommandClass.
+ */
+export const createBundleManifestCommandClass = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultVersion?: string,
+  defaultCollectionFile?: string,
+  defaultOutFile?: string
+): typeof BundleManifestCommand => {
+  return createBundleManifestCommandDefinition(ctx, defaultOutput, defaultVersion, defaultCollectionFile, defaultOutFile);
+};
 
 /**
  * Kind to type mapping for deployment manifest.

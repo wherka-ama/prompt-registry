@@ -26,6 +26,8 @@ import {
 } from './commands/bundle-build';
 import {
   createBundleManifestCommand,
+  createBundleManifestCommandClass,
+  BundleManifestCommand,
 } from './commands/bundle-manifest';
 import {
   createCollectionAffectedCommand,
@@ -191,12 +193,12 @@ export const main = async (argv: string[]): Promise<number> => {
     //   outDir: parsed.outDir,
     //   repoSlug: parsed.repoSlug
     // }),
-    createBundleManifestCommand({
-      output: parsed.output,
-      outFile: parsed.outFile ?? '',
-      version: parsed.version ?? '',
-      collectionFile: parsed.collectionFile ?? ''
-    }),
+    // createBundleManifestCommand({ // Removed: BundleManifestCommand is now registered as a class
+    //   output: parsed.output,
+    //   outFile: parsed.outFile ?? '',
+    //   version: parsed.version ?? '',
+    //   collectionFile: parsed.collectionFile ?? ''
+    // }),
     createCollectionAffectedCommand({
       output: parsed.output,
       changedPaths: parseCsv(parsed.changedPath)
@@ -247,6 +249,7 @@ export const main = async (argv: string[]): Promise<number> => {
     TargetListCommand,
     TargetRemoveCommand,
     BundleBuildCommand,
+    BundleManifestCommand,
     IndexSearchCommand,
     IndexStatsCommand,
     IndexBuildCommand,
