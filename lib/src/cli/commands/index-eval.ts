@@ -23,6 +23,9 @@ import {
   loadIndex,
 } from '../../infra/stores/json-index-store';
 import {
+  Command,
+  Option,
+  type CommandClass,
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -104,3 +107,76 @@ const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): numbe
   }
   return 1;
 };
+
+/**
+ * Index eval command class.
+ * Runs pattern-based relevance eval against an index.
+ */
+export class IndexEvalCommand extends Command {
+  public static readonly paths = [['index', 'eval']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'Run pattern-based relevance eval against an index.',
+    category: 'Index Management',
+    details: `
+      Usage: prompt-registry index eval --gold <FILE> [options]
+
+      Examples:
+        prompt-registry index eval --gold golden-queries.json
+        prompt-registry index eval --gold golden-queries.json --index /tmp/index.json
+    `
+  });
+
+  public gold = Option.String('--gold');
+  public index = Option.String('--index');
+  public output = Option.String('-o,--output');
+
+  public async execute(): Promise<number> {
+    const ctx = (this as any).commandContext?.ctx as Context;
+    if (!ctx) {
+      throw new Error('CommandContext not available');
+    }
+
+    const fmt = (this.output ?? 'text') as OutputFormat;
+
+    if (!this.gold || this.gold.length === 0) {
+      return failWith(ctx, fmt, new RegistryError({
+        code: 'USAGE.MISSING_FLAG',
+        message: 'index eval: --gold <FILE> is required'
+      }));
+    }
+
+    const indexPath = this.index ?? defaultIndexFile(ctx.env);
+
+    let report: PatternReport;
+    try {
+      const idx = loadIndex(indexPath);
+      const raw = fs.readFileSync(this.gold, 'utf8');
+      const parsed = JSON.parse(raw) as { cases: PatternCase[] };
+      report = runPatternEval(idx, parsed.cases);
+    } catch (cause) {
+      const msg = cause instanceof Error ? cause.message : String(cause);
+      const err = /ENOENT|no such file/i.test(msg)
+        ? new RegistryError({
+          code: 'INDEX.NOT_FOUND',
+          message: `index eval: missing file (${msg})`,
+          cause: cause instanceof Error ? cause : undefined
+        })
+        : new RegistryError({
+          code: 'INDEX.EVAL_FAILED',
+          message: `index eval failed: ${msg}`,
+          cause: cause instanceof Error ? cause : undefined
+        });
+      return failWith(ctx, fmt, err);
+    }
+
+    formatOutput({
+      ctx, command: 'index.eval', output: fmt, status: 'ok',
+      data: report,
+      textRenderer: (r) => renderPatternReportMarkdown(r)
+    });
+
+    // Non-zero exit when any case failed so CI treats it as a fail.
+    return report.aggregate.failed > 0 ? 1 : 0;
+  }
+}

@@ -13,6 +13,9 @@ import {
   type HubHarvestPipelineResult,
 } from '../../infra/harvest/hub-harvester';
 import {
+  Command,
+  Option,
+  type CommandClass,
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -137,3 +140,116 @@ const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): numbe
   }
   return 1;
 };
+
+/**
+ * Index harvest command class.
+ * Fetches hub-config, walks every source, and writes a primitive index.
+ */
+export class IndexHarvestCommand extends Command {
+  public static readonly paths = [['index', 'harvest']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'Fetch hub-config, walk every source, and write a primitive index.',
+    category: 'Index Management',
+    details: `
+      Usage: prompt-registry index harvest [options]
+
+      Examples:
+        prompt-registry index harvest --hub-repo OWNER/REPO
+        prompt-registry index harvest --hub-config-file hub-config.yml
+        prompt-registry index harvest --no-hub-config --extra-source 'local:/path/to/bundles'
+    `
+  });
+
+  public hubRepo = Option.String('--hub-repo');
+  public hubBranch = Option.String('--hub-branch');
+  public hubConfigFile = Option.String('--hub-config-file');
+  public noHubConfig = Option.Boolean('--no-hub-config');
+  public cacheDir = Option.String('--cache-dir');
+  public progressFile = Option.String('--progress-file');
+  public outFile = Option.String('--out-file');
+  public concurrency = Option.String('--concurrency');
+  public tokenEnv = Option.String('--token-env');
+  public sourcesInclude = Option.Array('--sources-include');
+  public sourcesExclude = Option.Array('--sources-exclude');
+  public extraSources = Option.Array('--extra-source');
+  public force = Option.Boolean('--force');
+  public dryRun = Option.Boolean('--dry-run');
+  public verbose = Option.Boolean('--verbose');
+  public output = Option.String('-o,--output');
+
+  public async execute(): Promise<number> {
+    const ctx = (this as any).commandContext?.ctx as Context;
+    if (!ctx) {
+      throw new Error('CommandContext not available');
+    }
+
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const noHubConfig = this.noHubConfig === true;
+    const hubConfigFile = this.hubConfigFile;
+
+    if (!noHubConfig && hubConfigFile === undefined
+      && (!this.hubRepo || this.hubRepo.length === 0)) {
+      return failWith(ctx, fmt, new RegistryError({
+        code: 'USAGE.MISSING_FLAG',
+        message: 'index harvest: --hub-repo <OWNER/REPO> is required (or use --no-hub-config / --hub-config-file)'
+      }));
+    }
+
+    const explicitToken = this.tokenEnv === undefined
+      ? undefined
+      : ctx.env[this.tokenEnv];
+
+    const pipelineOpts: HubHarvestPipelineOptions = {
+      hubRepo: this.hubRepo,
+      hubBranch: this.hubBranch,
+      hubConfigFile: this.hubConfigFile,
+      noHubConfig: this.noHubConfig,
+      cacheDir: this.cacheDir,
+      progressFile: this.progressFile,
+      outFile: this.outFile,
+      concurrency: this.concurrency ? parseInt(this.concurrency, 10) : undefined,
+      explicitToken,
+      sourcesInclude: this.sourcesInclude,
+      sourcesExclude: this.sourcesExclude,
+      extraSources: this.extraSources,
+      force: this.force,
+      dryRun: this.dryRun,
+      onEvent: this.verbose === true
+        ? (ev): void => {
+          ctx.stderr.write(`[${ev.kind}] ${JSON.stringify(ev)}\n`);
+        }
+        : undefined,
+      onLog: (msg): void => {
+        ctx.stderr.write(`[index harvest] ${msg}\n`);
+      }
+    };
+
+    const runner = defaultHarvestHub;
+    let result: HubHarvestPipelineResult;
+
+    try {
+      result = await runner(pipelineOpts, ctx.env as NodeJS.ProcessEnv);
+    } catch (cause) {
+      return failWith(ctx, fmt, new RegistryError({
+        code: 'INDEX.HARVEST_FAILED',
+        message: `index harvest failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+        cause: cause instanceof Error ? cause : undefined
+      }));
+    }
+
+    formatOutput({
+      ctx, command: 'index.harvest', output: fmt, status: 'ok',
+      data: result,
+      textRenderer: (r) =>
+        `done=${String(r.totals.done)} `
+        + `error=${String(r.totals.error)} `
+        + `skip=${String(r.totals.skip)} `
+        + `primitives=${String(r.totals.primitives)} `
+        + `wallMs=${String(r.totals.wallMs)} `
+        + `totalMs=${String(r.totals.totalMs)}\n`
+    });
+
+    return result.totals.error > 0 ? 1 : 0;
+  }
+}

@@ -22,6 +22,9 @@ import {
   type ProgressSummary,
 } from '../../infra/harvest/progress-log';
 import {
+  Command,
+  Option,
+  type CommandClass,
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -139,3 +142,71 @@ const renderReportMarkdown = (progressFile: string, d: ReportData): string => {
   }
   return lines.join('\n') + '\n';
 };
+
+/**
+ * Index report command class.
+ * Renders a hub-harvest report from a progress log.
+ */
+export class IndexReportCommand extends Command {
+  public static readonly paths = [['index', 'report']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'Render a hub-harvest report from a progress log.',
+    category: 'Index Management',
+    details: `
+      Usage: prompt-registry index report [options]
+
+      Examples:
+        prompt-registry index report --hub-repo OWNER/REPO
+        prompt-registry index report --progress-file /tmp/progress.jsonl
+        prompt-registry index report --cache-dir /tmp/cache
+    `
+  });
+
+  public hubRepo = Option.String('--hub-repo');
+  public progressFile = Option.String('--progress-file');
+  public cacheDir = Option.String('--cache-dir');
+  public output = Option.String('-o,--output');
+
+  public async execute(): Promise<number> {
+    const ctx = (this as any).commandContext?.ctx as Context;
+    if (!ctx) {
+      throw new Error('CommandContext not available');
+    }
+
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const progressFile = this.progressFile ?? defaultProgressFile(this.hubRepo, ctx.env);
+    const cacheDir = this.cacheDir ?? defaultHubCacheDir(this.hubRepo, ctx.env);
+
+    try {
+      const log = await HarvestProgressLog.open(progressFile);
+      const state = log.projectState();
+      const summary = log.summary();
+      await log.close();
+      const bundles = [...state.values()]
+        .toSorted((a, b) => a.sourceId.localeCompare(b.sourceId));
+      const data: ReportData = { summary, bundles };
+      if (cacheDir.length > 0) {
+        try {
+          const cache = new BlobCache(path.join(cacheDir, 'blobs'));
+          data.cacheStats = await cache.stats();
+        } catch {
+          // Missing cache dir is fine — leave cacheStats undefined.
+        }
+      }
+      formatOutput({
+        ctx, command: 'index.report', output: fmt, status: 'ok',
+        data,
+        textRenderer: (d) => renderReportMarkdown(progressFile, d)
+      });
+      return 0;
+    } catch (cause) {
+      const err = new RegistryError({
+        code: 'INDEX.REPORT_FAILED',
+        message: `index report failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+        cause: cause instanceof Error ? cause : undefined
+      });
+      return failWith(ctx, fmt, err);
+    }
+  }
+}

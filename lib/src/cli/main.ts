@@ -55,6 +55,7 @@ import {
 } from './commands/hub';
 import {
   createIndexBenchCommand,
+  IndexBenchCommand,
 } from './commands/index-bench';
 import {
   createIndexBuildCommand,
@@ -62,6 +63,7 @@ import {
 } from './commands/index-build';
 import {
   createIndexEvalCommand,
+  IndexEvalCommand,
 } from './commands/index-eval';
 import {
   createIndexExportCommand,
@@ -69,9 +71,11 @@ import {
 } from './commands/index-export';
 import {
   createIndexHarvestCommand,
+  IndexHarvestCommand,
 } from './commands/index-harvest';
 import {
   createIndexReportCommand,
+  IndexReportCommand,
 } from './commands/index-report';
 import {
   createIndexSearchCommand,
@@ -184,10 +188,10 @@ export const main = async (argv: string[]): Promise<number> => {
     // createIndexBuildCommand({ root: '' }), // Removed: IndexBuildCommand is now registered as a class
     // createIndexShortlistCommand({ subcommand: 'new' }), // Removed: IndexShortlist*Commands are now registered as classes
     // createIndexExportCommand({ shortlistId: '', profileId: '' }), // Removed: IndexExportCommand is now registered as a class
-    createIndexEvalCommand({ goldFile: '' }),
-    createIndexBenchCommand({ goldFile: '' }),
-    createIndexHarvestCommand(),
-    createIndexReportCommand(),
+    // createIndexEvalCommand({ goldFile: '' }), // Removed: IndexEvalCommand is now registered as a class
+    // createIndexBenchCommand({ goldFile: '' }), // Removed: IndexBenchCommand is now registered as a class
+    // createIndexHarvestCommand(), // Removed: IndexHarvestCommand is now registered as a class
+    // createIndexReportCommand(), // Removed: IndexReportCommand is now registered as a class
     createSkillNewCommand({
       output: parsed.output,
       skillName: parsed.skillName ?? '',
@@ -229,6 +233,10 @@ export const main = async (argv: string[]): Promise<number> => {
     IndexShortlistRemoveCommand,
     IndexShortlistListCommand,
     IndexExportCommand,
+    IndexEvalCommand,
+    IndexBenchCommand,
+    IndexHarvestCommand,
+    IndexReportCommand,
     createHubListCommand(ctx, httpClient, tokenProvider, parsed.output),
     createHubAddCommand(ctx, httpClient, tokenProvider, parsed.output),
     createHubUseCommand(ctx, httpClient, tokenProvider, parsed.output),
