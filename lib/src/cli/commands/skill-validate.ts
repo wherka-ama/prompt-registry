@@ -10,6 +10,10 @@ import {
   validateAllSkills,
 } from '../..';
 import {
+  Command,
+  Option,
+} from '../framework';
+import {
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -25,6 +29,125 @@ export interface SkillValidateOptions {
   /** Verbose mode prints each ok skill in text mode. */
   verbose?: boolean;
 }
+
+/**
+ * Command context for skill validate command.
+ */
+interface SkillValidateContext {
+  ctx: Context;
+}
+
+/**
+ * Base class for skill validate command.
+ */
+abstract class BaseSkillValidateCommand extends Command {
+  public commandContext: SkillValidateContext = { ctx: null as any };
+}
+
+/**
+ * Native clipanion class command for skill validate.
+ */
+export class SkillValidateCommand extends BaseSkillValidateCommand {
+  public static readonly paths = [['skill', 'validate']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'Validate every skill folder under <cwd>/skills/ against the Agent Skills spec. (Replaces `validate-skills`.)',
+    category: 'Skill Management',
+    details: `
+      Usage: prompt-registry skill validate [options]
+
+      Options:
+        -o, --output <format>       Output format (text, json, yaml, ndjson)
+        --skills-dir <dir>          Skills directory (default: skills)
+        --verbose                   Print each ok skill in text mode
+    `
+  });
+
+  public output = Option.String('-o', '--output') as OutputFormat | undefined;
+  public skillsDir = Option.String('--skills-dir');
+  public verbose = Option.Boolean('--verbose', false);
+
+  public async execute(): Promise<number> {
+    const { ctx } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const cwd = ctx.cwd();
+    const result = validateAllSkills(cwd, this.skillsDir ?? 'skills');
+    formatOutput({
+      ctx,
+      command: 'skill.validate',
+      output: fmt,
+      status: result.valid ? 'ok' : 'error',
+      data: result,
+      textRenderer: (d) => renderText(d, this.verbose)
+    });
+    return result.valid ? 0 : 1;
+  }
+}
+
+/**
+ * Create a CommandDefinition wrapper for the skill validate command class.
+ * This adapts native clipanion classes to the framework's CommandDefinition pattern.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultSkillsDir Default skills directory (optional).
+ * @param defaultVerbose Default verbose flag (optional).
+ * @returns CommandClass.
+ */
+const createSkillValidateCommandDefinition = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultSkillsDir?: string,
+  defaultVerbose?: boolean
+): typeof SkillValidateCommand => {
+  class ConfiguredCommand extends SkillValidateCommand {
+    public async execute(): Promise<number> {
+      this.commandContext = { ctx };
+      if (defaultOutput !== undefined && !this.output) {
+        this.output = defaultOutput as OutputFormat;
+      }
+      if (defaultSkillsDir !== undefined && !this.skillsDir) {
+        this.skillsDir = defaultSkillsDir;
+      }
+      if (defaultVerbose !== undefined && !this.verbose) {
+        this.verbose = defaultVerbose;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- dynamic subclass super delegation
+      return super.execute();
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- dynamic class static property
+  (ConfiguredCommand as any).paths = SkillValidateCommand.paths;
+
+  // Copy all property descriptors from the base class to ensure clipanion discovers options
+  const baseDescriptors = Object.getOwnPropertyDescriptors(SkillValidateCommand.prototype);
+  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
+    if (key !== 'constructor') {
+      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
+    }
+  }
+
+  // eslint-disable-next-line new-cap, @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
+  (ConfiguredCommand as any).usage = SkillValidateCommand.usage;
+
+  return ConfiguredCommand as unknown as typeof SkillValidateCommand;
+};
+
+/**
+ * Factory function to create a configured skill validate command class.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultSkillsDir Default skills directory (optional).
+ * @param defaultVerbose Default verbose flag (optional).
+ * @returns CommandClass.
+ */
+export const createSkillValidateCommandClass = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultSkillsDir?: string,
+  defaultVerbose?: boolean
+): typeof SkillValidateCommand => {
+  return createSkillValidateCommandDefinition(ctx, defaultOutput, defaultSkillsDir, defaultVerbose);
+};
 
 /**
  * Build the `skill validate` command.

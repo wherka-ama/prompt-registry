@@ -143,6 +143,8 @@ import {
 } from './commands/skill-new';
 import {
   createSkillValidateCommand,
+  createSkillValidateCommandClass,
+  SkillValidateCommand,
 } from './commands/skill-validate';
 import {
   createSourceAddCommand,
@@ -169,14 +171,19 @@ import {
   runCli,
 } from './framework/cli';
 import type {
+  CommandDefinition,
+} from './framework/cli';
+import type {
   OutputFormat,
 } from './framework/output';
 import {
   parseCsv,
 } from './framework/parsers';
 import {
+  Command,
+  type Context,
   createProductionContext,
-} from './framework/production-context';
+} from './framework';
 
 /**
  * Main CLI entry point.
@@ -193,7 +200,7 @@ export const main = async (argv: string[]): Promise<number> => {
   const httpClient = new NodeHttpClient();
   const tokenProvider = envTokenProvider(ctx.env);
 
-  const commands = [
+  const commands: CommandDefinition[] = [
     // createBundleBuildCommand({ // Removed: BundleBuildCommand is now registered as a class
     //   output: parsed.output,
     //   collectionFile: parsed.collectionFile ?? '',
@@ -218,25 +225,18 @@ export const main = async (argv: string[]): Promise<number> => {
     //   collectionFiles: parseCsv(parsed.collectionFile),
     //   verbose: parsed.verbose
     // }),
-    // createIndexReportCommand(), // Removed: IndexReportCommand is now registered as a class
-    // createConfigListCommand(), // Removed: ConfigListCommand is now registered as a class
     // createSkillNewCommand({ // Removed: SkillNewCommand is now registered as a class
     //   output: parsed.output,
     //   skillName: parsed.skillName ?? '',
     //   description: parsed.description ?? '',
     //   skillsDir: parsed.skillsDir
     // }),
-    createSkillValidateCommand({
-      output: parsed.output,
-      skillsDir: parsed.skillsDir,
-      verbose: parsed.verbose
-    }),
-    // createVersionComputeCommand({ // Removed: VersionComputeCommand is now registered as a class
+    // createSkillValidateCommand({ // Removed: SkillValidateCommand is now registered as a class
     //   output: parsed.output,
-    //   collectionFile: parsed.collectionFile ?? ''
+    //   skillsDir: parsed.skillsDir,
+    //   verbose: parsed.verbose
     // }),
-    // createPluginsListCommand({ output: parsed.output }), // Removed: PluginsListCommand is now registered as a class
-    // createConfigGetCommand({ // Removed: ConfigGetCommand is now registered as a class
+    // createVersionComputeCommand({ // Removed: VersionComputeCommand is now registered as a class
     //   output: parsed.output,
     //   key: parsed.positional.length >= 3
     //     && parsed.positional[0] === 'config'
@@ -262,6 +262,7 @@ export const main = async (argv: string[]): Promise<number> => {
     CollectionListCommand,
     CollectionValidateCommand,
     SkillNewCommand,
+    SkillValidateCommand,
     IndexSearchCommand,
     IndexStatsCommand,
     IndexBuildCommand,
