@@ -138,6 +138,8 @@ import {
 } from './commands/uninstall';
 import {
   createSkillNewCommand,
+  createSkillNewCommandClass,
+  SkillNewCommand,
 } from './commands/skill-new';
 import {
   createSkillValidateCommand,
@@ -218,12 +220,12 @@ export const main = async (argv: string[]): Promise<number> => {
     // }),
     // createIndexReportCommand(), // Removed: IndexReportCommand is now registered as a class
     // createConfigListCommand(), // Removed: ConfigListCommand is now registered as a class
-    createSkillNewCommand({
-      output: parsed.output,
-      skillName: parsed.skillName ?? '',
-      description: parsed.description ?? '',
-      skillsDir: parsed.skillsDir
-    }),
+    // createSkillNewCommand({ // Removed: SkillNewCommand is now registered as a class
+    //   output: parsed.output,
+    //   skillName: parsed.skillName ?? '',
+    //   description: parsed.description ?? '',
+    //   skillsDir: parsed.skillsDir
+    // }),
     createSkillValidateCommand({
       output: parsed.output,
       skillsDir: parsed.skillsDir,
@@ -259,6 +261,7 @@ export const main = async (argv: string[]): Promise<number> => {
     CollectionAffectedCommand,
     CollectionListCommand,
     CollectionValidateCommand,
+    SkillNewCommand,
     IndexSearchCommand,
     IndexStatsCommand,
     IndexBuildCommand,

@@ -14,6 +14,10 @@ import {
   createSkill,
 } from '../..';
 import {
+  Command,
+  Option,
+} from '../framework';
+import {
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -38,6 +42,143 @@ export interface SkillNewOptions {
   /** Skills directory under the cwd. Default 'skills'. */
   skillsDir?: string;
 }
+
+/**
+ * Command context for skill new command.
+ */
+interface SkillNewContext {
+  ctx: Context;
+}
+
+/**
+ * Base class for skill new command.
+ */
+abstract class BaseSkillNewCommand extends Command {
+  public commandContext: SkillNewContext = { ctx: null as any };
+}
+
+/**
+ * Native clipanion class command for skill new.
+ */
+export class SkillNewCommand extends BaseSkillNewCommand {
+  public static readonly paths = [['skill', 'new']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'Create a new agent skill folder + SKILL.md template. (Replaces `create-skill`.)',
+    category: 'Skill Management',
+    details: `
+      Usage: prompt-registry skill new [options]
+
+      Options:
+        -o, --output <format>       Output format (text, json, yaml, ndjson)
+        --skill-name <name>         Skill name (required)
+        --description <desc>        Description for SKILL.md (required)
+        --skills-dir <dir>          Skills directory (default: skills)
+    `
+  });
+
+  public output = Option.String('-o', '--output') as OutputFormat | undefined;
+  public skillName = Option.String('--skill-name');
+  public description = Option.String('--description');
+  public skillsDir = Option.String('--skills-dir');
+
+  public async execute(): Promise<number> {
+    const { ctx } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const cwd = ctx.cwd();
+    const result = createSkill(cwd, this.skillName ?? '', this.description ?? '', this.skillsDir ?? 'skills');
+    if (!result.success) {
+      const err = new RegistryError({
+        code: classifyError(result.error ?? 'unknown error'),
+        message: result.error ?? 'createSkill failed',
+        context: { skillName: this.skillName, path: result.path }
+      });
+      emitError(ctx, fmt, err);
+      return 1;
+    }
+    formatOutput({
+      ctx,
+      command: 'skill.new',
+      output: fmt,
+      status: 'ok',
+      data: { skillName: this.skillName ?? '', path: result.path } satisfies SkillNewData,
+      textRenderer: (d) => `Created skill at ${d.path}\n`
+    });
+    return 0;
+  }
+}
+
+/**
+ * Create a CommandDefinition wrapper for the skill new command class.
+ * This adapts native clipanion classes to the framework's CommandDefinition pattern.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultSkillName Default skill name (optional).
+ * @param defaultDescription Default description (optional).
+ * @param defaultSkillsDir Default skills directory (optional).
+ * @returns CommandClass.
+ */
+const createSkillNewCommandDefinition = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultSkillName?: string,
+  defaultDescription?: string,
+  defaultSkillsDir?: string
+): typeof SkillNewCommand => {
+  class ConfiguredCommand extends SkillNewCommand {
+    public async execute(): Promise<number> {
+      this.commandContext = { ctx };
+      if (defaultOutput !== undefined && !this.output) {
+        this.output = defaultOutput as OutputFormat;
+      }
+      if (defaultSkillName !== undefined && !this.skillName) {
+        this.skillName = defaultSkillName;
+      }
+      if (defaultDescription !== undefined && !this.description) {
+        this.description = defaultDescription;
+      }
+      if (defaultSkillsDir !== undefined && !this.skillsDir) {
+        this.skillsDir = defaultSkillsDir;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- dynamic subclass super delegation
+      return super.execute();
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- dynamic class static property
+  (ConfiguredCommand as any).paths = SkillNewCommand.paths;
+
+  // Copy all property descriptors from the base class to ensure clipanion discovers options
+  const baseDescriptors = Object.getOwnPropertyDescriptors(SkillNewCommand.prototype);
+  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
+    if (key !== 'constructor') {
+      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
+    }
+  }
+
+  // eslint-disable-next-line new-cap, @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
+  (ConfiguredCommand as any).usage = SkillNewCommand.usage;
+
+  return ConfiguredCommand as unknown as typeof SkillNewCommand;
+};
+
+/**
+ * Factory function to create a configured skill new command class.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultSkillName Default skill name (optional).
+ * @param defaultDescription Default description (optional).
+ * @param defaultSkillsDir Default skills directory (optional).
+ * @returns CommandClass.
+ */
+export const createSkillNewCommandClass = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultSkillName?: string,
+  defaultDescription?: string,
+  defaultSkillsDir?: string
+): typeof SkillNewCommand => {
+  return createSkillNewCommandDefinition(ctx, defaultOutput, defaultSkillName, defaultDescription, defaultSkillsDir);
+};
 
 /**
  * Build the `skill new` command.
