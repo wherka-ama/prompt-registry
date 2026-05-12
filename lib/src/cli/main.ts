@@ -39,6 +39,8 @@ import {
 } from './commands/collection-list';
 import {
   createCollectionValidateCommand,
+  createCollectionValidateCommandClass,
+  CollectionValidateCommand,
 } from './commands/collection-validate';
 import {
   createConfigGetCommand,
@@ -206,12 +208,12 @@ export const main = async (argv: string[]): Promise<number> => {
       changedPaths: parseCsv(parsed.changedPath)
     }),
     // createCollectionListCommand({ output: parsed.output }), // Removed: CollectionListCommand is now registered as a class
-    createCollectionValidateCommand({
-      output: parsed.output,
-      markdownPath: parsed.markdownPath,
-      collectionFiles: parseCsv(parsed.collectionFile),
-      verbose: parsed.verbose
-    }),
+    // createCollectionValidateCommand({ // Removed: CollectionValidateCommand is now registered as a class
+    //   output: parsed.output,
+    //   markdownPath: parsed.markdownPath,
+    //   collectionFiles: parseCsv(parsed.collectionFile),
+    //   verbose: parsed.verbose
+    // }),
     // createIndexReportCommand(), // Removed: IndexReportCommand is now registered as a class
     // createConfigListCommand(), // Removed: ConfigListCommand is now registered as a class
     createSkillNewCommand({
@@ -253,6 +255,7 @@ export const main = async (argv: string[]): Promise<number> => {
     BundleBuildCommand,
     BundleManifestCommand,
     CollectionListCommand,
+    CollectionValidateCommand,
     IndexSearchCommand,
     IndexStatsCommand,
     IndexBuildCommand,

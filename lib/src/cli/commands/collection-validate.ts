@@ -29,6 +29,10 @@ import {
   validateAllCollections,
 } from '../..';
 import {
+  Command,
+  Option,
+} from '../framework';
+import {
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -67,6 +71,161 @@ export interface CollectionValidateOptions {
   /** Verbose mode prints each ok file in text mode (legacy behavior). */
   verbose?: boolean;
 }
+
+/**
+ * Command context for collection validate command.
+ */
+interface CollectionValidateContext {
+  ctx: Context;
+}
+
+/**
+ * Base class for collection validate command.
+ */
+abstract class BaseCollectionValidateCommand extends Command {
+  public commandContext: CollectionValidateContext = { ctx: null as any };
+}
+
+/**
+ * Native clipanion class command for collection validate.
+ */
+export class CollectionValidateCommand extends BaseCollectionValidateCommand {
+  public static readonly paths = [['collection', 'validate']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'Validate `*.collection.yml` files against the schema and check cross-collection invariants. (Replaces `validate-collections`.)',
+    category: 'Collection Management',
+    details: `
+      Usage: prompt-registry collection validate [options]
+
+      Options:
+        -o, --output <format>       Output format (text, json, yaml, ndjson)
+        --markdown-path <path>     Write markdown report to file
+        --collection-file <path>    Collection file path (can be repeated)
+        --verbose                   Print each ok file in text mode
+    `
+  });
+
+  public output = Option.String('-o', '--output') as OutputFormat | undefined;
+  public markdownPath = Option.String('--markdown-path');
+  public collectionFile = Option.Array('--collection-file');
+  public verbose = Option.Boolean('--verbose', false);
+
+  public async execute(): Promise<number> {
+    const { ctx } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const cwd = ctx.cwd();
+    const collectionsDir = path.join(cwd, 'collections');
+    if (!(await ctx.fs.exists(collectionsDir))) {
+      const err = new RegistryError({
+        code: 'FS.NOT_FOUND',
+        message: `collections/ directory not found under ${cwd}`,
+        hint: 'Run from a repo root that contains a `collections/` folder.',
+        context: { collectionsDir }
+      });
+      emitError(ctx, fmt, err);
+      return 1;
+    }
+
+    const files = this.collectionFile && this.collectionFile.length > 0
+      ? this.collectionFile
+      : listCollectionFiles(cwd);
+    const result = validateAllCollections(cwd, files);
+    const data: ValidateData = {
+      ok: result.ok,
+      totalFiles: files.length,
+      fileResults: result.fileResults,
+      errors: result.errors
+    };
+
+    if (this.markdownPath !== undefined) {
+      const md = generateMarkdown(result, files.length);
+      await ctx.fs.writeFile(this.markdownPath, md);
+    }
+
+    formatOutput({
+      ctx,
+      command: 'collection.validate',
+      output: fmt,
+      status: result.ok ? 'ok' : 'error',
+      data,
+      textRenderer: (d) => renderText(d, this.verbose)
+    });
+    return result.ok ? 0 : 1;
+  }
+}
+
+/**
+ * Create a CommandDefinition wrapper for the collection validate command class.
+ * This adapts native clipanion classes to the framework's CommandDefinition pattern.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultMarkdownPath Default markdown path (optional).
+ * @param defaultCollectionFiles Default collection files (optional).
+ * @param defaultVerbose Default verbose flag (optional).
+ * @returns CommandClass.
+ */
+const createCollectionValidateCommandDefinition = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultMarkdownPath?: string,
+  defaultCollectionFiles?: string[],
+  defaultVerbose?: boolean
+): typeof CollectionValidateCommand => {
+  class ConfiguredCommand extends CollectionValidateCommand {
+    public execute(): Promise<number> {
+      this.commandContext = { ctx };
+      if (defaultOutput !== undefined && !this.output) {
+        this.output = defaultOutput as OutputFormat;
+      }
+      if (defaultMarkdownPath !== undefined && !this.markdownPath) {
+        this.markdownPath = defaultMarkdownPath;
+      }
+      if (defaultCollectionFiles !== undefined && (!this.collectionFile || this.collectionFile.length === 0)) {
+        this.collectionFile = defaultCollectionFiles;
+      }
+      if (defaultVerbose !== undefined && !this.verbose) {
+        this.verbose = defaultVerbose;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- dynamic subclass super delegation
+      return super.execute();
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- dynamic class static property
+  (ConfiguredCommand as any).paths = CollectionValidateCommand.paths;
+
+  // Copy all property descriptors from the base class to ensure clipanion discovers options
+  const baseDescriptors = Object.getOwnPropertyDescriptors(CollectionValidateCommand.prototype);
+  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
+    if (key !== 'constructor') {
+      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
+    }
+  }
+
+  // eslint-disable-next-line new-cap, @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
+  (ConfiguredCommand as any).usage = CollectionValidateCommand.usage;
+
+  return ConfiguredCommand as unknown as typeof CollectionValidateCommand;
+};
+
+/**
+ * Factory function to create a configured collection validate command class.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @param defaultMarkdownPath Default markdown path (optional).
+ * @param defaultCollectionFiles Default collection files (optional).
+ * @param defaultVerbose Default verbose flag (optional).
+ * @returns CommandClass.
+ */
+export const createCollectionValidateCommandClass = (
+  ctx: Context,
+  defaultOutput?: string,
+  defaultMarkdownPath?: string,
+  defaultCollectionFiles?: string[],
+  defaultVerbose?: boolean
+): typeof CollectionValidateCommand => {
+  return createCollectionValidateCommandDefinition(ctx, defaultOutput, defaultMarkdownPath, defaultCollectionFiles, defaultVerbose);
+};
 
 /**
  * Build the `collection validate` command.
