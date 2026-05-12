@@ -20,6 +20,10 @@
 import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import {
+  Command,
+  Option,
+} from '../framework';
+import {
   type CommandDefinition,
   type Context,
   defineCommand,
@@ -37,6 +41,135 @@ interface CollectionRecord {
   name: string;
   file: string;
 }
+
+/**
+ * Command context for collection list command.
+ */
+interface CollectionListContext {
+  ctx: Context;
+}
+
+/**
+ * Base class for collection list command.
+ */
+abstract class BaseCollectionListCommand extends Command {
+  public commandContext: CollectionListContext = { ctx: null as any };
+}
+
+/**
+ * Native clipanion class command for collection list.
+ */
+export class CollectionListCommand extends BaseCollectionListCommand {
+  public static readonly paths = [['collection', 'list']];
+  // eslint-disable-next-line new-cap -- Command.Usage is a static method, not a constructor
+  public static readonly usage = Command.Usage({
+    description: 'List `*.collection.yml` files under the current repo and print their id/name/path. (Replaces `list-collections`.)',
+    category: 'Collection Management',
+    details: `
+      Usage: prompt-registry collection list [options]
+
+      Options:
+        -o, --output <format>  Output format (text, json, yaml, ndjson)
+    `
+  });
+
+  public output = Option.String('-o', '--output') as OutputFormat | undefined;
+
+  public async execute(): Promise<number> {
+    const { ctx } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+    const cwd = ctx.cwd();
+    const collectionsDir = path.join(cwd, 'collections');
+    const dirExists = await ctx.fs.exists(collectionsDir);
+    if (!dirExists) {
+      const err = new RegistryError({
+        code: 'FS.NOT_FOUND',
+        message: `collections/ directory not found under ${cwd}`,
+        hint: 'Run from a repo root that contains a `collections/` folder, '
+          + 'or pass `--cwd <path>` once that flag lands in iter 8.',
+        context: { collectionsDir }
+      });
+      if (fmt === 'json' || fmt === 'yaml' || fmt === 'ndjson') {
+        // Machine-readable: error in the envelope.
+        formatOutput({
+          ctx,
+          command: 'collection.list',
+          output: fmt,
+          status: 'error',
+          data: null,
+          errors: [err.toJSON()]
+        });
+      } else {
+        // Text mode: human-readable error to stderr (matches the
+        // legacy binary's `console.error` behavior).
+        renderError(err, ctx);
+      }
+      return 1;
+    }
+
+    const records = await listCollections(ctx, collectionsDir, cwd);
+    formatOutput({
+      ctx,
+      command: 'collection.list',
+      output: fmt,
+      status: 'ok',
+      data: records,
+      textRenderer: renderCollectionsText
+    });
+    return 0;
+  }
+}
+
+/**
+ * Create a CommandDefinition wrapper for the collection list command class.
+ * This adapts native clipanion classes to the framework's CommandDefinition pattern.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @returns CommandClass.
+ */
+const createCollectionListCommandDefinition = (
+  ctx: Context,
+  defaultOutput?: string
+): typeof CollectionListCommand => {
+  class ConfiguredCommand extends CollectionListCommand {
+    public execute(): Promise<number> {
+      this.commandContext = { ctx };
+      if (defaultOutput !== undefined && !this.output) {
+        this.output = defaultOutput as OutputFormat;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- dynamic subclass super delegation
+      return super.execute();
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- dynamic class static property
+  (ConfiguredCommand as any).paths = CollectionListCommand.paths;
+
+  // Copy all property descriptors from the base class to ensure clipanion discovers options
+  const baseDescriptors = Object.getOwnPropertyDescriptors(CollectionListCommand.prototype);
+  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
+    if (key !== 'constructor') {
+      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
+    }
+  }
+
+  // eslint-disable-next-line new-cap, @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
+  (ConfiguredCommand as any).usage = CollectionListCommand.usage;
+
+  return ConfiguredCommand as unknown as typeof CollectionListCommand;
+};
+
+/**
+ * Factory function to create a configured collection list command class.
+ * @param ctx CLI context.
+ * @param defaultOutput Default output format (optional).
+ * @returns CommandClass.
+ */
+export const createCollectionListCommandClass = (
+  ctx: Context,
+  defaultOutput?: string
+): typeof CollectionListCommand => {
+  return createCollectionListCommandDefinition(ctx, defaultOutput);
+};
 
 /**
  * Build the `collection list` command.

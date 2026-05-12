@@ -34,6 +34,8 @@ import {
 } from './commands/collection-affected';
 import {
   createCollectionListCommand,
+  createCollectionListCommandClass,
+  CollectionListCommand,
 } from './commands/collection-list';
 import {
   createCollectionValidateCommand,
@@ -203,7 +205,7 @@ export const main = async (argv: string[]): Promise<number> => {
       output: parsed.output,
       changedPaths: parseCsv(parsed.changedPath)
     }),
-    createCollectionListCommand({ output: parsed.output }),
+    // createCollectionListCommand({ output: parsed.output }), // Removed: CollectionListCommand is now registered as a class
     createCollectionValidateCommand({
       output: parsed.output,
       markdownPath: parsed.markdownPath,
@@ -250,6 +252,7 @@ export const main = async (argv: string[]): Promise<number> => {
     TargetRemoveCommand,
     BundleBuildCommand,
     BundleManifestCommand,
+    CollectionListCommand,
     IndexSearchCommand,
     IndexStatsCommand,
     IndexBuildCommand,
