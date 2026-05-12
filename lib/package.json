@@ -46,7 +46,9 @@
     "lint": "eslint src test",
     "lint:fix": "eslint src test --fix",
     "lint:report": "eslint src test --format json --output-file eslint-report.json || true",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "build:sea": "node esbuild.config.mjs",
+    "package:sea": "./scripts/generate-sea.sh ./dist/prompt-registry"
   },
   "repository": {
     "type": "git",
@@ -90,6 +92,8 @@
     "@types/node": "^20.11.0",
     "@types/yauzl": "^2.10.3",
     "@vitest/coverage-v8": "^4.1.5",
+    "esbuild": "^0.28.0",
+    "postject": "^1.0.0-alpha.6",
     "sonar-scanner": "^3.1.0",
     "typescript": "^5.3.3",
     "vitest": "^4.1.5"
