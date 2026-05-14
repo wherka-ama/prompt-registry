@@ -16,11 +16,11 @@ import {
   vi,
 } from 'vitest';
 import {
-  DEFAULT_LOCAL_HUB_ID,
-} from '../src/domain/registry';
-import {
   HubManager,
 } from '../src/app/registry/hub-manager';
+import {
+  DEFAULT_LOCAL_HUB_ID,
+} from '../src/domain/registry';
 import {
   ActiveHubStore,
 } from '../src/infra/stores/active-hub-store';

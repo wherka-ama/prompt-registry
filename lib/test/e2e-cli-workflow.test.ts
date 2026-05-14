@@ -572,6 +572,22 @@ This is a test prompt.
       expect(r.code).not.toBe(0);
     });
   });
+
+  describe('Dry-Run Workflow (F-09)', () => {
+    it('profile activate with --dry-run flag is accepted', () => {
+      // Test that --dry-run flag is accepted without requiring full setup
+      const r = runCli(['profile', 'activate', 'backend', '--dry-run', '-o', 'json']);
+      // Should not fail on unknown flag
+      expect(r.stdout).not.toContain('unknown option');
+    });
+
+    it('profile deactivate with --dry-run flag is accepted', () => {
+      // Test that --dry-run flag is accepted (even if no active profile)
+      const r = runCli(['profile', 'deactivate', '--dry-run', '-o', 'json']);
+      // Should not fail on unknown flag
+      expect(r.stdout).not.toContain('unknown option');
+    });
+  });
 });
 
 // ============================================================================

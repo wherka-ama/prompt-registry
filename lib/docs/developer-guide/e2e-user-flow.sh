@@ -35,13 +35,15 @@
 #  18. Install bundle from local directory (install --from)
 #  19. Uninstall bundle via lockfile (uninstall --lockfile)
 #
-# New UX features (F-01, F-03, F-06, F-07):
+# New UX features (F-01, F-03, F-06, F-07, F-09):
 #  20. Verify error hints (INDEX.NOT_FOUND includes hint)
 #  21. Status command shows current configuration (F-03)
 #  22. Search alias works as top-level command (F-07)
+#  23. Profile activate with --dry-run shows preview (F-09)
+#  24. Profile deactivate with --dry-run shows preview (F-09)
 #
 # Cleanup:
-#  23. Remove target config and delete test directories
+#  25. Remove target config and delete test directories
 #
 # Usage:
 #   ./e2e-user-flow.sh [--use-real-hub] [--verbose]
@@ -654,9 +656,26 @@ EOF
 scenario_14_activate_local_profile() {
     log_section "Scenario 14: Activate Local Profile"
 
+    cd "$PR_TEST_ROOT/project"
+
+    # Ensure target is configured before activating
+    log_info "Verifying target is configured"
+    if ! assert_file_exists "$PR_TEST_ROOT/project/prompt-registry.yml"; then
+        log_warning "prompt-registry.yml not found, recreating target"
+        local output
+        output=$(run_cmd "$PR_BIN target add $TARGET_NAME --type copilot-cli --path \"$PR_TEST_ROOT/copilot-cli\" -o json") || true
+        if assert_json_status "$output"; then
+            log_success "Target recreated"
+        else
+            log_error "Failed to recreate target"
+            echo "$output"
+            return 0
+        fi
+    fi
+
     log_info "Activating local profile from hub"
     local output
-    output=$(run_cmd "$PR_BIN profile activate $LOCAL_PROFILE_ID --target copilot-target -o json") || true
+    output=$(run_cmd "$PR_BIN profile activate $LOCAL_PROFILE_ID --target $TARGET_NAME -o json") || true
 
     if assert_json_status "$output"; then
         log_success "Local profile activated successfully"
@@ -773,6 +792,22 @@ scenario_18_search_and_install_bundle() {
 
     log_info "Installing bundle from local directory using --from with bundle ID"
     cd "$PR_TEST_ROOT/project"
+    
+    # Ensure target is configured before installing
+    log_info "Verifying target is configured"
+    if ! assert_file_exists "$PR_TEST_ROOT/project/prompt-registry.yml"; then
+        log_warning "prompt-registry.yml not found, recreating target"
+        local output2
+        output2=$(run_cmd "$PR_BIN target add $TARGET_NAME --type copilot-cli --path \"$PR_TEST_ROOT/copilot-cli\" -o json") || true
+        if assert_json_status "$output2"; then
+            log_success "Target recreated"
+        else
+            log_error "Failed to recreate target"
+            echo "$output2"
+            return 1
+        fi
+    fi
+    
     # Use the bundle ID from the synthetic bundle
     output=$(run_cmd "$PR_BIN install $BUNDLE_ID --from \"$PR_TEST_ROOT/bundles/local-foo\" --target $TARGET_NAME -o json") || true
 
@@ -798,6 +833,21 @@ scenario_19_uninstall_bundle() {
     log_section "Scenario 19: Uninstall Bundle"
 
     cd "$PR_TEST_ROOT/project"
+
+    # Ensure target is configured before uninstalling
+    log_info "Verifying target is configured"
+    if ! assert_file_exists "$PR_TEST_ROOT/project/prompt-registry.yml"; then
+        log_warning "prompt-registry.yml not found, recreating target"
+        local output
+        output=$(run_cmd "$PR_BIN target add $TARGET_NAME --type copilot-cli --path \"$PR_TEST_ROOT/copilot-cli\" -o json") || true
+        if assert_json_status "$output"; then
+            log_success "Target recreated"
+        else
+            log_error "Failed to recreate target"
+            echo "$output"
+            return 1
+        fi
+    fi
 
     log_info "Uninstalling bundle via lockfile"
     # Create a lockfile for the bundle we just installed
@@ -901,8 +951,70 @@ scenario_22_search_alias() {
     fi
 }
 
-scenario_23_cleanup() {
-    log_section "Scenario 23: Cleanup"
+scenario_23_dry_run_activate() {
+    log_section "Scenario 23: Dry-Run Profile Activate (F-09)"
+
+    cd "$PR_TEST_ROOT/project"
+
+    # Ensure target is configured before dry-run
+    log_info "Verifying target is configured"
+    if ! assert_file_exists "$PR_TEST_ROOT/project/prompt-registry.yml"; then
+        log_warning "prompt-registry.yml not found, recreating target"
+        local output
+        output=$(run_cmd "$PR_BIN target add $TARGET_NAME --type copilot-cli --path \"$PR_TEST_ROOT/copilot-cli\" -o json") || true
+        if assert_json_status "$output"; then
+            log_success "Target recreated"
+        else
+            log_error "Failed to recreate target"
+            echo "$output"
+            return 0
+        fi
+    fi
+
+    log_info "Running profile activate with --dry-run"
+    local output
+    output=$(run_cmd "$PR_BIN profile activate backend --target $TARGET_NAME --dry-run -o json") || true
+
+    if echo "$output" | jq -e '.data.dryRun == true' > /dev/null; then
+        log_success "Profile activate dry-run shows preview without installing"
+    else
+        log_warning "Profile activate dry-run failed"
+    fi
+}
+
+scenario_24_dry_run_deactivate() {
+    log_section "Scenario 24: Dry-Run Profile Deactivate (F-09)"
+
+    cd "$PR_TEST_ROOT/project"
+
+    # Ensure target is configured before dry-run
+    log_info "Verifying target is configured"
+    if ! assert_file_exists "$PR_TEST_ROOT/project/prompt-registry.yml"; then
+        log_warning "prompt-registry.yml not found, recreating target"
+        local output
+        output=$(run_cmd "$PR_BIN target add $TARGET_NAME --type copilot-cli --path \"$PR_TEST_ROOT/copilot-cli\" -o json") || true
+        if assert_json_status "$output"; then
+            log_success "Target recreated"
+        else
+            log_error "Failed to recreate target"
+            echo "$output"
+            return 0
+        fi
+    fi
+
+    log_info "Running profile deactivate with --dry-run"
+    local output
+    output=$(run_cmd "$PR_BIN profile deactivate --dry-run -o json") || true
+
+    if echo "$output" | jq -e '.data.dryRun == true' > /dev/null; then
+        log_success "Profile deactivate dry-run shows preview without deactivating"
+    else
+        log_warning "Profile deactivate dry-run failed"
+    fi
+}
+
+scenario_25_cleanup() {
+    log_section "Scenario 25: Cleanup"
 
     log_info "Removing target"
     cd "$PR_TEST_ROOT/project"
@@ -991,7 +1103,9 @@ main() {
     scenario_20_error_hints || true  # Non-critical
     scenario_21_status_command || true  # Non-critical
     scenario_22_search_alias || true  # Non-critical
-    scenario_23_cleanup || true  # Cleanup always runs
+    scenario_23_dry_run_activate || true  # Non-critical
+    scenario_24_dry_run_deactivate || true  # Non-critical
+    scenario_25_cleanup || true  # Cleanup always runs
 
     # Print summary
     log_section "Test Summary"

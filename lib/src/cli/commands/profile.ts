@@ -344,6 +344,7 @@ export class ProfileActivateCommand extends BaseProfileCommand {
  */
 export class ProfileDeactivateCommand extends BaseProfileCommand {
   public static readonly paths = [['profile', 'deactivate']];
+  public dryRun = Option.Boolean('--dry-run', false);
 
   public async execute() {
     const { ctx, http, tokens } = this.commandContext;
@@ -358,6 +359,20 @@ export class ProfileDeactivateCommand extends BaseProfileCommand {
       });
       return 0;
     }
+
+    if (this.dryRun) {
+      formatOutput({
+        ctx, command: 'profile.deactivate', output: fmt, status: 'ok',
+        data: {
+          dryRun: true,
+          deactivated: { hubId: cur.hubId, profileId: cur.profileId }
+        },
+        textRenderer: (d) => `[dry-run] Would deactivate profile "${d.deactivated?.profileId}" from hub "${d.deactivated?.hubId}":\n`
+          + 'Run without --dry-run to apply.\n'
+      });
+      return 0;
+    }
+
     await built.activations.remove(cur.hubId, cur.profileId);
 
     const lockPath = path.join(ctx.cwd(), 'prompt-registry.lock.json');

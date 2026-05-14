@@ -62,6 +62,8 @@ export interface UninstallOptions {
   target?: string;
   /** Uninstall all bundles for target. */
   all?: boolean;
+  /** Dry-run: preview removal without deleting files. */
+  dryRun?: boolean;
   /**
    * Phase 1 Step 1.3: Installation scope (user or repository).
    * Overrides target's scope if specified.
@@ -114,12 +116,14 @@ export class UninstallCommand extends BaseUninstallCommand {
       Examples:
         prompt-registry uninstall --lockfile prompt-registry.lock.json --target my-vscode
         prompt-registry uninstall --all --target my-vscode
+        prompt-registry uninstall --dry-run --target my-vscode
 
       Options:
         --bundle <id>          Bundle id to uninstall
         --lockfile <path>      Path to a lockfile for declarative uninstallation
         --target <name>        Target name to uninstall from
         --all                  Remove all bundles for target
+        --dry-run              Preview removal without deleting files
         --scope <scope>        Installation scope (user or repository)
         --commit-mode <mode>   Commit mode for repository scope
     `
@@ -130,6 +134,7 @@ export class UninstallCommand extends BaseUninstallCommand {
   public lockfile = Option.String('--lockfile');
   public target = Option.String('--target');
   public all = Option.Boolean('--all');
+  public dryRun = Option.Boolean('--dry-run');
   public scope = Option.String('--scope');
   public commitMode = Option.String('--commit-mode');
 
@@ -143,6 +148,7 @@ export class UninstallCommand extends BaseUninstallCommand {
       lockfile: this.lockfile,
       target: this.target,
       all: this.all,
+      dryRun: this.dryRun,
       scope: this.scope as 'user' | 'repository' | undefined,
       commitMode: this.commitMode as RepositoryCommitMode | undefined
     };
@@ -320,6 +326,26 @@ async function performBundleUninstall(
     return 0;
   }
 
+  // Dry-run: show what would be removed without deleting
+  if (opts.dryRun === true) {
+    formatOutput({
+      ctx,
+      command: 'uninstall',
+      output: fmt,
+      status: 'ok',
+      data: {
+        dryRun: true,
+        target: target.name,
+        bundle: bundleId,
+        files: entry.files
+      },
+      textRenderer: (d) => `[dry-run] Would uninstall bundle "${d.bundle}" from target "${d.target}":\n`
+        + `  Files: ${d.files.join(', ')}\n`
+        + 'Run without --dry-run to apply.\n'
+    });
+    return 0;
+  }
+
   const writerFactory = createWriterFactory(ctx, opts);
   const pipeline = new UninstallPipeline({
     fs: ctx.fs,
@@ -373,6 +399,31 @@ async function performLockfileUninstall(
   const lockPath = path.isAbsolute(lockfile)
     ? lockfile
     : path.join(ctx.cwd(), lockfile);
+  const lock = await readLockfile(lockPath, ctx.fs);
+
+  // Dry-run: show what would be removed without deleting
+  if (opts.dryRun === true) {
+    const entries = lock.entries.filter((e) => e.target === target.name);
+    const allFiles = entries.flatMap((e) => e.files);
+    formatOutput({
+      ctx,
+      command: 'uninstall',
+      output: fmt,
+      status: 'ok',
+      data: {
+        dryRun: true,
+        lockfile: lockPath,
+        target: target.name,
+        bundles: entries.map((e) => e.bundleId),
+        files: allFiles
+      },
+      textRenderer: (d) => `[dry-run] Would uninstall ${d.bundles.length} bundle${d.bundles.length === 1 ? '' : 's'} from target "${d.target}" (from ${d.lockfile}):\n`
+        + `  Bundles: ${d.bundles.join(', ')}\n`
+        + `  Files: ${d.files.length} total\n`
+        + 'Run without --dry-run to apply.\n'
+    });
+    return 0;
+  }
 
   const writerFactory = createWriterFactory(ctx, opts);
   const pipeline = new UninstallPipeline({
@@ -432,6 +483,31 @@ async function performAllUninstall(
   fmt: OutputFormat
 ): Promise<number> {
   const lockPath = path.join(ctx.cwd(), 'prompt-registry.lock.json');
+  const lock = await readLockfile(lockPath, ctx.fs);
+  const entries = lock.entries.filter((e) => e.target === target.name);
+
+  // Dry-run: show what would be removed without deleting
+  if (opts.dryRun === true) {
+    const allFiles = entries.flatMap((e) => e.files);
+    formatOutput({
+      ctx,
+      command: 'uninstall',
+      output: fmt,
+      status: 'ok',
+      data: {
+        dryRun: true,
+        target: target.name,
+        bundles: entries.map((e) => e.bundleId),
+        files: allFiles
+      },
+      textRenderer: (d) => `[dry-run] Would uninstall all bundles from target "${d.target}":\n`
+        + `  Bundles: ${d.bundles.join(', ')}\n`
+        + `  Files: ${d.files.length} total\n`
+        + 'Run without --dry-run to apply.\n'
+    });
+    return 0;
+  }
+
   const writerFactory = createWriterFactory(ctx, opts);
   const pipeline = new UninstallPipeline({
     fs: ctx.fs,
