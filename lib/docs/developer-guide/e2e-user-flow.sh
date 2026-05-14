@@ -3,19 +3,40 @@
 # End-to-End User Flow Test Script
 # Simulates realistic user workflows from scratch
 #
-# This script tests the complete lifecycle:
-# 1. Create a target (copilot-cli)
-# 2. Add the existing hub
-# 3. Sync the hub
-# 4. Activate the profile
-# 5. Verify resources are installed in expected locations
-# 6. Harvest the index
-# 7. Search for specific resources
-# 8. Build a local profile from search results
-# 9. Activate the local profile
-# 10. Verify resources are installed
-# 11. Deactivate the profile
-# 12. Verify resources are removed
+# This script tests the complete lifecycle (20 scenarios):
+#
+# Setup:
+#   1. Create install target (copilot-cli type, local path)
+#   2. Create synthetic local bundle (prompts + skills)
+#   3. Create local hub configuration file (hub-config.yml)
+#   4. Add hub to project (hub add --type local)
+#  4a. Activate hub as default (hub use)
+#   5. Sync hub to make profiles available (hub sync)
+#
+# Profile workflow:
+#   6. Activate a hub profile onto the target (profile activate)
+#   7. Verify resources were installed to target path (prompts/, skills/)
+#
+# Primitive Index workflow:
+#   8. Build primitive index from local bundle (index build)
+#   9. Search index by free-text query (index search)
+#  10. Search index filtered by kind (index search --kinds)
+#  11. Create a shortlist + add primitive to it (index shortlist new + add)
+#  12. Export shortlist as a profile YAML file (index export)
+#  13. Add exported profile to hub config + re-sync hub
+#
+# Teardown of profile + direct install:
+#  14. Activate the locally exported profile (profile activate)
+#  15. Verify resources still installed after profile swap
+#  16. Deactivate profile, clearing the lockfile (profile deactivate)
+#  17. Verify resources removed from target path
+#
+# Direct bundle install/uninstall:
+#  18. Install bundle from local directory (install --from)
+#  19. Uninstall bundle via lockfile (uninstall --lockfile)
+#
+# Cleanup:
+#  20. Remove target config and delete test directories
 #
 # Usage:
 #   ./e2e-user-flow.sh [--use-real-hub] [--verbose]
