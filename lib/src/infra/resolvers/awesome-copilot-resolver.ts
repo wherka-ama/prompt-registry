@@ -106,7 +106,7 @@ export class AwesomeCopilotBundleResolver implements BundleResolver {
    */
   public async resolve(spec: BundleSpec): Promise<Installable | null> {
     const branch = this.opts.branch ?? 'main';
-    const collectionsPath = (this.opts.collectionsPath ?? 'collections').replace(/^\/+|\/+$/g, '');
+    const collectionsPath = (this.opts.collectionsPath ?? 'collections').replaceAll(/^\/+|\/+$/g, '');
     const collectionFile = `${spec.bundleId}.collection.yml`;
     const collectionUrl = this.rawUrl(branch, `${collectionsPath}/${collectionFile}`);
     const yamlText = await this.fetchText(collectionUrl);
@@ -178,5 +178,5 @@ const quote = (s: string): string => {
   if (/^[\w. -]+$/.test(s)) {
     return s;
   }
-  return `'${s.replace(/'/g, "''")}'`;
+  return `'${s.replaceAll("'", "''")}'`;
 };

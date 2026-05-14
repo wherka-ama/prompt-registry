@@ -196,7 +196,8 @@ function renderStatusText(d: StatusData): string {
   if (d.targets.length === 0) {
     lines.push('targets     (none — run `prompt-registry target add`)\n');
   } else {
-    lines.push(`targets     ${d.targets.map((t) => `${t.name} [${t.type}]`).join(', ')}\n`);
+    const targetList = d.targets.map((t) => `${t.name} [${t.type}]`).join(', ');
+    lines.push(`targets     ${targetList}\n`);
   }
 
   if (d.activeHubId === null) {

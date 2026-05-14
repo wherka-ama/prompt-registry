@@ -158,7 +158,7 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
     return failWith(ctx, fmt, new RegistryError({
       code: 'USAGE.MISSING_FLAG',
       message: `init: unknown --target-type "${targetType}"`,
-      hint: `Known types: ${[...TARGET_TYPES].toSorted().join(', ')}`
+      hint: `Known types: ${[...TARGET_TYPES].toSorted((a, b) => a.localeCompare(b)).join(', ')}`
     }));
   }
 
