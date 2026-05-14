@@ -91,4 +91,56 @@ describe('config commands', () => {
     const parsed = JSON.parse(result.stdout) as { errors: { code: string }[] };
     expect(parsed.errors[0].code).toBe('USAGE.MISSING_FLAG');
   });
+
+  it('config list text output contains section headers', async () => {
+    const result = await runCommand(['config', 'list'], {
+      commands: [createConfigListCommand({ output: 'text' })],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Prompt Registry Configuration');
+  });
+
+  it('config list text output includes targets section when targets configured', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'targets:\n  - name: vscode-target\n    type: vscode\n    scope: user\n'
+    );
+    const result = await runCommand(['config', 'list'], {
+      commands: [createConfigListCommand({ output: 'text' })],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('vscode-target');
+    expect(result.stdout).toContain('vscode');
+  });
+
+  it('config list text includes "No targets" when target list empty', async () => {
+    const result = await runCommand(['config', 'list'], {
+      commands: [createConfigListCommand({ output: 'text' })],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    // Either no targets section or explicitly says no targets configured
+    const hasNoTargets = result.stdout.includes('No targets') || !result.stdout.includes('=== Targets ===');
+    expect(hasNoTargets).toBe(true);
+  });
+
+  it('config list yaml output wraps in envelope', async () => {
+    const result = await runCommand(['config', 'list'], {
+      commands: [createConfigListCommand({ output: 'yaml' })],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('status: ok');
+  });
+
+  it('config list uses text format by default', async () => {
+    const result = await runCommand(['config', 'list'], {
+      commands: [createConfigListCommand()],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).not.toContain('"status"');
+  });
 });

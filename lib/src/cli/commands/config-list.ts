@@ -56,17 +56,17 @@ const renderConfigText = (config: Record<string, unknown>): string => {
   }
 
   // Targets
-  const targets = config.targets as Record<string, unknown> | undefined;
-  if (targets && typeof targets === 'object') {
+  const rawTargets = config.targets;
+  const targetArray: { name: string; type: string }[] | undefined = Array.isArray(rawTargets)
+    ? (rawTargets as { name: string; type: string }[])
+    : ((rawTargets as Record<string, unknown> | undefined)?.targets as { name: string; type: string }[] | undefined);
+  if (targetArray !== undefined) {
     lines.push('=== Targets ===');
-    const targetArray = targets.targets as { name: string; type: string }[] | undefined;
-    if (targetArray && Array.isArray(targetArray)) {
-      if (targetArray.length === 0) {
-        lines.push('No targets configured');
-      } else {
-        for (const t of targetArray) {
-          lines.push(`  - ${t.name} (${t.type})`);
-        }
+    if (targetArray.length === 0) {
+      lines.push('No targets configured');
+    } else {
+      for (const t of targetArray) {
+        lines.push(`  - ${t.name} (${t.type})`);
       }
     }
     lines.push('');

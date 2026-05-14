@@ -115,7 +115,11 @@ const resolveHubId = async (mgr: HubManager, hubId?: string): Promise<string> =>
   }
   const active = await mgr.getActiveHub();
   if (!active) {
-    throw new Error('no active hub; pass --hub <id> or run `hub use <id>` first');
+    throw new RegistryError({
+      code: 'HUB.NOT_FOUND',
+      message: 'no active hub',
+      hint: 'Run `prompt-registry hub add` to import a hub, then `hub use <id>` to activate it.'
+    });
   }
   return active.id;
 };
@@ -160,8 +164,9 @@ export class ProfileListCommand extends BaseProfileCommand {
     const hubs = await mgr.listHubs();
     if (!hubs.some((h) => h.id === hubId)) {
       return failWith(ctx, fmt, new RegistryError({
-        code: 'USAGE.MISSING_FLAG',
-        message: `profile list: hub "${hubId}" not found`
+        code: 'HUB.NOT_FOUND',
+        message: `profile list: hub "${hubId}" not found`,
+        hint: 'Run `prompt-registry hub list` to see available hubs.'
       }));
     }
     const all = await mgr.listSourcesAcrossAllHubs();
@@ -216,7 +221,8 @@ export class ProfileShowCommand extends BaseProfileCommand {
     if (profile === undefined) {
       return failWith(ctx, fmt, new RegistryError({
         code: 'BUNDLE.NOT_FOUND',
-        message: `profile show: "${this.profileId}" not in hub "${hubId}"`
+        message: `profile show: "${this.profileId}" not in hub "${hubId}"`,
+        hint: 'Run `prompt-registry profile list` to see available profiles.'
       }));
     }
     formatOutput({
@@ -235,8 +241,9 @@ export class ProfileShowCommand extends BaseProfileCommand {
  */
 export class ProfileActivateCommand extends BaseProfileCommand {
   public static readonly paths = [['profile', 'activate']];
-  public profileId = Option.String();
+  public profileId = Option.String({ required: false });
   public targets = Option.String('--target');
+  public dryRun = Option.Boolean('--dry-run', false);
 
   public async execute() {
     const { ctx, http, tokens } = this.commandContext;
@@ -246,7 +253,8 @@ export class ProfileActivateCommand extends BaseProfileCommand {
     if (!this.profileId) {
       return failWith(ctx, fmt, new RegistryError({
         code: 'USAGE.MISSING_FLAG',
-        message: 'profile activate: <profileId> required'
+        message: 'profile activate: <profileId> required',
+        hint: 'Run `prompt-registry profile list` to see available profile IDs.'
       }));
     }
 
@@ -263,7 +271,8 @@ export class ProfileActivateCommand extends BaseProfileCommand {
     if (profile === undefined) {
       return failWith(ctx, fmt, new RegistryError({
         code: 'BUNDLE.NOT_FOUND',
-        message: `profile activate: "${this.profileId}" not in hub "${hubId}"`
+        message: `profile activate: "${this.profileId}" not in hub "${hubId}"`,
+        hint: 'Run `prompt-registry profile list` to see available profiles.'
       }));
     }
 
@@ -275,8 +284,28 @@ export class ProfileActivateCommand extends BaseProfileCommand {
     if (targets.length === 0) {
       return failWith(ctx, fmt, new RegistryError({
         code: 'USAGE.MISSING_FLAG',
-        message: 'profile activate: no targets configured (run `target add` first)'
+        message: 'profile activate: no targets configured',
+        hint: 'Run `prompt-registry target add <name> --type <type>` to configure a target.'
       }));
+    }
+
+    if (this.dryRun) {
+      formatOutput({
+        ctx, command: 'profile.activate', output: fmt, status: 'ok',
+        data: {
+          dryRun: true,
+          hubId,
+          profileId: profile.id,
+          profileName: profile.name,
+          bundles: profile.bundles.map((b) => b.id),
+          targets: targets.map((t) => t.name)
+        },
+        textRenderer: (d) => `[dry-run] Would activate profile "${d.profileId}" from hub "${d.hubId}":\n`
+          + `  Bundles: ${d.bundles.join(', ')}\n`
+          + `  Targets: ${d.targets.join(', ')}\n`
+          + 'Run without --dry-run to apply.\n'
+      });
+      return 0;
     }
 
     const lockPath = path.join(ctx.cwd(), 'prompt-registry.lock.json');

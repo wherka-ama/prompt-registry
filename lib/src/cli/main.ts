@@ -16,6 +16,9 @@ import {
   NodeHttpClient,
 } from '../infra/http/node-http-client';
 import {
+  createApplyCommand,
+} from './commands/apply';
+import {
   BundleBuildCommand,
 } from './commands/bundle-build';
 import {
@@ -41,6 +44,7 @@ import {
 } from './commands/explain';
 import {
   HubAddCommand,
+  HubCreateCommand,
   HubListCommand,
   HubRemoveCommand,
   HubSyncCommand,
@@ -118,6 +122,9 @@ import {
   TargetRemoveCommand,
 } from './commands/target-remove';
 import {
+  createTargetTypesCommand,
+} from './commands/target-types';
+import {
   UninstallCommand,
 } from './commands/uninstall';
 import {
@@ -151,7 +158,10 @@ export const main = async (argv: string[]): Promise<number> => {
   const httpClient = new NodeHttpClient();
   const tokenProvider = envTokenProvider(ctx.env);
 
-  const commands: CommandDefinition[] = [];
+  const commands: CommandDefinition[] = [
+    createApplyCommand({ output: parsed.output }),
+    createTargetTypesCommand({ output: parsed.output })
+  ];
 
   const commandClasses = [
     ExplainCommand,
@@ -199,7 +209,8 @@ export const main = async (argv: string[]): Promise<number> => {
     InstallCommand,
     UninstallCommand,
     InitCommand,
-    StatusCommand
+    StatusCommand,
+    HubCreateCommand
   ];
 
   return runCli(argv, {

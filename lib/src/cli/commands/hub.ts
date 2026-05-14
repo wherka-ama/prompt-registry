@@ -215,7 +215,8 @@ export class HubUseCommand extends BaseHubCommand {
     if (!this.hubId) {
       return renderError(new RegistryError({
         code: 'USAGE.MISSING_FLAG',
-        message: 'hub use: provide a hub id or --clear'
+        message: 'hub use: provide a hub id or --clear',
+        hint: 'Run `prompt-registry hub list` to see available hubs.'
       }), ctx);
     }
 
@@ -244,7 +245,8 @@ export class HubRemoveCommand extends BaseHubCommand {
     if (!this.hubId) {
       return renderError(new RegistryError({
         code: 'USAGE.MISSING_FLAG',
-        message: 'hub remove: <hubId> is required'
+        message: 'hub remove: <hubId> is required',
+        hint: 'Run `prompt-registry hub list` to see available hub IDs.'
       }), ctx);
     }
 
@@ -253,6 +255,62 @@ export class HubRemoveCommand extends BaseHubCommand {
       ctx, command: 'hub.remove', output: fmt, status: 'ok',
       data: { id: this.hubId },
       textRenderer: (d) => `Removed hub "${d.id}".\n`
+    });
+    return 0;
+  }
+}
+
+/**
+ * hub create - scaffold a hub-config.yml skeleton
+ */
+export class HubCreateCommand extends BaseHubCommand {
+  public static readonly paths = [['hub', 'create']];
+  public name = Option.String('--name');
+  public out = Option.String('--out');
+  public addSource = Option.String('--add-source');
+
+  public async execute() {
+    const { ctx } = this.commandContext;
+    const fmt = (this.output ?? 'text') as OutputFormat;
+
+    if (!this.name) {
+      renderError(new RegistryError({
+        code: 'USAGE.MISSING_FLAG',
+        message: 'hub create: --name <name> is required',
+        hint: 'Example: hub create --name "My Hub" --out ./my-hub'
+      }), ctx);
+      return 1;
+    }
+
+    const outDir = this.out ? path.resolve(ctx.cwd(), this.out) : ctx.cwd();
+    const configPath = path.join(outDir, 'hub-config.yml');
+    const now = new Date().toISOString();
+    const sourcesBlock = this.addSource
+      ? `  - id: local-source\n    type: local\n    url: ${path.resolve(ctx.cwd(), this.addSource)}\n`
+      : '  # - id: my-source\n  #   type: github\n  #   url: owner/repo\n';
+
+    const content = [
+      '# hub-config.yml — created by prompt-registry hub create',
+      'version: "1.0.0"',
+      'metadata:',
+      `  name: "${this.name}"`,
+      '  description: ""',
+      '  maintainer: ""',
+      `  updatedAt: "${now}"`,
+      'sources:',
+      sourcesBlock,
+      'profiles: []'
+    ].join('\n') + '\n';
+
+    await ctx.fs.mkdir(outDir, { recursive: true });
+    await ctx.fs.writeFile(configPath, content);
+
+    formatOutput({
+      ctx, command: 'hub.create', output: fmt, status: 'ok',
+      data: { path: configPath, name: this.name, outDir },
+      textRenderer: (d) => `Created hub config: ${d.path}\n`
+        + `Edit it to add sources and profiles, then run:\n`
+        + `  prompt-registry hub add --type local --location ${d.outDir}\n`
     });
     return 0;
   }
@@ -276,7 +334,8 @@ export class HubSyncCommand extends BaseHubCommand {
       if (!active) {
         return renderError(new RegistryError({
           code: 'USAGE.MISSING_FLAG',
-          message: 'hub sync: no <hubId> given and no active hub'
+          message: 'hub sync: no <hubId> given and no active hub',
+          hint: 'Run `prompt-registry hub use <id>` or pass the hub id directly.'
         }), ctx);
       }
       id = active.id;
