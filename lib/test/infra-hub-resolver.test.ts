@@ -162,4 +162,14 @@ describe('CompositeHubResolver', () => {
     );
     await expect(composite.resolve(makeRef('github'))).rejects.toThrow('resolver error');
   });
+
+  it('returns reference with normalized location for local resolver', async () => {
+    const cfgPath = path.join(tmpDir, 'hub-config.yml');
+    await fs.writeFile(cfgPath, MINIMAL_HUB_YAML, 'utf8');
+
+    const resolver = new LocalHubResolver(createNodeFsAdapter());
+    const result = await resolver.resolve({ type: 'local', location: cfgPath });
+
+    expect(result.reference).toEqual({ type: 'local', location: cfgPath });
+  });
 });
