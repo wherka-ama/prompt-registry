@@ -39,6 +39,8 @@ import {
 } from '../../infra/stores/active-hub-store';
 import {
   addTarget,
+  findProjectConfigPath,
+  readTargets,
 } from '../../infra/stores/target-store';
 import {
   HubStore,
@@ -181,6 +183,8 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
       connectHub: boolean;
       hubChoice?: string;
       hubPath?: string;
+      useExistingTarget?: boolean;
+      newTargetName?: string;
     }
 
     const answers = await inquirer.prompt<WizardAnswers>([
@@ -224,6 +228,32 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
     targetType = answers.ide as TargetType;
     targetName = DEFAULT_TARGET_NAME;
 
+    // Check if target already exists
+    const currentTargets = await readTargets({ cwd: ctx.cwd(), fs: ctx.fs });
+    const targetExists = currentTargets.some((t) => t.name === targetName);
+
+    if (targetExists) {
+      const targetAnswers = await inquirer.prompt<WizardAnswers>([
+        {
+          type: 'confirm',
+          name: 'useExistingTarget',
+          message: `Target "${targetName}" already exists. Use it anyway?`,
+          default: true
+        },
+        {
+          type: 'input',
+          name: 'newTargetName',
+          message: 'Enter a different target name:',
+          default: 'copilot-2',
+          when: (a: { useExistingTarget: boolean }) => !a.useExistingTarget
+        }
+      ]);
+
+      if (!targetAnswers.useExistingTarget && targetAnswers.newTargetName) {
+        targetName = targetAnswers.newTargetName;
+      }
+    }
+
     if (answers.hubChoice === 'amadeus') {
       hubRef = 'amadeus';
     } else if (answers.hubChoice === 'local' && answers.hubPath) {
@@ -242,14 +272,27 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
   }
 
   try {
-    // Step 1: add target
-    const result = await addTarget(
-      { cwd: ctx.cwd(), fs: ctx.fs },
-      { name: targetName, type: targetType, scope: 'user' }
-    );
+    // Step 1: check if target already exists
+    const currentTargets = await readTargets({ cwd: ctx.cwd(), fs: ctx.fs });
+    const targetExists = currentTargets.some((t) => t.name === targetName);
+
+    let result;
+    if (targetExists) {
+      // Target already exists - skip creation but note it
+      const { file } = await findProjectConfigPath({ cwd: ctx.cwd(), fs: ctx.fs });
+      result = { file, created: false };
+    } else {
+      // Create new target
+      result = await addTarget(
+        { cwd: ctx.cwd(), fs: ctx.fs },
+        { name: targetName, type: targetType, scope: 'user' }
+      );
+    }
 
     const steps: string[] = [
-      `target "${targetName}" (${targetType}) → ${result.file}`
+      targetExists
+        ? `target "${targetName}" already exists`
+        : `target "${targetName}" (${targetType}) → ${result.file}`
     ];
 
     // Step 2: optionally import + sync hub
@@ -267,7 +310,12 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
     }
 
     const data = {
-      target: { name: targetName, type: targetType, file: result.file, created: result.created },
+      target: { 
+        name: targetName, 
+        type: targetType, 
+        file: result.file, 
+        created: result.created ?? false 
+      },
       hub: hubId === null ? null : { id: hubId },
       steps
     };

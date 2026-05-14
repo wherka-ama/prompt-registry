@@ -15,11 +15,11 @@ import {
   runCommand,
 } from '../src/cli/framework';
 import {
-  createNodeFsAdapter,
-} from './cli/helpers/node-fs-adapter';
-import {
   TARGET_TYPES,
 } from '../src/domain/install';
+import {
+  createNodeFsAdapter,
+} from './cli/helpers/node-fs-adapter';
 
 let tmpRoot: string;
 let xdgConfig: string;
@@ -213,5 +213,48 @@ describe('cli `init`', () => {
         expect(parsed.data.target.type).toBe(targetType);
       });
     });
+  });
+
+  it('skips target creation when target already exists', async () => {
+    // Create initial target
+    await runCommand(
+      ['init'],
+      {
+        commands: [createInitCommand({
+          output: 'json',
+          yes: true,
+          targetName: 'copilot',
+          targetType: 'copilot-cli'
+        })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+
+    // Try to init again with same target name
+    const { exitCode, stdout } = await runCommand(
+      ['init'],
+      {
+        commands: [createInitCommand({
+          output: 'json',
+          yes: true,
+          targetName: 'copilot',
+          targetType: 'copilot-cli'
+        })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as {
+      data: { target: { created: boolean } };
+    };
+    expect(parsed.data.target.created).toBe(false);
   });
 });
