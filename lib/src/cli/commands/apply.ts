@@ -174,14 +174,11 @@ export const createApplyCommand = (opts: ApplyOptions = {}): CommandDefinition =
           }
           const sourceId = generateSourceId(src.type, src.url);
           const writtenFiles = out.written[t] ?? [];
-          const relFiles: string[] = [];
           const checksums: Record<string, string> = {};
+          const crypto = await import('node:crypto');
           for (const f of writtenFiles) {
-            const rel = path.relative(ctx.cwd(), f);
-            relFiles.push(rel);
             const bytes = await ctx.fs.readFile(f);
-            const crypto = await import('node:crypto');
-            checksums[rel] = crypto.createHash('sha256').update(bytes).digest('hex');
+            checksums[f] = crypto.createHash('sha256').update(bytes).digest('hex');
           }
           nextLock = upsertEntry(nextLock, {
             target: t,
@@ -191,7 +188,7 @@ export const createApplyCommand = (opts: ApplyOptions = {}): CommandDefinition =
               ? out.state.syncedBundleVersions[bundleRef.id]
               : bundleRef.version,
             installedAt: new Date().toISOString(),
-            files: relFiles,
+            files: writtenFiles,
             fileChecksums: checksums
           });
           nextLock = upsertSource(nextLock, sourceId, { type: src.type, url: src.url });

@@ -332,7 +332,7 @@ export class ProfileActivateCommand extends BaseProfileCommand {
       ctx, command: 'profile.activate', output: fmt, status: 'ok',
       data: { hubId, profileId: profile.id, state: out.state, written: out.written, lockfile: lockPath },
       textRenderer: (d) => `Activated profile "${d.profileId}" from hub "${d.hubId}":\n`
-        + `  Bundles: ${d.state.syncedBundles.join(', ')}\n`
+        + `  Bundles: ${[...new Set(d.state.syncedBundles)].join(', ')}\n`
         + `  Targets: ${d.state.syncedTargets.join(', ')}\n`
     });
     return 0;
@@ -633,14 +633,11 @@ async function updateActivationLockfile(
       }
       const sourceId = generateSourceId(src.type, src.url);
       const writtenFiles = out.written[t] || [];
-      const relativeFiles: string[] = [];
       const fileChecksums: Record<string, string> = {};
+      const crypto = await import('node:crypto');
       for (const f of writtenFiles) {
-        const relativePath = path.relative(ctx.cwd(), f);
-        relativeFiles.push(relativePath);
         const bytes = await ctx.fs.readFile(f);
-        const crypto = await import('node:crypto');
-        fileChecksums[relativePath] = crypto.createHash('sha256').update(bytes).digest('hex');
+        fileChecksums[f] = crypto.createHash('sha256').update(bytes).digest('hex');
       }
       nextLock = upsertEntry(nextLock, {
         target: t,
@@ -648,7 +645,7 @@ async function updateActivationLockfile(
         bundleId: bundleRef.id,
         bundleVersion: bundleRef.version === 'latest' ? out.state.syncedBundleVersions[bundleRef.id] : bundleRef.version,
         installedAt: new Date().toISOString(),
-        files: relativeFiles,
+        files: writtenFiles,
         fileChecksums
       });
       nextLock = upsertSource(nextLock, sourceId, { type: src.type, url: src.url });

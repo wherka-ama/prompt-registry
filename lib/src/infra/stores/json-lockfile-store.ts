@@ -26,8 +26,9 @@ export interface LockfileEntry {
   /** ISO 8601 timestamp of the install. */
   installedAt: string;
   /**
-   * List of bundle-relative file paths written. Strings for
-   * back-compat with iter-25 schema; readers tolerate both.
+   * List of file paths written. Can be bundle-relative (for install command)
+   * or absolute (for profile activation). Readers should handle both formats.
+   * Strings for back-compat with iter-25 schema; readers tolerate both.
    *
    * When iter-12 (D13) has computed checksums, the same logical
    * file is also recorded in `fileChecksums` (parallel array).
