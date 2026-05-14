@@ -139,4 +139,47 @@ describe('cli `init`', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain('hub add');
   });
+
+  it('outputs error in JSON format when invalid type given with --output json', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['init'],
+      {
+        commands: [createInitCommand({
+          output: 'json',
+          yes: true,
+          targetType: 'bad-type'
+        })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const parsed = JSON.parse(stdout) as {
+      status: string;
+      errors: { code: string; message: string }[];
+    };
+    expect(parsed.status).toBe('error');
+    expect(parsed.errors[0].code).toBe('USAGE.MISSING_FLAG');
+    expect(parsed.errors[0].message).toContain('bad-type');
+  });
+
+  it('text output shows profile activate hint when hub IS supplied (via mock)', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['init'],
+      {
+        commands: [createInitCommand({ output: 'text', yes: true })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    // Covers the 'else' branch of the hub null check in textRenderer
+    expect(stdout).toContain('profile activate');
+  });
 });

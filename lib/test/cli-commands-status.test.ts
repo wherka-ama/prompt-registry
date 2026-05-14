@@ -9,6 +9,10 @@ import {
   it,
 } from 'vitest';
 import {
+  PrimitiveIndex,
+  saveIndex,
+} from '../src';
+import {
   createStatusCommand,
 } from '../src/cli/commands/status';
 import {
@@ -17,6 +21,10 @@ import {
 import {
   createNodeFsAdapter,
 } from './cli/helpers/node-fs-adapter';
+import {
+  createFixtureBundles,
+  FakeBundleProvider,
+} from './fixtures/primitive-index';
 
 let tmpRoot: string;
 let xdgConfig: string;
@@ -128,11 +136,128 @@ describe('cli `status`', () => {
         context: {
           cwd: tmpRoot,
           fs: createNodeFsAdapter(),
-          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+          env: { XDG_CONFIG_HOME: xdgConfig, XDG_CACHE_HOME: tmpRoot, HOME: tmpRoot }
         }
       }
     );
     expect(exitCode).toBe(0);
     expect(stdout).toContain('target add');
+  });
+
+  it('text output shows active hub when set', async () => {
+    const hubsDir = path.join(xdgConfig, 'prompt-registry', 'hubs');
+    const activeHubFile = path.join(xdgConfig, 'prompt-registry', 'active-hub.json');
+    await fs.mkdir(hubsDir, { recursive: true });
+    await fs.writeFile(
+      path.join(hubsDir, 'my-hub.yml'),
+      'version: "1.0.0"\nmetadata:\n  name: my-hub\n'
+    );
+    await fs.writeFile(activeHubFile, JSON.stringify({ hubId: 'my-hub', setAt: new Date().toISOString() }));
+    const { exitCode, stdout } = await runCommand(
+      ['status'],
+      {
+        commands: [createStatusCommand({ output: 'text' })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, XDG_CACHE_HOME: tmpRoot, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('my-hub');
+  });
+
+  it('text output shows hub list when hubs exist but none active', async () => {
+    const hubsDir = path.join(xdgConfig, 'prompt-registry', 'hubs');
+    await fs.mkdir(hubsDir, { recursive: true });
+    await fs.writeFile(
+      path.join(hubsDir, 'hub-alpha.yml'),
+      'version: "1.0.0"\nmetadata:\n  name: hub-alpha\n'
+    );
+    const { exitCode, stdout } = await runCommand(
+      ['status'],
+      {
+        commands: [createStatusCommand({ output: 'text' })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, XDG_CACHE_HOME: tmpRoot, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('hub-alpha');
+    expect(stdout).toContain('hub use');
+  });
+
+  it('text output shows targets when configured', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'targets:\n  - name: my-copilot\n    type: copilot-cli\n    scope: user\n'
+    );
+    const { exitCode, stdout } = await runCommand(
+      ['status'],
+      {
+        commands: [createStatusCommand({ output: 'text' })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, XDG_CACHE_HOME: tmpRoot, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('my-copilot [copilot-cli]');
+  });
+
+  it('text output shows primitive count when index exists', async () => {
+    const cacheDir = path.join(tmpRoot, 'prompt-registry');
+    await fs.mkdir(cacheDir, { recursive: true });
+    const indexFile = path.join(cacheDir, 'primitive-index.json');
+    const idx = await PrimitiveIndex.buildFrom(
+      new FakeBundleProvider(createFixtureBundles()),
+      { hubId: 'test' }
+    );
+    saveIndex(idx, indexFile);
+    const { exitCode, stdout } = await runCommand(
+      ['status'],
+      {
+        commands: [createStatusCommand({ output: 'text' })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, XDG_CACHE_HOME: tmpRoot, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('primitives');
+  });
+
+  it('text output shows lockfile bundle count', async () => {
+    const lock = {
+      schemaVersion: 1,
+      entries: [
+        { bundleId: 'b1', target: 'my-copilot', installedFiles: [], checksum: '', installedAt: '' }
+      ]
+    };
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.lock.json'),
+      JSON.stringify(lock)
+    );
+    const { exitCode, stdout } = await runCommand(
+      ['status'],
+      {
+        commands: [createStatusCommand({ output: 'text' })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, XDG_CACHE_HOME: tmpRoot, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('1 bundle installed');
   });
 });
