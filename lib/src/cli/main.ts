@@ -101,9 +101,6 @@ import {
   ProfileShowCommand,
 } from './commands/profile';
 import {
-  SearchCommand,
-} from './commands/search';
-import {
   SkillNewCommand,
 } from './commands/skill-new';
 import {
@@ -196,7 +193,6 @@ export const main = async (argv: string[]): Promise<number> => {
     IndexBenchCommand,
     IndexHarvestCommand,
     IndexReportCommand,
-    SearchCommand,
     HubListCommand,
     HubAddCommand,
     HubUseCommand,
