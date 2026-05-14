@@ -64,6 +64,13 @@ const DEFAULT_TARGET_NAME = 'copilot';
 const DEFAULT_TARGET_TYPE: TargetType = 'copilot-cli';
 
 /**
+ * Known hub shorthands and their actual repository locations.
+ */
+const KNOWN_HUBS: Record<string, string> = {
+  amadeus: 'Amadeus-xDLC/genai.prompt-registry-config'
+};
+
+/**
  * Get human-readable display name for a target type.
  * @param type Target type.
  * @returns Display name.
@@ -255,7 +262,7 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
     }
 
     if (answers.hubChoice === 'amadeus') {
-      hubRef = 'amadeus';
+      hubRef = KNOWN_HUBS.amadeus;
     } else if (answers.hubChoice === 'local' && answers.hubPath) {
       hubRef = `file:${answers.hubPath}`;
     } else {
