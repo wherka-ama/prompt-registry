@@ -133,6 +133,7 @@ export const createIndexExportCommand = (
           ? new RegistryError({
             code: 'INDEX.NOT_FOUND',
             message: `index not found: ${indexPath}`,
+            hint: 'Run `prompt-registry index build` or `prompt-registry index harvest` first.',
             cause: cause instanceof Error ? cause : undefined
           })
           : new RegistryError({
@@ -256,11 +257,13 @@ export class IndexExportCommand extends Command {
         ? new RegistryError({
           code: 'INDEX.NOT_FOUND',
           message: `index not found: ${indexPath}`,
+          hint: 'Run `prompt-registry index build` or `prompt-registry index harvest` first.',
           cause: cause instanceof Error ? cause : undefined
         })
         : new RegistryError({
           code: 'INDEX.EXPORT_FAILED',
           message: `index export failed: ${msg}`,
+          hint: 'Please check the error message and try again.',
           cause: cause instanceof Error ? cause : undefined
         });
       return failWith(ctx, fmt, err);

@@ -83,6 +83,7 @@ export const createIndexBenchCommand = (
           ? new RegistryError({
             code: 'INDEX.NOT_FOUND',
             message: `index bench: missing file (${msg})`,
+            hint: 'Run `prompt-registry index build` or `prompt-registry index harvest` first.',
             cause: cause instanceof Error ? cause : undefined
           })
           : new RegistryError({
@@ -168,6 +169,7 @@ export class IndexBenchCommand extends Command {
         ? new RegistryError({
           code: 'INDEX.NOT_FOUND',
           message: `index bench: missing file (${msg})`,
+          hint: 'Run `prompt-registry index build` or `prompt-registry index harvest` first.',
           cause: cause instanceof Error ? cause : undefined
         })
         : new RegistryError({

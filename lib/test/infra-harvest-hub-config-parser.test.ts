@@ -3,9 +3,15 @@
  *
  * Tests parseHubConfig and normalizeRepoFromUrl functions.
  */
-import { describe, expect, it } from 'vitest';
-import { parseHubConfig, normalizeRepoFromUrl } from '../src/infra/harvest/hub-config-parser';
-import type { HubSourceSpec } from '../src/domain';
+import {
+  describe,
+  expect,
+  it,
+} from 'vitest';
+import {
+  normalizeRepoFromUrl,
+  parseHubConfig,
+} from '../src/infra/harvest/hub-config-parser';
 
 describe('normalizeRepoFromUrl', () => {
   it('parses standard GitHub HTTPS URL', () => {

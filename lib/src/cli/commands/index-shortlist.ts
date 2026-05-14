@@ -201,6 +201,7 @@ const classifyError = (cause: unknown, indexPath: string): RegistryError => {
     return new RegistryError({
       code: 'INDEX.NOT_FOUND',
       message: `index not found: ${indexPath}`,
+      hint: 'Run `prompt-registry index build` or `prompt-registry index harvest` first.',
       cause: cause instanceof Error ? cause : undefined
     });
   }
