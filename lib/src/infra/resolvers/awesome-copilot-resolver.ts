@@ -106,14 +106,19 @@ export class AwesomeCopilotBundleResolver implements BundleResolver {
    */
   public async resolve(spec: BundleSpec): Promise<Installable | null> {
     const branch = this.opts.branch ?? 'main';
-    const collectionsPath = (this.opts.collectionsPath ?? 'collections').replaceAll(/^\/+|\/+$/, '');
+    const collectionsPath = (this.opts.collectionsPath ?? 'collections').replace(/^\/+|\/+$/g, '');
     const collectionFile = `${spec.bundleId}.collection.yml`;
     const collectionUrl = this.rawUrl(branch, `${collectionsPath}/${collectionFile}`);
     const yamlText = await this.fetchText(collectionUrl);
     if (yamlText === null) {
       return null;
     }
-    const collection = yaml.load(yamlText) as CollectionManifest | null;
+    let collection: CollectionManifest | null;
+    try {
+      collection = yaml.load(yamlText) as CollectionManifest | null;
+    } catch {
+      return null;
+    }
     if (collection === null || collection === undefined) {
       return null;
     }
@@ -148,8 +153,8 @@ export class AwesomeCopilotBundleResolver implements BundleResolver {
       { path: 'deployment-manifest.yml', bytes: Buffer.from(manifest, 'utf8') },
       { path: `${collectionsPath}/${collectionFile}`, bytes: Buffer.from(yamlText, 'utf8') }
     );
-    if (files.length <= 1) {
-      // Only the manifest — no real content. Treat as not-found so
+    if (files.length <= 2) {
+      // Only manifest + collection file — no real content. Treat as not-found so
       // the activator can produce a helpful error.
       return null;
     }
@@ -173,5 +178,5 @@ const quote = (s: string): string => {
   if (/^[\w. -]+$/.test(s)) {
     return s;
   }
-  return `'${s.replaceAll(/'/, "''")}'`;
+  return `'${s.replace(/'/g, "''")}'`;
 };

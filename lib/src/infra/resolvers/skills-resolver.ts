@@ -138,7 +138,7 @@ export class SkillsBundleResolver implements BundleResolver {
    * @returns Installable, or null when the skill directory is missing.
    */
   public async resolve(spec: BundleSpec): Promise<Installable | null> {
-    const skillsPath = (this.opts.skillsPath ?? 'skills').replaceAll(/^\/+|\/+$/, '');
+    const skillsPath = (this.opts.skillsPath ?? 'skills').replace(/^\/+|\/+$/g, '');
     const skillRoot = `${skillsPath}/${spec.bundleId}`;
     const entries: ZipEntry[] = [];
     let foundAny = false;
@@ -218,7 +218,7 @@ export class LocalSkillsBundleResolver implements BundleResolver {
    */
   public async resolve(spec: BundleSpec): Promise<Installable | null> {
     const root = stripFileScheme(this.opts.rootPath);
-    const skillsPath = (this.opts.skillsPath ?? 'skills').replaceAll(/^\/+|\/+$/, '');
+    const skillsPath = (this.opts.skillsPath ?? 'skills').replace(/^\/+|\/+$/g, '');
     const skillRoot = path.join(root, skillsPath, spec.bundleId);
     const entries: ZipEntry[] = [];
     const walk = async (abs: string, prefix: string): Promise<void> => {
@@ -297,7 +297,7 @@ export class LocalAwesomeCopilotBundleResolver implements BundleResolver {
    */
   public async resolve(spec: BundleSpec): Promise<Installable | null> {
     const root = stripFileScheme(this.opts.rootPath);
-    const collectionsPath = (this.opts.collectionsPath ?? 'collections').replaceAll(/^\/+|\/+$/, '');
+    const collectionsPath = (this.opts.collectionsPath ?? 'collections').replace(/^\/+|\/+$/g, '');
     const collectionFile = `${spec.bundleId}.collection.yml`;
     const collectionAbs = path.join(root, collectionsPath, collectionFile);
     if (!(await this.opts.fs.exists(collectionAbs))) {
@@ -385,5 +385,5 @@ const quote = (s: string): string => {
   if (/^[\w. -]+$/.test(s)) {
     return s;
   }
-  return `'${s.replaceAll(/'/, "''")}'`;
+  return `'${s.replace(/'/g, "''")}'`;
 };
