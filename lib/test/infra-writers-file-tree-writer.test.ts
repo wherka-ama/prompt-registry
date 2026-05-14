@@ -171,7 +171,9 @@ describe('FileTreeTargetWriter', () => {
 
     const result = await writer.write(target, files);
     expect(result.written).toHaveLength(1);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     expect(vi.mocked(mockFs.mkdir)).toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     expect(vi.mocked(mockFs.writeFile)).toHaveBeenCalled();
   });
 
@@ -204,6 +206,7 @@ describe('FileTreeTargetWriter', () => {
     };
 
     await writer.remove(target, 'prompts/test.prompt.md');
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     expect(vi.mocked(mockFs.remove)).toHaveBeenCalled();
   });
 
@@ -217,6 +220,7 @@ describe('FileTreeTargetWriter', () => {
     };
 
     await writer.remove(target, 'unrouted/file.txt');
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     expect(vi.mocked(mockFs.remove)).not.toHaveBeenCalled();
   });
 });

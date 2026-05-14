@@ -21,17 +21,19 @@ describe('NOOP_EVENT_HANDLER', () => {
   });
 
   it('returns undefined when called', () => {
+    // eslint-disable-next-line new-cap -- NOOP_EVENT_HANDLER is a constant, not a constructor
     const result = NOOP_EVENT_HANDLER({} as ClientEvent);
     expect(result).toBeUndefined();
   });
 
   it('accepts any ClientEvent without error', () => {
-    const event: ClientEvent = {
+    const ev: ClientEvent = {
       kind: 'request',
       url: 'https://api.github.com',
       attempt: 1
     };
-    expect(() => NOOP_EVENT_HANDLER(event)).not.toThrow();
+    // eslint-disable-next-line new-cap -- NOOP_EVENT_HANDLER is a constant, not a constructor
+    expect(() => NOOP_EVENT_HANDLER(ev)).not.toThrow();
   });
 });
 
@@ -136,15 +138,15 @@ describe('ClientEventKind type', () => {
 
 describe('ClientEventHandler type', () => {
   it('accepts a function that takes ClientEvent', () => {
-    const handler: ClientEventHandler = (event: ClientEvent) => {
-      console.log(event.kind);
+    const handler: ClientEventHandler = (ev: ClientEvent) => {
+      console.log(ev.kind);
     };
     expect(typeof handler).toBe('function');
   });
 
   it('can be called with a ClientEvent', () => {
-    const handler: ClientEventHandler = (event: ClientEvent) => {
-      return event.kind;
+    const handler: ClientEventHandler = (ev: ClientEvent) => {
+      return ev.kind;
     };
     const event: ClientEvent = {
       kind: 'request',

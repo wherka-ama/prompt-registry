@@ -51,12 +51,12 @@ export class HubStore {
     private readonly fs: FileSystem
   ) {}
 
-  public configPath(safeId: string): string {
-    return path.join(this.hubsDir, `${safeId}.yml`);
-  }
-
   private metaPath(safeId: string): string {
     return path.join(this.hubsDir, `${safeId}.meta.json`);
+  }
+
+  public configPath(safeId: string): string {
+    return path.join(this.hubsDir, `${safeId}.yml`);
   }
 
   /**

@@ -55,9 +55,10 @@ describe('RepositoryScopeWriter', () => {
       commitMode: 'commit'
     });
 
-    const files = new Map<string, Uint8Array>();
-    files.set('deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST));
-    files.set('prompts/test.md', new TextEncoder().encode('# Test Prompt'));
+    const files = new Map<string, Uint8Array>([
+      ['deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST)],
+      ['prompts/test.md', new TextEncoder().encode('# Test Prompt')]
+    ]);
 
     const result = await writer.write(files);
 
@@ -72,9 +73,10 @@ describe('RepositoryScopeWriter', () => {
       commitMode: 'commit'
     });
 
-    const files = new Map<string, Uint8Array>();
-    files.set('deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST));
-    files.set('instructions/test.md', new TextEncoder().encode('# Test Instruction'));
+    const files = new Map<string, Uint8Array>([
+      ['deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST)],
+      ['instructions/test.md', new TextEncoder().encode('# Test Instruction')]
+    ]);
 
     const result = await writer.write(files);
 
@@ -89,9 +91,10 @@ describe('RepositoryScopeWriter', () => {
       commitMode: 'commit'
     });
 
-    const files = new Map<string, Uint8Array>();
-    files.set('deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST));
-    files.set('agents/test.md', new TextEncoder().encode('# Test Agent'));
+    const files = new Map<string, Uint8Array>([
+      ['deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST)],
+      ['agents/test.md', new TextEncoder().encode('# Test Agent')]
+    ]);
 
     const result = await writer.write(files);
 
@@ -106,10 +109,11 @@ describe('RepositoryScopeWriter', () => {
       commitMode: 'commit'
     });
 
-    const files = new Map<string, Uint8Array>();
-    files.set('deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST));
-    files.set('skills/test-skill/skill.json', new TextEncoder().encode('{"name": "Test Skill"}'));
-    files.set('skills/test-skill/api.ts', new TextEncoder().encode('// API code'));
+    const files = new Map<string, Uint8Array>([
+      ['deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST)],
+      ['skills/test-skill/skill.json', new TextEncoder().encode('{"name": "Test Skill"}')],
+      ['skills/test-skill/api.ts', new TextEncoder().encode('// API code')]
+    ]);
 
     const result = await writer.write(files);
 
@@ -125,8 +129,9 @@ describe('RepositoryScopeWriter', () => {
       commitMode: 'commit'
     });
 
-    const files = new Map<string, Uint8Array>();
-    files.set('prompts/test.md', new TextEncoder().encode('# Test Prompt'));
+    const files = new Map<string, Uint8Array>([
+      ['prompts/test.md', new TextEncoder().encode('# Test Prompt')]
+    ]);
 
     const result = await writer.write(files);
 
@@ -142,9 +147,10 @@ describe('RepositoryScopeWriter', () => {
       commitMode: 'local-only'
     });
 
-    const files = new Map<string, Uint8Array>();
-    files.set('deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST));
-    files.set('prompts/test.md', new TextEncoder().encode('# Test Prompt'));
+    const files = new Map<string, Uint8Array>([
+      ['deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST)],
+      ['prompts/test.md', new TextEncoder().encode('# Test Prompt')]
+    ]);
 
     await writer.write(files);
 
@@ -162,9 +168,10 @@ describe('RepositoryScopeWriter', () => {
       commitMode: 'commit'
     });
 
-    const files = new Map<string, Uint8Array>();
-    files.set('deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST));
-    files.set('prompts/test.md', new TextEncoder().encode('# Test Prompt'));
+    const files = new Map<string, Uint8Array>([
+      ['deployment-manifest.yml', new TextEncoder().encode(SAMPLE_MANIFEST)],
+      ['prompts/test.md', new TextEncoder().encode('# Test Prompt')]
+    ]);
 
     await writer.write(files);
 
@@ -302,9 +309,10 @@ skills:
     file: skills/My_Skill_123/skill.json
     type: skill`;
 
-    const files = new Map<string, Uint8Array>();
-    files.set('deployment-manifest.yml', new TextEncoder().encode(manifest));
-    files.set('skills/My_Skill_123/skill.json', new TextEncoder().encode('{"name": "Test"}'));
+    const files = new Map<string, Uint8Array>([
+      ['deployment-manifest.yml', new TextEncoder().encode(manifest)],
+      ['skills/My_Skill_123/skill.json', new TextEncoder().encode('{"name": "Test"}')]
+    ]);
 
     const result = await writer.write(files);
 

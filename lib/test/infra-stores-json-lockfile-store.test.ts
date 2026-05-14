@@ -41,6 +41,7 @@ describe('readLockfile', () => {
   });
 
   it('returns empty lockfile when file does not exist', async () => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     vi.mocked(mockFs.exists).mockResolvedValue(false);
     const lock = await readLockfile('/path/to/lock.json', mockFs);
     expect(lock).toEqual({ schemaVersion: 1, entries: [] });
@@ -60,7 +61,9 @@ describe('readLockfile', () => {
         }
       ]
     };
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     vi.mocked(mockFs.exists).mockResolvedValue(true);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     vi.mocked(mockFs.readFile).mockResolvedValue(JSON.stringify(validLock));
     const lock = await readLockfile('/path/to/lock.json', mockFs);
     expect(lock.entries).toHaveLength(1);
@@ -68,7 +71,9 @@ describe('readLockfile', () => {
 
   it('throws error on unsupported schema version', async () => {
     const invalidLock = { schemaVersion: 2, entries: [] };
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     vi.mocked(mockFs.exists).mockResolvedValue(true);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     vi.mocked(mockFs.readFile).mockResolvedValue(JSON.stringify(invalidLock));
     await expect(readLockfile('/path/to/lock.json', mockFs)).rejects.toThrow(
       'unsupported lockfile schemaVersion 2'
@@ -77,7 +82,9 @@ describe('readLockfile', () => {
 
   it('throws error when entries is not an array', async () => {
     const invalidLock = { schemaVersion: 1, entries: {} };
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     vi.mocked(mockFs.exists).mockResolvedValue(true);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     vi.mocked(mockFs.readFile).mockResolvedValue(JSON.stringify(invalidLock));
     await expect(readLockfile('/path/to/lock.json', mockFs)).rejects.toThrow(
       'lockfile entries must be an array'
@@ -85,7 +92,9 @@ describe('readLockfile', () => {
   });
 
   it('throws error on invalid JSON', async () => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     vi.mocked(mockFs.exists).mockResolvedValue(true);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     vi.mocked(mockFs.readFile).mockResolvedValue('invalid json');
     await expect(readLockfile('/path/to/lock.json', mockFs)).rejects.toThrow();
   });
@@ -106,6 +115,7 @@ describe('writeLockfile', () => {
   it('writes lockfile as pretty JSON', async () => {
     const lock: Lockfile = { schemaVersion: 1, entries: [] };
     await writeLockfile('/path/to/lock.json', lock, mockFs);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     expect(vi.mocked(mockFs.writeFile)).toHaveBeenCalledWith(
       '/path/to/lock.json',
       JSON.stringify(lock, null, 2) + '\n'
@@ -115,6 +125,7 @@ describe('writeLockfile', () => {
   it('creates parent directory when mkdir is available', async () => {
     const lock: Lockfile = { schemaVersion: 1, entries: [] };
     await writeLockfile('/path/to/lock.json', lock, mockFs);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     expect(vi.mocked(mockFs.mkdir)).toHaveBeenCalledWith('/path/to', { recursive: true });
   });
 
@@ -126,6 +137,7 @@ describe('writeLockfile', () => {
     };
     const lock: Lockfile = { schemaVersion: 1, entries: [] };
     await writeLockfile('/path/to/lock.json', lock, fsWithoutMkdir);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
     expect(vi.mocked(fsWithoutMkdir.writeFile)).toHaveBeenCalled();
   });
 });
@@ -141,9 +153,9 @@ describe('upsertEntry', () => {
       installedAt: '2024-01-01T00:00:00Z',
       files: []
     };
-    const updated = upsertEntry(lock, entry);
-    expect(updated.entries).toHaveLength(1);
-    expect(updated.entries[0]).toEqual(entry);
+    const result = upsertEntry(lock, entry);
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0]).toEqual(entry);
   });
 
   it('replaces existing entry with same target and bundleId', () => {
@@ -168,9 +180,9 @@ describe('upsertEntry', () => {
       installedAt: '2024-01-02T00:00:00Z',
       files: []
     };
-    const updated = upsertEntry(lock, newEntry);
-    expect(updated.entries).toHaveLength(1);
-    expect(updated.entries[0].bundleVersion).toBe('2.0.0');
+    const result = upsertEntry(lock, newEntry);
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].bundleVersion).toBe('2.0.0');
   });
 
   it('does not mutate input lockfile', () => {

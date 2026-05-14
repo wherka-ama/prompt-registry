@@ -43,7 +43,7 @@ describe('tuning constants', () => {
 
   it('SEARCHABLE_FIELDS matches FIELD_WEIGHTS keys', () => {
     const weightKeys = Object.keys(FIELD_WEIGHTS) as SearchableField[];
-    expect(SEARCHABLE_FIELDS.sort()).toEqual(weightKeys.sort());
+    expect(SEARCHABLE_FIELDS.toSorted()).toEqual(weightKeys.toSorted());
   });
 
   it('all FIELD_WEIGHTS values are positive numbers', () => {
