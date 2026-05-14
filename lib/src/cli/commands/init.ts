@@ -12,7 +12,7 @@
  *   prompt-registry init --target-name copilot --target-type copilot-cli --hub owner/repo --yes
  */
 import * as path from 'node:path';
-import * as inquirer from 'inquirer';
+import inquirer from 'inquirer';
 import {
   HubManager,
   resolveUserConfigPaths,
@@ -159,7 +159,14 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
 
   // Interactive wizard mode
   if (isInteractive) {
-    const answers = await inquirer.prompt([
+    interface WizardAnswers {
+      ide: string;
+      connectHub: boolean;
+      hubChoice?: string;
+      hubPath?: string;
+    }
+
+    const answers = await inquirer.prompt<WizardAnswers>([
       {
         type: 'list',
         name: 'ide',

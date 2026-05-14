@@ -51,7 +51,7 @@ export class HubStore {
     private readonly fs: FileSystem
   ) {}
 
-  private configPath(safeId: string): string {
+  public configPath(safeId: string): string {
     return path.join(this.hubsDir, `${safeId}.yml`);
   }
 
