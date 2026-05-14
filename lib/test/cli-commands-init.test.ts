@@ -17,6 +17,9 @@ import {
 import {
   createNodeFsAdapter,
 } from './cli/helpers/node-fs-adapter';
+import {
+  TARGET_TYPES,
+} from '../src/domain/install';
 
 let tmpRoot: string;
 let xdgConfig: string;
@@ -181,5 +184,34 @@ describe('cli `init`', () => {
     expect(exitCode).toBe(0);
     // Covers the 'else' branch of the hub null check in textRenderer
     expect(stdout).toContain('profile activate');
+  });
+
+  describe('target type coverage', () => {
+    TARGET_TYPES.forEach((targetType) => {
+      it(`accepts ${targetType} as valid target type`, async () => {
+        const { exitCode, stdout } = await runCommand(
+          ['init'],
+          {
+            commands: [createInitCommand({
+              output: 'json',
+              yes: true,
+              targetName: `test-${targetType}`,
+              targetType
+            })],
+            context: {
+              cwd: tmpRoot,
+              fs: createNodeFsAdapter(),
+              env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+            }
+          }
+        );
+        expect(exitCode).toBe(0);
+        const parsed = JSON.parse(stdout) as {
+          data: { target: { name: string; type: string } };
+        };
+        expect(parsed.data.target.name).toBe(`test-${targetType}`);
+        expect(parsed.data.target.type).toBe(targetType);
+      });
+    });
   });
 });

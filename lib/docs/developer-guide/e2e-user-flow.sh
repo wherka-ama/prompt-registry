@@ -69,11 +69,15 @@ VERBOSE=false
 
 # Test state
 TARGET_NAME="copilot-target"
+TARGET_TYPE="copilot-cli"
 HUB_ID="local-test-hub"
 PROFILE_ID="backend"
 LOCAL_PROFILE_ID="custom-profile"
 BUNDLE_ID="local-foo"
 SOURCE_ID="local-foo-src"
+
+# All target types to test
+ALL_TARGET_TYPES=("vscode" "vscode-insiders" "copilot-cli" "kiro" "windsurf" "claude-code")
 
 # Helper functions
 log_info() { echo -e "${BLUE}[INFO]${NC} $*"; }
@@ -1038,6 +1042,44 @@ scenario_25_cleanup() {
     log_success "Test directory cleaned up"
 }
 
+scenario_26_init_all_target_types() {
+    log_section "Scenario 26: Init All Target Types"
+
+    local all_ok=true
+
+    for target_type in "${ALL_TARGET_TYPES[@]}"; do
+        log_info "Testing init with target type: $target_type"
+
+        # Create a fresh project directory for each target type
+        local project_dir="$PR_TEST_ROOT/project-$target_type"
+        mkdir -p "$project_dir"
+
+        cd "$project_dir"
+
+        local output
+        output=$(run_cmd "$PR_BIN init --target-name test-$target_type --target-type $target_type --path \"$PR_TEST_ROOT/$target_type\" --yes -o json") || true
+
+        if assert_json_status "$output"; then
+            local parsed_type
+            parsed_type=$(echo "$output" | jq -r '.data.target.type')
+            if [ "$parsed_type" = "$target_type" ]; then
+                log_success "Init successful for $target_type"
+            else
+                log_error "Type mismatch: expected $target_type, got $parsed_type"
+                all_ok=false
+            fi
+        else
+            log_error "Init failed for $target_type"
+            echo "$output"
+            all_ok=false
+        fi
+    done
+
+    if [ "$all_ok" = false ]; then
+        return 1
+    fi
+}
+
 # ============================================================================
 # Main
 # ============================================================================
@@ -1117,6 +1159,7 @@ main() {
     scenario_22_search_alias || true  # Non-critical
     scenario_23_dry_run_activate || true  # Non-critical
     scenario_24_dry_run_deactivate || true  # Non-critical
+    scenario_26_init_all_target_types || failures=$((failures + 1))
     scenario_25_cleanup || true  # Cleanup always runs
 
     # Print summary

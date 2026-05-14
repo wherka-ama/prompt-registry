@@ -61,6 +61,23 @@ import {
 const DEFAULT_TARGET_NAME = 'copilot';
 const DEFAULT_TARGET_TYPE: TargetType = 'copilot-cli';
 
+/**
+ * Get human-readable display name for a target type.
+ * @param type Target type.
+ * @returns Display name.
+ */
+function getTargetTypeDisplayName(type: TargetType): string {
+  const displayNames: Record<TargetType, string> = {
+    vscode: 'Visual Studio Code',
+    'vscode-insiders': 'Visual Studio Code Insiders',
+    'copilot-cli': 'GitHub Copilot CLI',
+    kiro: 'Kiro IDE',
+    windsurf: 'Windsurf Editor',
+    'claude-code': 'Anthropic Claude Code'
+  };
+  return displayNames[type];
+}
+
 /** Options for the init command (programmatic API + test seam). */
 export interface InitOptions {
   output?: OutputFormat;
@@ -171,12 +188,10 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
         type: 'list',
         name: 'ide',
         message: 'What IDE are you using?',
-        choices: [
-          { name: 'GitHub Copilot CLI (user scope)', value: 'copilot-cli' },
-          { name: 'GitHub Copilot (workspace scope)', value: 'copilot-ws' },
-          { name: 'Cursor', value: 'cursor' },
-          { name: 'Kiro', value: 'kiro' }
-        ],
+        choices: TARGET_TYPES.map((type) => ({
+          name: getTargetTypeDisplayName(type),
+          value: type
+        })),
         default: 'copilot-cli'
       },
       {
