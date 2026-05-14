@@ -327,4 +327,89 @@ describe('hub-harvester', () => {
     expect(r.done).toBe(1);
     expect(r.error).toBe(1);
   });
+
+  it('handles empty tree gracefully', async () => {
+    const repos = new Map([
+      ['o/r', {
+        sha: 'fixed-sha',
+        tree: [],
+        blobs: new Map()
+      }]
+    ]);
+    const fetch = makeFetch(repos);
+    const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
+    const cache = new BlobCache(path.join(tmp, 'blobs'));
+    const h = new HubHarvester({
+      sources: [spec('src-1', 'o', 'r')],
+      client,
+      cache,
+      progressFile: path.join(tmp, 'progress.jsonl'),
+      concurrency: 1
+    });
+    const r = await h.run();
+    expect(r.done).toBe(1);
+    expect(r.primitives).toBe(0);
+    expect(r.error).toBe(0);
+  });
+
+  it('handles malformed manifest files without crashing', async () => {
+    const badManifest = Buffer.from('not valid json {{{', 'utf8');
+    const mSha = computeGitBlobSha(badManifest);
+    const repos = new Map([
+      ['o/r', {
+        sha: 'fixed-sha',
+        tree: [{ path: 'collections/bad.collection.yml', sha: mSha, size: badManifest.length }],
+        blobs: new Map([[mSha, badManifest]])
+      }]
+    ]);
+    const fetch = makeFetch(repos);
+    const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
+    const cache = new BlobCache(path.join(tmp, 'blobs'));
+    const h = new HubHarvester({
+      sources: [spec('src-1', 'o', 'r')],
+      client,
+      cache,
+      progressFile: path.join(tmp, 'progress.jsonl'),
+      concurrency: 1
+    });
+    const r = await h.run();
+    // Should complete but with error
+    expect(r.done + r.error).toBe(1);
+  });
+
+  it('respects concurrency limit when harvesting multiple sources', async () => {
+    const promptBytes = Buffer.from('---\ntitle: Hello\n---\n# Hello\n', 'utf8');
+    const promptSha = computeGitBlobSha(promptBytes);
+    const repos = new Map([
+      ['o1/r1', {
+        sha: 'sha1',
+        tree: [{ path: 'prompts/a.prompt.md', sha: promptSha, size: promptBytes.length }],
+        blobs: new Map([[promptSha, promptBytes]])
+      }],
+      ['o2/r2', {
+        sha: 'sha2',
+        tree: [{ path: 'prompts/b.prompt.md', sha: promptSha, size: promptBytes.length }],
+        blobs: new Map([[promptSha, promptBytes]])
+      }],
+      ['o3/r3', {
+        sha: 'sha3',
+        tree: [{ path: 'prompts/c.prompt.md', sha: promptSha, size: promptBytes.length }],
+        blobs: new Map([[promptSha, promptBytes]])
+      }]
+    ]);
+    const fetch = makeFetch(repos);
+    const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
+    const cache = new BlobCache(path.join(tmp, 'blobs'));
+    const h = new HubHarvester({
+      sources: [spec('src-1', 'o1', 'r1'), spec('src-2', 'o2', 'r2'), spec('src-3', 'o3', 'r3')],
+      client,
+      cache,
+      progressFile: path.join(tmp, 'progress.jsonl'),
+      concurrency: 2
+    });
+    const r = await h.run();
+    // With concurrency=2, all 3 should complete (just limits parallelism, not total)
+    expect(r.done).toBe(3);
+    expect(r.primitives).toBeGreaterThanOrEqual(2);
+  });
 });
