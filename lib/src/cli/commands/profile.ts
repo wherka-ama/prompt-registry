@@ -39,6 +39,9 @@ import {
   ActiveHubStore,
 } from '../../infra/stores/active-hub-store';
 import {
+  BuiltInOnlyLayoutConfigLoader,
+} from '../../infra/stores/layout-config-store';
+import {
   readLockfile,
   upsertEntry,
   upsertSource,
@@ -54,9 +57,6 @@ import {
 import {
   HubStore,
 } from '../../infra/stores/yaml-hub-store';
-import {
-  BuiltInOnlyLayoutConfigLoader,
-} from '../../infra/stores/layout-config-store';
 import {
   resolveLayout,
 } from '../../infra/writers/file-tree-writer';
@@ -830,8 +830,6 @@ async function cleanupDeactivatedLockfile(ctx: Context, lockPath: string): Promi
   // Use adaptive cleanup based on target layouts
   try {
     const targets = await readTargets({ cwd: ctx.cwd(), fs: ctx.fs });
-    const layoutLoader = new BuiltInOnlyLayoutConfigLoader();
-    const env = process.env as Record<string, string | undefined>;
 
     for (const entry of existing.entries) {
       const target = targets.find((t) => t.name === entry.target);
@@ -841,7 +839,10 @@ async function cleanupDeactivatedLockfile(ctx: Context, lockPath: string): Promi
       const layout = resolveLayout(target);
 
       // Get the base directory
-      const baseDir = layout.baseDir.replace(/\$\{workspaceRoot\}/g, ctx.cwd()).replace(/\$\{HOME\}/g, env.HOME ?? '').replace(/^~/, env.HOME ?? '');
+      const baseDir = layout.baseDir
+        .replace(/\$\{workspaceRoot\}/g, ctx.cwd())
+        .replace(/\$\{HOME\}/g, ctx.env.HOME ?? '')
+        .replace(/^~/, ctx.env.HOME ?? '');
 
       // Clean up each kind route directory recursively
       for (const outPrefix of Object.values(layout.kindRoutes)) {
