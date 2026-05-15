@@ -1,5 +1,5 @@
 /**
- * Phase 1 / Step 1.2 — Target type (rclone-style install destinations).
+ * Target type (rclone-style install destinations).
  *
  * A Target is a typed, named entry that tells `prompt-registry install`
  * where to write a bundle. The shape mirrors `rclone`'s "remotes":

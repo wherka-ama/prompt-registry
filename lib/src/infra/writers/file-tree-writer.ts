@@ -1,5 +1,5 @@
 /**
- * Phase 5 / Iter 16-17 — TargetWriter interface + FileTreeTargetWriter.
+ * TargetWriter interface + FileTreeTargetWriter.
  *
  * Writer = "given a Target, an Installable's manifest, and the
  * extracted file map, route the bundle's primitive files into the
