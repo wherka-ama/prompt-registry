@@ -640,15 +640,21 @@ async function updateActivationLockfile(
         fileChecksums[f] = crypto.createHash('sha256').update(bytes).digest('hex');
       }
       // Use the actual manifest bundle ID from bundleIdMap instead of profile reference ID
+      console.error(`[DEBUG] Looking up bundleRef.id "${bundleRef.id}" in bundleIdMap`);
+      console.error(`[DEBUG] bundleIdMap keys: ${Object.keys(out.bundleIdMap).join(', ')}`);
+      console.error(`[DEBUG] bundleIdMap values: ${Object.values(out.bundleIdMap).join(', ')}`);
       const manifestId = out.bundleIdMap[bundleRef.id];
       if (!manifestId) {
+        console.error(`[DEBUG] bundleIdMap lookup failed for ${bundleRef.id}`);
         // Fallback: try to find a manifest ID that contains the profile ref ID
         const fallbackId = out.state.syncedBundles.find((id) => id.includes(bundleRef.id.split('-').pop() || ''));
         if (fallbackId) {
-          console.error(`[DEBUG] bundleIdMap lookup failed for ${bundleRef.id}, using fallback: ${fallbackId}`);
+          console.error(`[DEBUG] Using fallback: ${fallbackId}`);
         } else {
-          console.error(`[DEBUG] bundleIdMap lookup failed for ${bundleRef.id}, no fallback found. bundleIdMap keys: ${Object.keys(out.bundleIdMap).join(', ')}`);
+          console.error(`[DEBUG] No fallback found`);
         }
+      } else {
+        console.error(`[DEBUG] Found manifestId: ${manifestId}`);
       }
       nextLock = upsertEntry(nextLock, {
         target: t,
