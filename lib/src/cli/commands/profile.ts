@@ -788,6 +788,25 @@ async function removeEmptyDirRecursive(ctx: Context, dirPath: string, rootPath: 
 }
 
 /**
+ * Collect all parent directories of given paths, sorted by depth (deepest first).
+ * @param paths File paths.
+ * @param root Root directory (stop here).
+ * @returns Set of parent directories sorted by depth.
+ */
+function collectParentDirs(paths: string[], root: string): string[] {
+  const dirs = new Set<string>();
+  for (const p of paths) {
+    let current = path.dirname(p);
+    while (current !== root && current !== path.dirname(current)) {
+      dirs.add(current);
+      current = path.dirname(current);
+    }
+  }
+  // Sort by depth (deepest first) for bottom-up removal
+  return Array.from(dirs).sort((a, b) => b.split(path.sep).length - a.split(path.sep).length);
+}
+
+/**
  * Remove all files listed in the lockfile and wipe entries on deactivation.
  * Best-effort: errors are ignored.
  * @param ctx CLI context.
@@ -798,24 +817,32 @@ async function cleanupDeactivatedLockfile(ctx: Context, lockPath: string): Promi
     return;
   }
   const existing = await readLockfile(lockPath, ctx.fs);
+  const allFiles: string[] = [];
   for (const entry of existing.entries) {
-    for (const f of entry.files) {
-      const filePath = path.join(ctx.cwd(), f);
-      try {
-        await ctx.fs.remove(filePath);
-      } catch {
-        // Best-effort removal
-      }
+    allFiles.push(...entry.files);
+  }
+
+  // Remove all files
+  for (const f of allFiles) {
+    const filePath = path.join(ctx.cwd(), f);
+    try {
+      await ctx.fs.remove(filePath);
+    } catch {
+      // Best-effort removal
     }
-    // Recursively remove empty directories up the tree
-    const dirs = new Set(entry.files.map((f) => path.dirname(f)));
-    for (const d of dirs) {
-      try {
-        const dirPath = path.join(ctx.cwd(), d);
-        await removeEmptyDirRecursive(ctx, dirPath, ctx.cwd());
-      } catch {
-        // Best-effort cleanup
+  }
+
+  // Collect all parent directories and remove them bottom-up (deepest first)
+  const parentDirs = collectParentDirs(allFiles, ctx.cwd());
+  for (const d of parentDirs) {
+    try {
+      const dirPath = path.join(ctx.cwd(), d);
+      const entries = await ctx.fs.readDir(dirPath);
+      if (entries.length === 0) {
+        await ctx.fs.remove(dirPath);
       }
+    } catch {
+      // Best-effort cleanup
     }
   }
   await writeLockfile(lockPath, { ...existing, entries: [], useProfile: undefined }, ctx.fs);
