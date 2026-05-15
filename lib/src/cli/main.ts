@@ -82,6 +82,9 @@ import {
   IndexStatsCommand,
 } from './commands/index-stats';
 import {
+  DiscoverCommand,
+} from './commands/discover';
+import {
   InitCommand,
 } from './commands/init';
 import {
@@ -214,7 +217,8 @@ export const main = async (argv: string[]): Promise<number> => {
     UninstallCommand,
     InitCommand,
     StatusCommand,
-    HubCreateCommand
+    HubCreateCommand,
+    DiscoverCommand
   ];
 
   return runCli(argv, {
