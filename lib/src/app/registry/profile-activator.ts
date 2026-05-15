@@ -86,8 +86,6 @@ export interface ActivationOutcome {
   state: ProfileActivationState;
   /** Per-target written file lists. */
   written: Record<string, string[]>;
-  /** Map profile bundle ref ID -> manifest bundle ID */
-  bundleIdMap: Record<string, string>;
 }
 
 /**
@@ -263,12 +261,8 @@ export class ProfileActivator {
       throw err;
     }
     const versions: Record<string, string> = {};
-    const bundleIdMap: Record<string, string> = {}; // profile bundle ref id -> manifest id
-    for (let i = 0; i < materialized.length; i++) {
-      const m = materialized[i];
-      const r = resolved[i];
+    for (const m of materialized) {
       versions[m.bundleId] = m.bundleVersion;
-      bundleIdMap[r.bundleRef.id] = m.bundleId;
     }
     const state: ProfileActivationState = {
       schemaVersion: 1,
@@ -279,7 +273,7 @@ export class ProfileActivator {
       syncedBundleVersions: versions,
       syncedTargets: input.targets.map((t) => t.name)
     };
-    return { state, written: writtenByTarget, bundleIdMap };
+    return { state, written: writtenByTarget };
   }
 }
 

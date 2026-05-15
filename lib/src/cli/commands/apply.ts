@@ -180,12 +180,11 @@ export const createApplyCommand = (opts: ApplyOptions = {}): CommandDefinition =
             const bytes = await ctx.fs.readFile(f);
             checksums[f] = crypto.createHash('sha256').update(bytes).digest('hex');
           }
-          // Use the actual manifest bundle ID from bundleIdMap instead of profile reference ID
-          const manifestId = out.bundleIdMap[bundleRef.id] || bundleRef.id;
+          // Profile configuration uses manifest IDs as bundle references, so use bundleRef.id directly
           nextLock = upsertEntry(nextLock, {
             target: t,
             sourceId,
-            bundleId: manifestId,
+            bundleId: bundleRef.id,
             bundleVersion: bundleRef.version === 'latest'
               ? out.state.syncedBundleVersions[bundleRef.id]
               : bundleRef.version,
