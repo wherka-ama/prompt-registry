@@ -49,3 +49,7 @@ export type {
   TargetWriteResult,
   TargetWriter,
 } from './target-writer';
+
+export type {
+  LayoutConfigLoader,
+} from './layout-config-loader';

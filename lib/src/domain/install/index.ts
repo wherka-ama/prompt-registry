@@ -16,3 +16,11 @@ export type {
 } from './target';
 export { TARGET_TYPES, isTarget } from './target';
 export type { BundleSpec, Installable } from './installable';
+export type {
+  ScopedLayoutDef,
+  TargetLayoutDef,
+  TargetLayoutsConfig,
+  KindRoutes,
+  TargetLayout,
+} from './layout';
+export { validateTargetLayoutsConfig } from './layout';
