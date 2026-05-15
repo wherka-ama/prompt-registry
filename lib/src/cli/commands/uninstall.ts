@@ -77,6 +77,28 @@ export interface UninstallOptions {
 }
 
 /**
+ * Find lockfile by searching current directory and parent directories.
+ * @param startDir Starting directory.
+ * @param fs Filesystem adapter.
+ * @returns Lockfile path if found, null otherwise.
+ */
+async function findLockfile(startDir: string, fs: Context['fs']): Promise<string | null> {
+  let currentDir = startDir;
+  while (true) {
+    const lockfile = path.join(currentDir, 'prompt-registry.lock.json');
+    if (await fs.exists(lockfile)) {
+      return lockfile;
+    }
+    const parent = path.dirname(currentDir);
+    if (parent === currentDir) {
+      break; // Reached root
+    }
+    currentDir = parent;
+  }
+  return null;
+}
+
+/**
  * Check if target is in allowlist.
  * @param _targetName Target name.
  * @param _opts Uninstall options.
@@ -155,9 +177,9 @@ export class UninstallCommand extends BaseUninstallCommand {
 
     // F-13: auto-locate prompt-registry.lock.json when no mode flag supplied
     if (!opts.bundle && !opts.lockfile && !opts.all) {
-      const defaultLock = path.join(ctx.cwd(), 'prompt-registry.lock.json');
-      if (await ctx.fs.exists(defaultLock)) {
-        opts.lockfile = defaultLock;
+      const foundLock = await findLockfile(ctx.cwd(), ctx.fs);
+      if (foundLock !== null) {
+        opts.lockfile = foundLock;
       }
     }
 
@@ -169,7 +191,8 @@ export class UninstallCommand extends BaseUninstallCommand {
         hint: 'Examples:\n'
           + '  prompt-registry uninstall <bundle-id> --target my-vscode\n'
           + '  prompt-registry uninstall --lockfile prompt-registry.lock.json\n'
-          + '  prompt-registry uninstall --all'
+          + '  prompt-registry uninstall --all\n\n'
+          + 'Note: Lockfile is auto-detected in current directory and parent directories.'
       }));
     }
 
