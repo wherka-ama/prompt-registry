@@ -10,6 +10,7 @@
  *   prompt-registry install --lockfile <path>   (declarative from a lockfile)
  */
 import * as path from 'node:path';
+import inquirer from 'inquirer';
 import {
   validateManifest,
 } from '../../domain';
@@ -133,6 +134,10 @@ export interface InstallOptions {
    */
   source?: string;
   /**
+   * Interactive mode: prompts user to select bundles from a list.
+   */
+  interactive?: boolean;
+  /**
    * Phase 5 spillover / iter 31: dependency-injection seam for
    * tests. Production callers leave this undefined; the install
    * command then constructs a `NodeHttpClient`. Tests pass a
@@ -189,12 +194,14 @@ export class InstallCommand extends BaseInstallCommand {
       Examples:
         prompt-registry install --from <path> --target my-vscode
         prompt-registry install --lockfile prompt-registry.lock.json --target my-vscode
+        prompt-registry install --source amadeus-hub --interactive --target my-vscode
 
       Options:
         --from <path>           Path to an already-built bundle directory
         --lockfile <path>       Path to a lockfile for declarative installation
         --target <name>         Target name to install to
-        --source <owner/repo>   Source slug for remote installs
+        --source <hub-id>       Hub ID to list bundles from (use with --interactive for selection)
+        --interactive           Interactive mode: select bundles from a list
         --dry-run               Validate and plan without writing
         --scope <scope>         Installation scope (user or repository)
         --commit-mode <mode>    Commit mode for repository scope
@@ -206,6 +213,7 @@ export class InstallCommand extends BaseInstallCommand {
   public lockfile = Option.String('--lockfile');
   public target = Option.String('--target');
   public source = Option.String('--source');
+  public interactive = Option.Boolean('--interactive', false);
   public dryRun = Option.Boolean('--dry-run');
   public scope = Option.String('--scope');
   public commitMode = Option.String('--commit-mode');
@@ -225,6 +233,7 @@ export class InstallCommand extends BaseInstallCommand {
       from: this.from,
       dryRun: this.dryRun,
       source: this.source,
+      interactive: this.interactive,
       http,
       tokens,
       scope: this.scope as 'user' | 'repository' | undefined,
@@ -258,6 +267,9 @@ export class InstallCommand extends BaseInstallCommand {
 
       // List bundles from source when --source is provided without bundle ID
       if (opts.source !== undefined && opts.source.length > 0 && noBundle) {
+        if (opts.interactive) {
+          return await interactiveBundleSelection(opts, target, ctx, fmt);
+        }
         return await listSourceBundles(opts, ctx, fmt);
       }
 
@@ -399,6 +411,127 @@ async function listSourceBundles(
       textRenderer: (d) => `Available bundles in hub "${d.hubId}":\n`
         + d.bundles.map((b: { id: string; version: string; source: string }) => `  ${b.id}@${b.version} (source: ${b.source})`).join('\n')
         + '\n\nInstall with: prompt-registry install <bundle-id> --source <hub-id> --target <target>\n'
+    });
+    return 0;
+  } catch (err) {
+    if (err instanceof RegistryError) {
+      return failWith(ctx, fmt, err);
+    }
+    return failWith(ctx, fmt, new RegistryError({
+      code: 'HUB.LOAD_FAILED',
+      message: `Failed to load hub "${hubId}": ${err instanceof Error ? err.message : String(err)}`,
+      cause: err instanceof Error ? err : undefined
+    }));
+  }
+}
+
+/**
+ * Interactive bundle selection from a hub source.
+ * @param opts Install options.
+ * @param target Target configuration.
+ * @param ctx CLI context.
+ * @param fmt Output format.
+ * @returns Exit code.
+ */
+async function interactiveBundleSelection(
+  opts: InstallOptions,
+  target: Target,
+  ctx: Context,
+  fmt: OutputFormat
+): Promise<number> {
+  const hubId = opts.source as string;
+
+  try {
+    const userPaths = resolveUserConfigPaths(ctx.env);
+    const httpClient = new NodeHttpClient();
+    const tokenProvider = defaultTokenProvider(ctx.env);
+    const resolver = new CompositeHubResolver(
+      new GitHubHubResolver(httpClient, tokenProvider),
+      new LocalHubResolver(ctx.fs),
+      new UrlHubResolver(httpClient, tokenProvider)
+    );
+    const mgr = new HubManager(
+      new HubStore(userPaths.hubs, ctx.fs),
+      new ActiveHubStore(userPaths.activeHub, ctx.fs),
+      resolver
+    );
+
+    await mgr.syncHub(hubId);
+    const active = await mgr.getActiveHub();
+    if (active?.id !== hubId) {
+      return failWith(ctx, fmt, new RegistryError({
+        code: 'HUB.NOT_FOUND',
+        message: `install: hub "${hubId}" is not active or not found`,
+        hint: `Run \`prompt-registry hub use ${hubId}\` first.`
+      }));
+    }
+
+    const bundles = active.config.profiles.flatMap((p: { bundles: Array<{ id: string; version: string; source: string }> }) => p.bundles);
+    const bundleChoices = bundles.map((b: { id: string; version: string; source: string }) => ({
+      name: `${b.id}@${b.version} (source: ${b.source})`,
+      value: b.id,
+      short: b.id
+    }));
+
+    const answers = await inquirer.prompt([
+      {
+        type: 'checkbox',
+        name: 'selectedBundles',
+        message: 'Select bundles to install:',
+        choices: bundleChoices,
+        validate: (input: string[]) => input.length > 0 || 'Please select at least one bundle'
+      }
+    ]);
+
+    const selectedBundleIds = answers.selectedBundles as string[];
+    const selectedBundles = bundles.filter((b: { id: string }) => selectedBundleIds.includes(b.id));
+
+    // Show preview
+    ctx.stdout.write(`\nPreview: Installing ${selectedBundles.length} bundle${selectedBundles.length === 1 ? '' : 's'} to target "${target.name}"\n`);
+    for (const b of selectedBundles) {
+      ctx.stdout.write(`  - ${b.id}@${b.version} (source: ${b.source})\n`);
+    }
+
+    const confirm = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'proceed',
+        message: 'Proceed with installation?',
+        default: true
+      }
+    ]);
+
+    if (!confirm.proceed) {
+      ctx.stdout.write('Installation cancelled.\n');
+      return 0;
+    }
+
+    // Install each selected bundle
+    let installedCount = 0;
+    for (const bundle of selectedBundles) {
+      const bundleOpts = { ...opts, bundle: bundle.id };
+      try {
+        const result = await performRemoteInstall(bundleOpts, target, ctx, fmt);
+        if (result === 0) {
+          installedCount++;
+        }
+      } catch (err) {
+        ctx.stderr.write(`Failed to install ${bundle.id}@${bundle.version}: ${err instanceof Error ? err.message : String(err)}\n`);
+      }
+    }
+
+    formatOutput({
+      ctx,
+      command: 'install',
+      output: fmt,
+      status: 'ok',
+      data: {
+        hubId,
+        selected: selectedBundles.length,
+        installed: installedCount,
+        target: target.name
+      },
+      textRenderer: (d) => `Installed ${d.installed}/${d.selected} bundles to target "${d.target}".\n`
     });
     return 0;
   } catch (err) {
