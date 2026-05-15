@@ -845,6 +845,35 @@ async function cleanupDeactivatedLockfile(ctx: Context, lockPath: string): Promi
       // Best-effort cleanup
     }
   }
+
+  // Also clean up empty kind route directories (created by eager mkdir in writer)
+  const kindDirs = ['instructions', 'prompts', 'skills', 'chatmodes', 'steering'];
+  for (const kind of kindDirs) {
+    try {
+      const kindDir = path.join(ctx.cwd(), '.github', kind);
+      if (await ctx.fs.exists(kindDir)) {
+        const entries = await ctx.fs.readDir(kindDir);
+        if (entries.length === 0) {
+          await ctx.fs.remove(kindDir);
+        }
+      }
+    } catch {
+      // Best-effort cleanup
+    }
+  }
+
+  // Clean up the top-level .github directory if empty
+  try {
+    const githubDir = path.join(ctx.cwd(), '.github');
+    if (await ctx.fs.exists(githubDir)) {
+      const entries = await ctx.fs.readDir(githubDir);
+      if (entries.length === 0) {
+        await ctx.fs.remove(githubDir);
+      }
+    }
+  } catch {
+    // Best-effort cleanup
+  }
   await writeLockfile(lockPath, { ...existing, entries: [], useProfile: undefined }, ctx.fs);
 }
 
