@@ -96,6 +96,8 @@ export interface InitOptions {
   targetName?: string;
   /** Target type (default: 'copilot-cli'). */
   targetType?: string;
+  /** Target scope (default: 'user'). */
+  scope?: 'user' | 'repository';
   /** Hub location ref (e.g. owner/repo or file:./hub-config.yml). */
   hub?: string;
   /** Hub type override (default: auto-detect from ref). */
@@ -187,12 +189,14 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
 
   let targetName = opts.targetName ?? DEFAULT_TARGET_NAME;
   let targetType = (opts.targetType ?? DEFAULT_TARGET_TYPE) as TargetType;
+  let targetScope = (opts.scope as 'user' | 'repository') ?? 'user';
   let hubRef = opts.hub;
 
   // Interactive wizard mode
   if (isInteractive) {
     interface WizardAnswers {
       ide: string;
+      scope?: 'user' | 'repository';
       connectHub: boolean;
       hubChoice?: string;
       hubPath?: string;
@@ -210,6 +214,17 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
           value: type
         })),
         default: 'copilot-cli'
+      },
+      {
+        type: 'list',
+        name: 'scope',
+        message: 'Installation scope:',
+        choices: [
+          { name: 'User scope (installed in home directory)', value: 'user' },
+          { name: 'Project scope (installed in current project)', value: 'repository' }
+        ],
+        default: 'user',
+        when: (a: { ide: string }) => a.ide !== 'copilot-cli'
       },
       {
         type: 'confirm',
@@ -240,6 +255,12 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
 
     targetType = answers.ide as TargetType;
     targetName = DEFAULT_TARGET_NAME;
+    targetScope = answers.scope ?? 'user';
+
+    // Force user scope for copilot-cli (it doesn't support repository scope)
+    if (targetType === 'copilot-cli') {
+      targetScope = 'user';
+    }
 
     // Check if target already exists
     const currentTargets = await readTargets({ cwd: ctx.cwd(), fs: ctx.fs });
@@ -276,6 +297,11 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
     }
   }
 
+  // Force user scope for copilot-cli (it doesn't support repository scope)
+  if (targetType === 'copilot-cli') {
+    targetScope = 'user';
+  }
+
   if (!TARGET_TYPES.includes(targetType)) {
     return failWith(ctx, fmt, new RegistryError({
       code: 'USAGE.MISSING_FLAG',
@@ -295,10 +321,11 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
       const { file } = await findProjectConfigPath({ cwd: ctx.cwd(), fs: ctx.fs });
       result = { file, created: false };
     } else {
-      // Create new target
+      // Create new target with appropriate scope
+      const scope = targetType === 'copilot-cli' ? 'user' : targetScope;
       result = await addTarget(
         { cwd: ctx.cwd(), fs: ctx.fs },
-        { name: targetName, type: targetType as any, scope: 'user' } as Target
+        { name: targetName, type: targetType as any, scope } as Target
       );
     }
 
