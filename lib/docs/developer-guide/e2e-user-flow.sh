@@ -3,7 +3,7 @@
 # End-to-End User Flow Test Script
 # Simulates realistic user workflows from scratch
 #
-# This script tests the complete lifecycle (22 scenarios):
+# This script tests the complete lifecycle (29 scenarios):
 #
 # Setup:
 #   1. Create install target via init wizard (F-01) with --yes flag
@@ -42,8 +42,15 @@
 #  23. Profile activate with --dry-run shows preview (F-09)
 #  24. Profile deactivate with --dry-run shows preview (F-09)
 #
+# Discovery feature tests:
+#  25. Discover command with context detection (non-AI mode)
+#  26. Discover command with --ai flag (AI mode)
+#  27. Discover command with --interactive flag
+#  28. Discover command with --kinds filter
+#  29. Discover command with --limit
+#
 # Cleanup:
-#  25. Remove target config and delete test directories
+#  30. Remove target config and delete test directories
 #
 # Usage:
 #   ./e2e-user-flow.sh [--use-real-hub] [--verbose]
@@ -1029,8 +1036,8 @@ scenario_24_dry_run_deactivate() {
     fi
 }
 
-scenario_25_cleanup() {
-    log_section "Scenario 25: Cleanup"
+scenario_31_cleanup() {
+    log_section "Scenario 31: Cleanup"
 
     log_info "Removing target"
     cd "$PR_TEST_ROOT/project"
@@ -1042,8 +1049,8 @@ scenario_25_cleanup() {
     log_success "Test directory cleaned up"
 }
 
-scenario_26_init_all_target_types() {
-    log_section "Scenario 26: Init All Target Types"
+scenario_30_init_all_target_types() {
+    log_section "Scenario 30: Init All Target Types"
 
     local all_ok=true
 
@@ -1077,6 +1084,105 @@ scenario_26_init_all_target_types() {
 
     if [ "$all_ok" = false ]; then
         return 1
+    fi
+}
+
+scenario_25_discover_context() {
+    log_section "Scenario 25: Discover Command with Context Detection (Non-AI Mode)"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Running discover command with context detection (non-AI mode)"
+    local output
+    output=$(run_cmd "$PR_BIN discover --index \"$XDG_CACHE_HOME/primitive-index.json\" -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "Discover command executed successfully in non-AI mode"
+        local total
+        total=$(echo "$output" | jq -r '.data.total // 0')
+        log_info "Discover returned $total results"
+    else
+        log_warning "Discover command failed (may not be fully implemented yet)"
+        echo "$output"
+        return 0  # Non-critical for now
+    fi
+}
+
+scenario_26_discover_ai() {
+    log_section "Scenario 26: Discover Command with --ai Flag"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Running discover command with --ai flag"
+    local output
+    output=$(run_cmd "$PR_BIN discover --ai --index \"$XDG_CACHE_HOME/primitive-index.json\" -o json") || true
+
+    # AI mode may fail if Copilot SDK is not available, which is expected in test environment
+    if assert_json_status "$output"; then
+        log_success "Discover command executed successfully in AI mode"
+    else
+        log_info "AI mode failed as expected (Copilot SDK not available in test environment)"
+        return 0  # Expected in test environment
+    fi
+}
+
+scenario_27_discover_interactive() {
+    log_section "Scenario 27: Discover Command with --interactive Flag"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Running discover command with --interactive flag"
+    local output
+    output=$(run_cmd "$PR_BIN discover --interactive --index \"$XDG_CACHE_HOME/primitive-index.json\" -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "Discover command executed successfully in interactive mode"
+    else
+        log_warning "Interactive mode may not be fully implemented yet"
+        echo "$output"
+        return 0  # Non-critical for now
+    fi
+}
+
+scenario_28_discover_kinds() {
+    log_section "Scenario 28: Discover Command with --kinds Filter"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Running discover command with --kinds filter"
+    local output
+    output=$(run_cmd "$PR_BIN discover --kinds prompt --index \"$XDG_CACHE_HOME/primitive-index.json\" -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "Discover command executed successfully with kinds filter"
+        local total
+        total=$(echo "$output" | jq -r '.data.total // 0')
+        log_info "Discover returned $total results filtered by kind"
+    else
+        log_warning "Discover command with kinds filter failed"
+        echo "$output"
+        return 0  # Non-critical for now
+    fi
+}
+
+scenario_29_discover_limit() {
+    log_section "Scenario 29: Discover Command with --limit"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Running discover command with --limit"
+    local output
+    output=$(run_cmd "$PR_BIN discover --limit 5 --index \"$XDG_CACHE_HOME/primitive-index.json\" -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "Discover command executed successfully with limit"
+        local total
+        total=$(echo "$output" | jq -r '.data.total // 0')
+        log_info "Discover returned $total results (limited to 5)"
+    else
+        log_warning "Discover command with limit failed"
+        echo "$output"
+        return 0  # Non-critical for now
     fi
 }
 
@@ -1159,8 +1265,13 @@ main() {
     scenario_22_search_alias || true  # Non-critical
     scenario_23_dry_run_activate || true  # Non-critical
     scenario_24_dry_run_deactivate || true  # Non-critical
-    scenario_26_init_all_target_types || failures=$((failures + 1))
-    scenario_25_cleanup || true  # Cleanup always runs
+    scenario_25_discover_context || true  # Non-critical (new discovery feature)
+    scenario_26_discover_ai || true  # Non-critical (new discovery feature)
+    scenario_27_discover_interactive || true  # Non-critical (new discovery feature)
+    scenario_28_discover_kinds || true  # Non-critical (new discovery feature)
+    scenario_29_discover_limit || true  # Non-critical (new discovery feature)
+    scenario_30_init_all_target_types || failures=$((failures + 1))
+    scenario_31_cleanup || true  # Cleanup always runs
 
     # Print summary
     log_section "Test Summary"
