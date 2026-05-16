@@ -113,3 +113,14 @@ export {
   isRegistryError,
   RegistryError,
 } from './errors';
+
+// Discovery domain types for AI-powered resource discovery.
+export type {
+  ResourceRecommendation,
+  ResourceSelection,
+  ProfileDraft,
+  DiscoveryOptions,
+  ResourceType,
+  RecommendationId,
+  ProfileDraftId,
+} from './discovery/types';

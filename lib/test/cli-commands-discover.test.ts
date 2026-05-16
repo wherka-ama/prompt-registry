@@ -15,6 +15,8 @@ import type {
 } from '../src/app/context-detection';
 import {
   buildSearchQueries,
+} from '../src/app/discovery/recommendation-engine';
+import {
   createDiscoverCommand,
   deduplicateHits,
   renderDiscoveryText,
@@ -260,6 +262,138 @@ describe('buildSearchQueries', () => {
 
     expect(queries).toContain('copilot prompt instruction');
   });
+
+  it('should handle context with only languages', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: ['TypeScript', 'JavaScript'],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: '',
+        businessDomain: '',
+        technicalDomain: ''
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test/project'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = buildSearchQueries(context);
+
+    expect(queries).toContain('TypeScript JavaScript');
+    expect(queries).not.toContain('copilot prompt instruction');
+  });
+
+  it('should handle context with only frameworks', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: ['React', 'Express'],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: '',
+        businessDomain: '',
+        technicalDomain: ''
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test/project'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = buildSearchQueries(context);
+
+    expect(queries).toContain('React Express');
+    expect(queries).not.toContain('copilot prompt instruction');
+  });
+
+  it('should handle context with only domain', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: 'web-application',
+        businessDomain: '',
+        technicalDomain: ''
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test/project'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = buildSearchQueries(context);
+
+    expect(queries).toContain('web-application');
+  });
+
+  it('should handle special characters in domain', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: 'web-application',
+        businessDomain: 'e-commerce/travel',
+        technicalDomain: ''
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test/project'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = buildSearchQueries(context);
+
+    expect(queries).toContain('e-commerce/travel');
+  });
+
+  it('should handle many languages', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: Array.from({ length: 10 }, (_, i) => `Language${i}`),
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: '',
+        businessDomain: '',
+        technicalDomain: ''
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test/project'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = buildSearchQueries(context);
+
+    expect(queries[0]).toContain('Language0');
+  });
 });
 
 describe('deduplicateHits', () => {
@@ -498,5 +632,668 @@ describe('renderDiscoveryText', () => {
     const output = renderDiscoveryText(context, queries, results);
 
     expect(output).toContain('Recommendations (0):');
+  });
+
+  it('should handle context with many languages', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: Array.from({ length: 20 }, (_, i) => `Language${i}`),
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Detected Context:');
+  });
+
+  it('should handle context with unicode in domain', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: 'web-application 🚀',
+        businessDomain: 'e-commerce/travel',
+        technicalDomain: 'frontend'
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('web-application 🚀');
+  });
+
+  it('should handle results with special characters in title', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Test "quoted" & special <chars>',
+          description: 'A test primitive',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.95
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Test "quoted" & special <chars>');
+  });
+
+  it('should handle results with very long descriptions', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const longDesc = 'a'.repeat(5000);
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Test Primitive',
+          description: longDesc,
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.95
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Test Primitive');
+  });
+
+  it('should handle many search queries', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = Array.from({ length: 20 }, (_, i) => `query${i}`);
+    const results: SearchHit[] = [];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Search Queries:');
+  });
+
+  it('should handle results with score at upper bound (1.0)', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Perfect Match',
+          description: 'A perfect match',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 1.0
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('1.0');
+  });
+
+  it('should handle results with score at lower bound (0.0)', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Low Match',
+          description: 'A low match',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.0
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('0.0');
+  });
+
+  it('should handle results with negative score', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Negative Score',
+          description: 'A negative score',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: -0.5
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('-0.5');
+  });
+
+  it('should handle results with very high precision score', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Precision Score',
+          description: 'A high precision score',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.987654321
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    // Score is rounded to 3 decimal places
+    expect(output).toContain('0.988');
+  });
+
+  it('should handle results with unicode in title and description', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: '测试标题 🎉',
+          description: 'テスト説明 🚀',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.95
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('测试标题 🎉');
+    expect(output).toContain('テスト説明 🚀');
+  });
+
+  it('should handle results with newline in description', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Newline Test',
+          description: 'Line 1\nLine 2\nLine 3',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.95
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Newline Test');
+  });
+
+  it('should handle results with tab in description', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Tab Test',
+          description: 'Col1\tCol2\tCol3',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.95
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Tab Test');
+  });
+
+  it('should handle results with empty body preview', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Empty Body Preview',
+          description: 'A test primitive',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.95
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Empty Body Preview');
+  });
+
+  it('should handle results with very long body preview', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const longPreview = 'a'.repeat(10000);
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Long Body Preview',
+          description: 'A test primitive',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: ['test'],
+          bodyPreview: longPreview,
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.95
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Long Body Preview');
+  });
+
+  it('should handle results with empty tags array', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Empty Tags',
+          description: 'A test primitive',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: [],
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.95
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Empty Tags');
+  });
+
+  it('should handle results with many tags', () => {
+    const context: DetectedContext = {
+      techStack: {
+        languages: [],
+        frameworks: [],
+        packageManagers: [],
+        buildTools: [],
+        testFrameworks: []
+      },
+      domain: {
+        category: undefined,
+        businessDomain: undefined,
+        technicalDomain: undefined
+      },
+      activity: {
+        recentFiles: [],
+        workingDirectory: '/test'
+      },
+      detectedAt: new Date().toISOString()
+    };
+
+    const queries = ['test'];
+    const results: SearchHit[] = [
+      {
+        primitive: {
+          id: 'test-1',
+          title: 'Many Tags',
+          description: 'A test primitive',
+          kind: 'prompt',
+          path: '/test/path',
+          tags: Array.from({ length: 100 }, (_, i) => `tag${i}`),
+          bodyPreview: '',
+          contentHash: 'hash1',
+          bundle: { sourceId: 'source-1', bundleId: 'bundle-1', sourceType: 'github', bundleVersion: '1.0.0', installed: false }
+        },
+        score: 0.95
+      }
+    ];
+
+    const output = renderDiscoveryText(context, queries, results);
+
+    expect(output).toContain('Many Tags');
   });
 });

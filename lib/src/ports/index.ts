@@ -53,3 +53,16 @@ export type {
 export type {
   LayoutConfigLoader,
 } from './layout-config-loader';
+
+export type {
+  CopilotSdk,
+  CopilotSession,
+  SessionOptions,
+  PermissionRequest,
+  PermissionResponse,
+} from './copilot-sdk';
+
+export type {
+  McpServer,
+  McpTool,
+} from './mcp-server';

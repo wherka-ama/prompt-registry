@@ -14,6 +14,16 @@ import {
   type DetectedContext,
 } from '../../app/context-detection';
 import {
+  buildSearchQueries,
+  RecommendationEngine,
+} from '../../app/discovery/recommendation-engine';
+import type {
+  DiscoveryOptions as DomainDiscoveryOptions,
+} from '../../domain/discovery/types';
+import {
+  CopilotSdkClient,
+} from '../../infra/discovery/copilot-sdk-client';
+import {
   defaultIndexFile,
 } from '../../infra/harvest/default-paths';
 import type {
@@ -50,6 +60,10 @@ export interface DiscoverOptions {
   kinds?: PrimitiveKind[];
   /** Working directory to analyze. */
   cwd?: string;
+  /** Enable AI-powered recommendations. */
+  enableAI?: boolean;
+  /** Enable interactive mode. */
+  interactive?: boolean;
 }
 
 /**
@@ -73,6 +87,37 @@ export const createDiscoverCommand = (
         // Detect context
         const detector = new ContextDetector({ cwd });
         const context = await detector.detect();
+
+        // Use AI recommendations if enabled
+        if (opts.enableAI) {
+          const copilotSdk = new CopilotSdkClient();
+          const engine = new RecommendationEngine(copilotSdk);
+
+          const domainOptions: DomainDiscoveryOptions = {
+            enableAI: true,
+            interactive: opts.interactive ?? false,
+            cwd,
+            indexFile: indexPath,
+            limit: opts.limit,
+            kinds: opts.kinds
+          };
+
+          const recommendations = await engine.generateRecommendations(context, domainOptions);
+
+          formatOutput({
+            ctx,
+            command: 'discover',
+            output: fmt,
+            status: 'ok',
+            data: {
+              context,
+              aiEnabled: true,
+              recommendations
+            },
+            textRenderer: (d) => renderAiDiscoveryText(d.context, d.recommendations)
+          });
+          return 0;
+        }
 
         // Load index
         const idx = loadIndex(indexPath);
@@ -131,11 +176,15 @@ export class DiscoverCommand extends Command {
         prompt-registry discover
         prompt-registry discover --limit 20
         prompt-registry discover --kinds prompt,skill
+        prompt-registry discover --ai
+        prompt-registry discover --ai --interactive
 
       Options:
         --index <path>         Path to index JSON (default: XDG cache/primitive-index.json)
         --limit <n>            Limit number of recommendations (default: 10)
         --kinds <kinds>        Filter by primitive kind (comma-separated)
+        --ai                   Enable AI-powered recommendations
+        --interactive          Enable interactive mode
         -o, --output <format>  Output format (text, json, yaml, ndjson)
     `
   });
@@ -144,6 +193,8 @@ export class DiscoverCommand extends Command {
   public index = Option.String('--index');
   public limit = Option.String('--limit');
   public kinds = Option.Array('--kinds');
+  public enableAI = Option.Boolean('--ai');
+  public interactive = Option.Boolean('--interactive');
 
   public async execute(): Promise<number> {
     const ctx = (this as any).commandContext?.ctx as Context;
@@ -160,57 +211,14 @@ export class DiscoverCommand extends Command {
       indexFile: indexPath,
       limit,
       kinds: this.kinds as PrimitiveKind[],
-      cwd: ctx.cwd()
+      cwd: ctx.cwd(),
+      enableAI: this.enableAI,
+      interactive: this.interactive
     };
 
     const cmd = createDiscoverCommand(opts);
     return cmd.run({ ctx });
   }
-}
-
-/**
- * Build search queries from detected context.
- * @param context Detected context.
- * @returns Search queries.
- */
-export function buildSearchQueries(context: DetectedContext): string[] {
-  const queries: string[] = [];
-
-  // Tech stack queries
-  const { techStack } = context;
-  if (techStack.languages.length > 0) {
-    queries.push(techStack.languages.join(' '));
-  }
-  if (techStack.frameworks.length > 0) {
-    queries.push(techStack.frameworks.join(' '));
-  }
-
-  // Domain queries
-  const { domain } = context;
-  if (domain.category) {
-    queries.push(domain.category);
-  }
-  if (domain.businessDomain) {
-    queries.push(domain.businessDomain);
-  }
-  if (domain.technicalDomain) {
-    queries.push(domain.technicalDomain);
-  }
-
-  // Combined queries
-  if (techStack.languages.length > 0 && domain.category) {
-    queries.push(`${techStack.languages[0]} ${domain.category}`);
-  }
-  if (techStack.frameworks.length > 0 && domain.businessDomain) {
-    queries.push(`${techStack.frameworks[0]} ${domain.businessDomain}`);
-  }
-
-  // Default query if no specific context detected
-  if (queries.length === 0) {
-    queries.push('copilot prompt instruction');
-  }
-
-  return queries;
 }
 
 /**
@@ -258,6 +266,39 @@ export function renderDiscoveryText(
       const p = hit.primitive;
       const line = `  [${hit.score.toFixed(3)}] [${p.kind}] ${p.title} (${p.bundle.sourceId}/${p.bundle.bundleId})`;
       return p.description.length > 0 ? [line, `      ${p.description}`] : [line];
+    }),
+    ''
+  ];
+
+  return lines.join('\n');
+}
+
+/**
+ * Render AI-powered discovery results as text.
+ * @param context Detected context.
+ * @param recommendations AI recommendations.
+ * @returns Formatted text.
+ */
+export function renderAiDiscoveryText(
+  context: DetectedContext,
+  recommendations: unknown[]
+): string {
+  const lines = [
+    'Detected Context:',
+    `  Languages: ${context.techStack.languages.join(', ') || 'none'}`,
+    `  Frameworks: ${context.techStack.frameworks.join(', ') || 'none'}`,
+    `  Domain: ${context.domain.category || context.domain.businessDomain || 'unknown'}`,
+    '',
+    'AI-Powered Recommendations:',
+    ...recommendations.map((rec) => {
+      const r = rec as { type: string; name: string; description: string; relevanceScore: number; reasoning: string; source: string };
+      return [
+        `  [${r.type}] ${r.name}`,
+        `    Score: ${r.relevanceScore.toFixed(3)}`,
+        `    Source: ${r.source}`,
+        `    Reasoning: ${r.reasoning}`,
+        r.description.length > 0 ? `    Description: ${r.description}` : ''
+      ].filter(Boolean).join('\n');
     }),
     ''
   ];
