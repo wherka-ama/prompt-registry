@@ -43,8 +43,10 @@ The project will be distributed through two channels:
 
 GitHub CLI extensions have strict naming requirements:
 - Repository name **must** start with `gh-`
-- Binary assets must follow naming convention: `gh-EXTENSION-NAME-OS-ARCH[EXT]`
-- Example: `gh-prompt-registry-linux-amd64`, `gh-prompt-registry-darwin-arm64`, `gh-prompt-registry-windows-amd64.exe`
+- Binary assets must follow naming convention: `OS-ARCH[EXT]`
+- Example: `linux-amd64`, `darwin-arm64`, `windows-amd64.exe`
+
+The extension name is inferred from the repository name, not part of the binary filename.
 
 Since the main repository is `wherka-ama/prompt-registry`, we cannot use it directly for GitHub CLI extension distribution. Instead, we will create a **sidecar repository** at:
 
@@ -141,16 +143,18 @@ gh-prompt-registry/
 
 GitHub CLI extensions require specific naming for binary assets:
 ```
-gh-EXTENSION-NAME-OS-ARCH[.exe]
+OS-ARCH[.exe]
 
 Examples:
-gh-prompt-registry-linux-amd64
-gh-prompt-registry-linux-arm64
-gh-prompt-registry-darwin-amd64
-gh-prompt-registry-darwin-arm64
-gh-prompt-registry-windows-amd64.exe
-gh-prompt-registry-windows-arm64.exe
+linux-amd64
+linux-arm64
+darwin-amd64
+darwin-arm64
+windows-amd64.exe
+windows-arm64.exe
 ```
+
+The extension name is inferred from the repository name (`gh-prompt-registry`), not part of the binary filename.
 
 ### Build Process
 
@@ -230,19 +234,19 @@ jobs:
       
       - name: Rename binary to gh extension naming
         run: |
-          # Rename to gh-prompt-registry-OS-ARCH[.exe]
+          # Rename to OS-ARCH[.exe]
           if [[ "${{ matrix.platform }}" == windows-* ]]; then
-            mv ../prompt-registry/lib/dist/prompt-registry-${{ matrix.platform }} \
-               gh-prompt-registry-${{ matrix.platform }}
+            mv ../prompt-registry/lib/dist/prompt-registry.exe \
+               ${{ matrix.platform }}.exe
           else
-            mv ../prompt-registry/lib/dist/prompt-registry-${{ matrix.platform }} \
-               gh-prompt-registry-${{ matrix.platform }}
+            mv ../prompt-registry/lib/dist/prompt-registry \
+               ${{ matrix.platform }}
           fi
       
       - uses: actions/upload-artifact@v4
         with:
-          name: gh-prompt-registry-${{ matrix.platform }}
-          path: gh-prompt-registry-${{ matrix.platform }}*
+          name: ${{ matrix.platform }}
+          path: ${{ matrix.platform }}*
 
   release:
     needs: build-binaries
@@ -282,7 +286,7 @@ cd /home/wherka/workspace/opensource/gh-prompt-registry
 ./scripts/build.sh --local
 
 # Install as local GitHub CLI extension
-gh extension install ./gh-prompt-registry-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)
+gh extension install ./$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)
 
 # Test the extension
 gh prompt-registry --help
@@ -314,61 +318,104 @@ npm uninstall -g @prompt-registry/collection-scripts
 
 ## Implementation Plan
 
-### Critical Review: Is Package Split Necessary?
+### Critical Review: npm Workspaces Approach
 
-**Question**: Do we actually need to split into SDK and CLI packages?
+**Question**: Should we use npm workspaces to introduce new packages without moving sources?
 
 **Analysis**:
-- Current package `@prompt-registry/collection-scripts` already works well for npm/npx usage
-- VS Code extension can depend on the existing package
-- Splitting into SDK/CLI adds complexity without clear benefit
-- The sidecar repository can depend on the existing npm package
+- npm workspaces allow defining multiple packages in a monorepo structure
+- The legacy package `@prompt-registry/collection-scripts` can remain as-is
+- New workspaces can define their scope according to recommendations
+- Publications can be triggered based on the workspace concept
+- No source code movement required - only package.json configuration
 
-**Recommendation**: **Do NOT split the package**. Keep the current structure and focus on:
-1. Updating package.json description and metadata
-2. Adding tarball inspection script
-3. Creating the sidecar repository for GitHub CLI extension
-4. Improving npm package configuration (files field, etc.)
+**Recommendation**: **Use npm workspaces** to introduce new packages. This approach:
+1. Keeps the legacy package intact at the root
+2. Introduces new workspace packages in a `packages/` directory
+3. Each workspace defines its scope and dependencies
+4. Allows independent publishing of each workspace
+5. Maintains backward compatibility
 
-This is the least disruptive approach that achieves the distribution goals.
+### Workspace Structure
+
+```
+prompt-registry/
+├── lib/                             # Legacy package (remains as-is)
+│   ├── package.json                 # @prompt-registry/collection-scripts
+│   ├── src/
+│   ├── dist/
+│   └── bin/
+├── packages/
+│   ├── sdk/                         # New workspace: @prompt-registry/sdk
+│   │   ├── package.json
+│   │   └── src/ (symlinks to lib/src/domain, lib/src/ports, lib/src/public)
+│   └── cli/                         # New workspace: @prompt-registry/cli
+│       ├── package.json
+│       └── src/ (symlinks to lib/src/cli, lib/src/app, lib/src/infra)
+├── package.json                     # Root package.json with workspaces config
+└── pnpm-workspace.yaml              # Workspace configuration (if using pnpm)
+```
 
 ### Revised Implementation Plan
 
-#### Phase 1: Improve npm Package Configuration (High Priority)
-1. Update package.json description to be more accurate
-2. Add `pack` and `pack:inspect` scripts to package.json
-3. Review and optimize `files` field in package.json
-4. Test tarball inspection locally
-5. Document npm package structure
+#### Phase 1: Configure npm Workspaces (High Priority)
+1. Add `workspaces` field to root package.json
+2. Create `packages/sdk/` directory structure
+3. Create `packages/cli/` directory structure
+4. Configure workspace package.json files
+5. Set up symlinks or re-exports for source sharing
+6. Test workspace installation and linking
 
-#### Phase 2: Create Sidecar Repository (High Priority)
+#### Phase 2: Define SDK Workspace Scope (High Priority)
+1. Create SDK package.json with domain, ports, public exports
+2. Add proper exports field for SDK workspace
+3. Configure SDK dependencies (minimal, pure library)
+4. Add SDK-specific build scripts
+5. Test SDK workspace independently
+
+#### Phase 3: Define CLI Workspace Scope (High Priority)
+1. Create CLI package.json with CLI, app, infra exports
+2. Add proper exports field for CLI workspace
+3. Configure CLI dependencies (can include infra dependencies)
+4. Add CLI-specific build scripts
+5. Test CLI workspace independently
+
+#### Phase 4: Update Legacy Package (Medium Priority)
+1. Update legacy package.json to re-export from workspaces
+2. Add deprecation notice to legacy package README
+3. Document migration path from legacy to workspaces
+4. Test backward compatibility
+5. Plan legacy package deprecation timeline
+
+#### Phase 5: Create Sidecar Repository (High Priority)
 1. Create repository at `/home/wherka/workspace/opensource/gh-prompt-registry`
 2. Initialize with minimal structure (scripts, workflows, README)
 3. Create build script that clones official repo and builds binaries
 4. Add Makefile with build targets for local testing
 5. Set up GitHub repository and configure topics
 
-#### Phase 3: SEA Binary Build for Sidecar (High Priority)
+#### Phase 6: SEA Binary Build for Sidecar (High Priority)
 1. Enhance existing SEA build script in main repository
 2. Add cross-platform build support (linux, darwin, windows, amd64, arm64)
 3. Add platform-specific build targets
 4. Test local builds for current platform
 5. Add checksum generation
 
-#### Phase 4: CI/CD Pipeline for Sidecar (Medium Priority)
+#### Phase 7: CI/CD Pipeline for Sidecar (Medium Priority)
 1. Create release workflow in sidecar repository
 2. Configure workflow to clone official repo at tag
 3. Add build matrix for all platforms
-4. Implement binary renaming to gh extension naming convention
+4. Implement binary renaming to OS-ARCH[.exe] convention
 5. Add checksum generation and upload
 6. Test with prerelease
 
-#### Phase 5: Documentation (Low Priority)
+#### Phase 8: Documentation (Low Priority)
 1. Document GitHub CLI extension installation
 2. Update main repository README with extension info
 3. Document sidecar repository purpose and usage
 4. Add npm tarball inspection guide
 5. Update AGENTS.md with distribution insights
+6. Document workspace structure and usage
 
 ## Migration Path for Consumers
 
@@ -377,6 +424,13 @@ This is the least disruptive approach that achieves the distribution goals.
 ```bash
 # Continues to work as before
 import { PrimitiveIndex } from '@prompt-registry/collection-scripts';
+```
+
+### For Extension Developers (SDK workspace - New Option)
+After workspaces are introduced, developers can use the SDK workspace for a more focused API:
+```bash
+# New option: use SDK workspace
+import { PrimitiveIndex } from '@prompt-registry/sdk';
 ```
 
 ### For CLI Users (npm/npx)
