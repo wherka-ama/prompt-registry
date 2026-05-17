@@ -1,6 +1,6 @@
 # @prompt-registry/collection-scripts Documentation
 
-Comprehensive documentation for the collection scripts library.
+Comprehensive documentation for the Prompt Registry library.
 
 ## Documentation Structure
 
@@ -41,7 +41,7 @@ flowchart TB
     author[Collection Author<br/>Creates collections]
 
     subgraph Library["@prompt-registry/collection-scripts"]
-        cli[CLI Tool<br/>Unified CLI]
+        lib[Prompt Registry Library<br/>TypeScript library]
         index[Primitive Index<br/>Search engine]
         install[Installation System<br/>Bundle management]
     end

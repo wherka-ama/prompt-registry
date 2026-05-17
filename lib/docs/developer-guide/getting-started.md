@@ -1,6 +1,6 @@
 # Getting Started
 
-Guide for developers contributing to the collection scripts library.
+Guide for developers contributing to the Prompt Registry library.
 
 ## Prerequisites
 

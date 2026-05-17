@@ -11,7 +11,7 @@ flowchart TB
     ext_dev[Extension Developer<br/>Uses API]
 
     subgraph Library["@prompt-registry/collection-scripts"]
-        lib[Collection Scripts Library<br/>TypeScript library]
+        lib[Prompt Registry Library<br/>TypeScript library]
     end
 
     github[GitHub<br/>API for releases, contents]

@@ -1,6 +1,6 @@
 # Testing Guide
 
-Comprehensive guide for testing the collection scripts library.
+Comprehensive guide for testing the Prompt Registry library.
 
 ## Test Framework
 
