@@ -1,0 +1,6 @@
+# pnpm-workspace.yaml
+# Workspace configuration for prompt-registry npm packages
+packages:
+  - '.'                    # Legacy package @prompt-registry/collection-scripts
+  - 'packages/sdk'         # New SDK workspace
+  - 'packages/cli'         # New CLI workspace

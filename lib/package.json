@@ -22,6 +22,9 @@
       "default": "./dist/app/index.js"
     }
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "bin": {
     "prompt-registry": "./bin/prompt-registry.js",
     "validate-collections": "./bin/validate-collections.js",

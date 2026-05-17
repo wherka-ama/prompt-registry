@@ -1,0 +1,66 @@
+{
+  "name": "@prompt-registry/sdk",
+  "version": "1.0.4",
+  "description": "Prompt Registry SDK - Domain types, ports, and public API for programmatic consumption",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./domain": {
+      "types": "./dist/domain/index.d.ts",
+      "default": "./dist/domain/index.js"
+    },
+    "./ports": {
+      "types": "./dist/ports/index.d.ts",
+      "default": "./dist/ports/index.js"
+    },
+    "./public": {
+      "types": "./dist/public/index.d.ts",
+      "default": "./dist/public/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmadeusITGroup/prompt-registry.git",
+    "directory": "lib/packages/sdk"
+  },
+  "keywords": [
+    "copilot",
+    "prompts",
+    "sdk",
+    "domain",
+    "types"
+  ],
+  "author": "Prompt Registry Contributors",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AmadeusITGroup/prompt-registry/issues"
+  },
+  "homepage": "https://github.com/AmadeusITGroup/prompt-registry/tree/main/lib/packages/sdk#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@prompt-registry/collection-scripts": "workspace:*",
+    "js-yaml": "^4.0.0"
+  },
+  "peerDependencies": {
+    "js-yaml": "^4.0.0"
+  }
+}

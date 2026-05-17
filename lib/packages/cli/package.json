@@ -1,0 +1,82 @@
+{
+  "name": "@prompt-registry/cli",
+  "version": "1.0.4",
+  "description": "Prompt Registry CLI - Command-line tools for collection validation, bundle building, and publishing",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./app": {
+      "types": "./dist/app/index.d.ts",
+      "default": "./dist/app/index.js"
+    },
+    "./infra": {
+      "types": "./dist/infra/index.d.ts",
+      "default": "./dist/infra/index.js"
+    }
+  },
+  "bin": {
+    "prompt-registry": "./bin/prompt-registry.js",
+    "validate-collections": "./bin/validate-collections.js",
+    "validate-skills": "./bin/validate-skills.js",
+    "build-collection-bundle": "./bin/build-collection-bundle.js",
+    "compute-collection-version": "./bin/compute-collection-version.js",
+    "detect-affected-collections": "./bin/detect-affected-collections.js",
+    "generate-manifest": "./bin/generate-manifest.js",
+    "publish-collections": "./bin/publish-collections.js",
+    "list-collections": "./bin/list-collections.js",
+    "create-skill": "./bin/create-skill.js",
+    "hub-release-analyzer": "./bin/hub-release-analyzer.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmadeusITGroup/prompt-registry.git",
+    "directory": "lib/packages/cli"
+  },
+  "keywords": [
+    "copilot",
+    "prompts",
+    "cli",
+    "validation",
+    "bundling"
+  ],
+  "author": "Prompt Registry Contributors",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AmadeusITGroup/prompt-registry/issues"
+  },
+  "homepage": "https://github.com/AmadeusITGroup/prompt-registry/tree/main/lib/packages/cli#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@prompt-registry/collection-scripts": "workspace:*",
+    "archiver": "^7.0.1",
+    "clipanion": "^4.0.0-rc.4",
+    "inquirer": "^9.3.8",
+    "js-yaml": "^4.0.0",
+    "semver": "^7.5.4",
+    "typanion": "^3.14.0",
+    "yauzl": "^3.1.3"
+  },
+  "peerDependencies": {
+    "js-yaml": "^4.0.0"
+  }
+}
