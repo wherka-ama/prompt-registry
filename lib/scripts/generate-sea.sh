@@ -41,8 +41,18 @@ fi
 echo "Making executable..."
 chmod +x "$OUTPUT_PATH"
 
+echo "Generating checksum..."
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum "$OUTPUT_PATH" > "$OUTPUT_PATH.sha256"
+  echo "Checksum: $(cat "$OUTPUT_PATH.sha256" | cut -d' ' -f1)"
+elif command -v shasum >/dev/null 2>&1; then
+  shasum -a 256 "$OUTPUT_PATH" > "$OUTPUT_PATH.sha256"
+  echo "Checksum: $(cat "$OUTPUT_PATH.sha256" | cut -d' ' -f1)"
+fi
+
 echo "Cleaning up..."
 rm -f sea-prep.blob
 
 echo "Single executable created at: $OUTPUT_PATH"
 echo "File size: $(du -h "$OUTPUT_PATH" | cut -f1)"
+
