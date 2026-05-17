@@ -1,13 +1,13 @@
 /**
- * Phase 4 / Iter 24 — `plugins list` subcommand.
+ * `plugins list` subcommand.
  *
  * Discovers `prompt-registry-<name>` executables on `$PATH` per
- * decision D5 (kubectl/gh model). Each match becomes a plugin
+ * the kubectl/gh model. Each match becomes a plugin
  * candidate; dashes in the filename map to nested subcommands at
- * dispatch time (not implemented in iter 24).
+ * dispatch time (not implemented in this iteration).
  *
- * Iter 24 ships discovery only — invocation is deferred to a later
- * iter when the dispatcher knows how to spawn matched plugins.
+ * This iteration ships discovery only — invocation is deferred to a later
+ * iteration when the dispatcher knows how to spawn matched plugins.
  *
  * The lookup walks every directory in PATH and reports the first
  * match for each plugin name, mirroring how the shell's PATH search

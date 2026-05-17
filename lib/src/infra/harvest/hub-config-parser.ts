@@ -15,8 +15,8 @@ import type {
   HubSourceSpec,
 } from '../../domain';
 
-// Phase 3 / Iter 5 promoted HubSourceSpec into `lib/src/domain/hub/`.
-// Iter 8 removed the back-compat re-export from this module after
+// HubSourceSpec was promoted into `lib/src/domain/hub/`.
+// The back-compat re-export from this module was removed after
 // every in-tree consumer (and both public package barrels) was
 // migrated to import from `domain` directly. This file's job is the
 // `parseHubConfig` and `normalizeRepoFromUrl` helpers below; the

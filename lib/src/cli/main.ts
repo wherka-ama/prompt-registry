@@ -400,8 +400,7 @@ export const CLI_VERSION_CONST = typeof CLI_VERSION === 'undefined' ? readPackag
 
 /**
  * CLI binary entry: only place where process.exit/console.error are
- * permitted (spec §14.2 invariant #3). ESLint rule from Phase 2
- * iter 9 enforces this for every other file under src/cli/.
+ * permitted. ESLint rule enforces this for every other file under src/cli/.
  */
 
 if (require.main === module) {

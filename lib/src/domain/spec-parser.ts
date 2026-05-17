@@ -1,5 +1,5 @@
 /**
- * Phase 5 / Iter 9 — BundleSpec parser.
+ * BundleSpec parser.
  *
  * Three accepted shapes for `prompt-registry install <spec>`:
  *

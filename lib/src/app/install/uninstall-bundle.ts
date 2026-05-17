@@ -2,8 +2,8 @@
  * UninstallBundleUseCase — application-layer orchestrator for bundle
  * removal. Wraps `UninstallPipeline` and depends only on port interfaces.
  *
- * Spec §P3 (ports & adapters): this module never instantiates concrete
- * classes; it only calls port interface methods.
+ * This module never instantiates concrete classes; it only calls
+ * port interface methods.
  * @module app/install/uninstall-bundle
  */
 import {

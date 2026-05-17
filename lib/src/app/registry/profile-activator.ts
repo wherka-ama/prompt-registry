@@ -1,8 +1,8 @@
 /**
- * Phase 6 / Iter 61-65 — ProfileActivator (D21, D22).
+ * ProfileActivator.
  *
  * Atomic activation engine for a registry Profile. Resolves every
- * bundle via the existing Phase 5-spillover install pipeline, then
+ * bundle via the existing install pipeline, then
  * writes them across the chosen targets transactionally:
  *
  *   1. Resolve all bundles upfront. Any null abort BEFORE downloads.
@@ -16,7 +16,7 @@
  * the same Profile activates uniformly into vscode + claude-code +
  * kiro + windsurf + copilot-cli. No target-specific code paths.
  *
- * D21 enforcement: caller MUST pass a fresh activation (the
+ * Enforcement: caller MUST pass a fresh activation (the
  * deactivation of any previous active profile is the orchestrator's
  * job, not the activator's).
  */
@@ -166,7 +166,7 @@ export class ProfileActivator {
     const out: MaterializedBundle[] = [];
     // Use the new shared AssetFetcher (lib/src/github/) so the bundle
     // download path gains retries on transient 5xx, the strict-Accept
-    // switch for api.github.com release assets (I-012), and the inline-
+    // switch for api.github.com release assets, and the inline-
     // bytes shortcut used by awesome-copilot/skills resolvers.
     const downloader = new HttpsBundleDownloader(
       new AssetFetcher({ tokens: this.deps.tokens })
@@ -239,11 +239,11 @@ export class ProfileActivator {
     if (input.targets.length === 0) {
       throw new Error('PROFILE.ACTIVATION_NO_TARGETS: at least one target is required');
     }
-    // Phase 1: resolve every bundle. No IO writes yet.
+    // Step 1: resolve every bundle. No IO writes yet.
     const resolved = await this.resolveAll(input);
-    // Phase 2: fetch + extract every bundle into memory.
+    // Step 2: fetch + extract every bundle into memory.
     const materialized = await this.materializeAll(resolved);
-    // Phase 3: write every bundle into every target. Track for rollback.
+    // Step 3: write every bundle into every target. Track for rollback.
     const writer = new FileTreeTargetWriter({ fs: this.deps.fs, env: this.deps.env });
     const writtenByTarget: Record<string, string[]> = {};
     try {

@@ -4,7 +4,7 @@
  * harvester expects.
  *
  * Why "single" in the name: `awesome-copilot` sources expose multiple
- * bundles (one per collection); those use a different provider (iter 9).
+ * bundles (one per collection); those use a different provider.
  *
  * bundleVersion == commit sha. The harvester uses this to implement smart
  * rebuild: if the latest commit sha matches the one in the progress log,

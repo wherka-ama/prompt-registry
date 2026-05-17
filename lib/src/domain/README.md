@@ -1,6 +1,6 @@
 # `lib/src/domain/` — domain layer
 
-Per spec §14.2 invariant #1: *"`bundle`, `primitive`, `hub` types live in
+Domain layer invariant: *"`bundle`, `primitive`, `hub` types live in
 `lib/src/domain/`. Feature layers (indexing/search, validation,
 publishing, install, runtime translation) depend on domain — never the
 reverse."*
@@ -23,9 +23,9 @@ reverse."*
   a second consumer materializes (YAGNI).
 - **IO** — anything that reads/writes files or speaks HTTP. Domain is
   about shapes; IO belongs to feature layers, mediated by the
-  `Context` abstraction (spec §14.2 invariant #3).
+  `Context` abstraction.
 
-## Cut-line audit (Phase 3 / Iter 3)
+## Cut-line audit
 
 | Type | Location | Reason |
 |---|---|---|
@@ -50,7 +50,7 @@ reverse."*
 
 If the type has only one consumer, **don't promote it**. Domain is
 where shared shapes live; speculative promotion creates the kind of
-aspirational dead code iter 3 had to clean up.
+aspirational dead code that had to be cleaned up.
 
 ## Enforcement
 

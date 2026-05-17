@@ -1,21 +1,21 @@
 /**
- * Phase 2 / Iter 8 — `doctor` subcommand.
+ * `doctor` subcommand.
  *
  * `prompt-registry doctor` performs a self-check and reports findings
- * via the iter-5 formatter. It exercises every framework slice:
+ * via the formatter. It exercises every framework slice:
  * Context (fs / env / cwd), formatOutput, and (on failure) RegistryError.
  *
- * Iter-8 scope: report Node version, cwd accessibility, and presence of
- * the framework's required env vars. Phase 3+ will add domain-specific
+ * Current scope: report Node version, cwd accessibility, and presence of
+ * the framework's required env vars. Future iterations will add domain-specific
  * checks (index path writable, hub reachability, etc.) as those
  * components materialize.
  *
  * This is also the *first leaf command* — the canary for the
  * "leaf commands never import clipanion / node:fs / process directly"
- * invariant from spec §14.2. The implementation only imports from the
+ * invariant. The implementation only imports from the
  * framework barrel.
  *
- * NOTE: Option support (--output) is a Phase 3 feature. For Phase 2
+ * NOTE: Option support (--output) is a future feature. For current
  * testing, the output format is set via the factory parameter.
  */
 import {
@@ -251,7 +251,7 @@ const checkNodeVersion = (ctx: Context): DoctorCheck => {
 const extractRuntimeNodeVersion = (): string => {
   // Read process.version once — this is the only allowed touch in
   // command code because there is no cleaner Context surface for the
-  // runtime version. Phase 5 may add `ctx.runtime` if we add more
+  // runtime version. Future iterations may add `ctx.runtime` if we add more
   // checks like this.
   return process.version;
 };
@@ -282,7 +282,7 @@ const checkCwdReadable = async (ctx: Context): Promise<DoctorCheck> => {
   }
 };
 
-// Phase 5 / Iter 31: install-related checks.
+// Install-related checks.
 /**
  * Check project config.
  * @param ctx CLI context.

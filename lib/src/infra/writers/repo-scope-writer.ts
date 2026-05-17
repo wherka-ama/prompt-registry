@@ -1,5 +1,5 @@
 /**
- * Phase 1 / Step 1.1 — RepositoryScopeWriter.
+ * RepositoryScopeWriter.
  *
  * Writer for repository-scoped installations. Places bundle files into
  * .github/ directories (prompts, agents, instructions, skills) under the
@@ -9,10 +9,10 @@
  * Mirrors the extension's RepositoryScopeService functionality but uses
  * the library's FsAbstraction and ExtractedFiles types for testability.
  *
- * Phase 1 Step 1.3: Added RepositoryScopeWriterAdapter to bridge the
+ * Added RepositoryScopeWriterAdapter to bridge the
  * TargetWriter interface with RepositoryScopeWriter.
  *
- * Phase 1 Step 1.8: Added removeFile method for uninstall pipeline.
+ * Added removeFile method for uninstall pipeline.
  */
 import * as path from 'node:path';
 import {
@@ -407,7 +407,7 @@ export class RepositoryScopeWriter {
   }
 
   /**
-   * Phase 1 Step 1.8: Remove a single file path (for uninstall pipeline).
+   * Remove a single file path (for uninstall pipeline).
    * @param filePath - Relative file path to remove (from bundle root).
    */
   public async removeFile(filePath: string): Promise<void> {
@@ -485,7 +485,7 @@ export class RepositoryScopeWriter {
 /**
  * Adapter to bridge RepositoryScopeWriter with TargetWriter interface.
  *
- * Phase 1 Step 1.3: Created to allow RepositoryScopeWriter to be used
+ * Created to allow RepositoryScopeWriter to be used
  * in the install pipeline's writer factory.
  */
 export class RepositoryScopeWriterAdapter implements TargetWriter {
@@ -506,7 +506,7 @@ export class RepositoryScopeWriterAdapter implements TargetWriter {
   }
 
   /**
-   * Phase 1 Step 1.8: TargetWriter.remove implementation - delegates to RepositoryScopeWriter.removeFile.
+   * TargetWriter.remove implementation - delegates to RepositoryScopeWriter.removeFile.
    * @param _target
    * @param filePath
    */

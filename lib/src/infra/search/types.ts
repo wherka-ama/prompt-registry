@@ -1,5 +1,5 @@
 /**
- * Phase 3 / Primitive Index — shared types (backward compatibility).
+ * Primitive Index — shared types (backward compatibility).
  *
  * This file now re-exports domain types for backward compatibility.
  * New code should import from `@prompt-registry/collection-scripts/domain`.

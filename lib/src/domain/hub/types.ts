@@ -1,5 +1,5 @@
 /**
- * Phase 3 / Iter 5 — Domain Layer · Hub types.
+ * Domain Layer — Hub types.
  *
  * `HubSourceSpec` is the parsed-config representation of a hub source —
  * a GitHub repo plus type-specific metadata (collections path, plugins
@@ -15,10 +15,7 @@
  * a runtime dependency graph for the first time. They will move only if
  * a second feature-layer consumer needs them.
  *
- * Iter 1 created an aspirational 3-field shape (`{owner, repo, branch?}`)
- * that did not match the real 9-field shape; iter 3 removed it as dead
- * code. Iter 5 introduces the *real* shape, mirroring what the codebase
- * actually uses.
+ * The shape mirrors what the codebase actually uses.
  * @module domain/hub
  */
 

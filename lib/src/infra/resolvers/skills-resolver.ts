@@ -1,5 +1,5 @@
 /**
- * I-006 — Skills + local-variant bundle resolvers.
+ * Skills + local-variant bundle resolvers.
  *
  * Three resolvers in this file (all return Installable.inlineBytes):
  *

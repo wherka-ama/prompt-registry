@@ -3,8 +3,8 @@
  * installation. Wraps `InstallPipeline` and depends only on port
  * interfaces; concrete adapters are injected by the composition root.
  *
- * Spec §P3 (ports & adapters): this module never instantiates concrete
- * classes; it only calls port interface methods.
+ * This module never instantiates concrete classes; it only calls
+ * port interface methods.
  * @module app/install/install-bundle
  */
 import {

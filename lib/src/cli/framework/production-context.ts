@@ -1,5 +1,5 @@
 /**
- * Phase 2 / Iter 2 — Production Context wiring.
+ * Production Context wiring.
  *
  * Real-world implementations of the abstractions defined in `context.ts`.
  * Each wrapper is the minimum surface needed to satisfy the abstraction;
@@ -7,17 +7,17 @@
  * use outside the framework.
  *
  * fs   -> node:fs/promises
- * net  -> global fetch (Node 18+; works on Node 20 baseline, see D7)
+ * net  -> global fetch (Node 18+; works on Node 20 baseline)
  * clock -> Date.now
  * stdio -> process.stdin/stdout/stderr
  * env   -> Object.freeze({ ...process.env }) snapshotted once
  * cwd   -> process.cwd
- * exit  -> process.exit (the *only* call site to it; ESLint rule iter 9
+ * exit  -> process.exit (the *only* call site to it; ESLint rule
  *          will ban process.exit elsewhere in src/)
  *
- * No external dependencies are added in iter 2: global fetch is built
+ * No external dependencies are added: global fetch is built
  * into Node 18+, and tests exercise net via a local in-process HTTP
- * server rather than `nock` or `undici.MockAgent`. Future iters may
+ * server rather than `nock` or `undici.MockAgent`. Future iterations may
  * adopt MockAgent if HTTP-level assertions become valuable; the
  * abstraction boundary already isolates that decision.
  */
@@ -106,16 +106,16 @@ const createProductionStderr = (): OutputStream => ({
 
 /**
  * Production stdin reader — synchronous read of any pre-piped content.
- * Iter 1 only needs a static read(); the streaming variant for
- * interactive prompts lands in iter 8 with the doctor stub.
+ * Only needs a static read(); the streaming variant for
+ * interactive prompts lands in a later iteration with the doctor stub.
  */
 const createProductionStdin = (): InputStream => ({
-  read: (): string => '' // streaming read added in iter 8
+  read: (): string => '' // streaming read added in a later iteration
 });
 
 /**
  * Build the production Context the real CLI binary uses at startup.
- * @param overrides - Optional Context-field overrides. Iter 18 added
+ * @param overrides - Optional Context-field overrides. Added
  *   `cwd` so the `--cwd` flag can redirect filesystem operations
  *   without `chdir`-ing the whole process (which would corrupt
  *   relative paths outside the command's own scope).
@@ -135,9 +135,9 @@ export const createProductionContext = (overrides: { cwd?: string } = {}): Conte
     : (): string => overrides.cwd as string,
   exit: (code: number): void => {
     // This is the *only* call site for process.exit() in the codebase.
-    // The ESLint rule planned for iter 9 will ban it everywhere except
-    // here, enforcing spec §14.2 invariant #3 ("Context-only IO").
-    // eslint-disable-next-line unicorn/no-process-exit -- This is the single, intentional sink for process termination; spec §14.2 invariant #3 forbids process.exit anywhere else in src/.
+    // The ESLint rule will ban it everywhere except
+    // here, enforcing the invariant that all IO goes through Context.
+    // eslint-disable-next-line unicorn/no-process-exit -- This is the single, intentional sink for process termination; the invariant forbids process.exit anywhere else in src/.
     process.exit(code);
   }
 });

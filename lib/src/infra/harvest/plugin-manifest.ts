@@ -13,9 +13,9 @@
  * manifest bytes in hand (tree enumerator, local fixtures, etc.).
  */
 
-// Phase 3 / Iter 6 promoted these types into `lib/src/domain/hub/`.
-// Iter 8 removed the local definitions (which were duplicates left
-// over from before iter 6 because eslint --fix reverted iter-6's
+// These types were promoted into `lib/src/domain/hub/`.
+// The local definitions were removed (they were duplicates left
+// over from before the promotion because eslint --fix reverted the
 // removal). The canonical home is `domain/hub/types.ts`; this file
 // owns only the parser and helpers below.
 import type {

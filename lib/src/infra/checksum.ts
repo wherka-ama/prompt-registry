@@ -1,9 +1,9 @@
 /**
- * Phase 5 spillover / Iter 14 — file checksum helper.
+ * File checksum helper.
  *
  * Computes SHA-256 hex digests over file bodies (string or
  * Uint8Array) so the install command can populate the lockfile's
- * `fileChecksums` map (D13). Mirrors the extension's
+ * `fileChecksums` map. Mirrors the extension's
  * `LockfileManager.calculateFileChecksum` semantics.
  *
  * Pure; no IO; safe to import anywhere.

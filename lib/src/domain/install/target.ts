@@ -6,7 +6,7 @@
  * each entry carries a `type` discriminant plus per-type fields. Spec
  * §5.6 / §8.1 / §14.1.
  *
- * Six types are reserved by the spec (D18 added claude-code):
+ * Six types are reserved by the spec:
  *   `vscode`           → User VS Code install (settings + prompts).
  *   `vscode-insiders`  → Insiders variant.
  *   `copilot-cli`      → GitHub Copilot CLI prompts directory.
@@ -16,9 +16,9 @@
  *
  * Per-type fields (scope, paths, profile id, allowedKinds) live on
  * each variant. Unknown types are tolerated by the loader (warning,
- * not error) per spec §8.1 forward-compat clause.
+ * not error) for forward compatibility.
  *
- * Phase 1 Step 1.2: Scope unification:
+ * Scope unification:
  * - Changed from `scope: 'user' | 'workspace'` to `scope: 'user' | 'repository'`
  * - Dropped `workspace` scope per user decision
  * - Added `commitMode?: 'commit' | 'local-only'` for repository scope
@@ -109,7 +109,7 @@ export interface WindsurfTarget extends ScopedTargetBase, PathAndKindsTargetFiel
 }
 
 /**
- * Anthropic Claude Code entry. (D18 / iter 39)
+ * Anthropic Claude Code entry.
  */
 export interface ClaudeCodeTarget extends ScopedTargetBase, PathAndKindsTargetFields, RepositoryTargetFields {
   type: 'claude-code';

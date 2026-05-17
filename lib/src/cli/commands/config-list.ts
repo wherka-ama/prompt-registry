@@ -1,5 +1,5 @@
 /**
- * Phase 4 / Iter 23 — `config list` subcommand.
+ * `config list` subcommand.
  *
  * Dumps the resolved config (after the 8-layer merge) as text or
  * the JSON envelope. Useful for debugging precedence: a user can

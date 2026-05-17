@@ -1,5 +1,5 @@
 /**
- * Phase 5 / Iter 14 — Manifest validator.
+ * Manifest validator.
  *
  * Reads `deployment-manifest.yml` from the extracted file map and
  * validates the same invariants `BundleInstaller.validateBundle()`

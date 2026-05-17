@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 21 — User-level config paths (D20).
+ * User-level config paths.
  *
  * Resolves the on-disk locations for user-scoped registry state
  * (hubs, profile activations, active-hub pointer, optional user

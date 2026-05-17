@@ -1,5 +1,5 @@
 /**
- * Phase 4 / Iter 10 — `bundle build` subcommand.
+ * `bundle build` subcommand.
  *
  * Replaces `lib/bin/build-collection-bundle.js`. Generates a
  * deployment manifest (delegating to `bundle manifest`'s in-process
@@ -16,8 +16,8 @@
 // archiver needs a real Node WriteStream. Context.fs is a high-level
 // abstraction (read/write/exists/mkdir) and does not expose stream APIs. The
 // bounded usage is the single createWriteStream call inside
-// createDeterministicZip; iter 25 (Phase 5 install downloads) is the natural
-// moment to add Context.fs.createWriteStream.
+// createDeterministicZip; the natural moment to add Context.fs.createWriteStream
+// is when install downloads are added.
 // eslint-disable-next-line local/no-framework-imports -- bounded fs ops for archiver: createWriteStream, existsSync, unlinkSync
 import {
   createWriteStream,

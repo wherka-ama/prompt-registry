@@ -1,5 +1,5 @@
 /**
- * Phase 5 / Iter 8 — Installable + BundleSpec types.
+ * Installable + BundleSpec types.
  *
  * `BundleSpec` is the parsed form of an install positional argument:
  *   prompt-registry install foo                    → bundleId only
@@ -38,7 +38,7 @@ export interface Installable {
    * Optional pre-built bundle bytes. When set, the downloader skips
    * the network call and uses these bytes directly. Used by source
    * types that synthesize bundles (awesome-copilot, skills) rather
-   * than serving pre-packaged zips. (I-005, I-006.)
+   * than serving pre-packaged zips.
    */
   inlineBytes?: Uint8Array;
   /** Optional integrity hash (e.g., `sha256-base64`). */

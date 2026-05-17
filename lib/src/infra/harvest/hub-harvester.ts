@@ -448,7 +448,7 @@ export interface HubHarvestResult extends ProgressSummary {
   totalMs: number;
   /**
    * Final index assembled from every successful harvest in this run *and*
-   * previously completed bundles carried via cache (iter 16). For now
+   * previously completed bundles carried via cache. For now
    * this holds only the primitives newly collected in this run.
    */
   index: PrimitiveIndex;

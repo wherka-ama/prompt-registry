@@ -5,8 +5,8 @@
  * access. Concrete adapters live in `infra/`; tests supply in-memory
  * doubles. This keeps all feature code free of direct `node:fs` imports.
  *
- * Spec §11.2 / decision D3: Context-only IO. The CLI `Context` wires
- * a production adapter; commands never call `fs/promises` directly.
+ * Context-only IO: The CLI `Context` wires a production adapter;
+ * commands never call `fs/promises` directly.
  * @module ports/filesystem
  */
 

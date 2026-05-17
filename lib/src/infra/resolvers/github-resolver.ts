@@ -1,13 +1,12 @@
 /**
- * Phase 5 spillover / Iter 19-20 — GitHubBundleResolver.
+ * GitHubBundleResolver.
  *
  * Resolves a `BundleSpec` against a GitHub repository's releases,
  * mirroring `GitHubAdapter.fetchBundles + getDownloadUrl` from the
  * VS Code extension. Produces an `Installable` whose `downloadUrl`
  * points at the release asset that `BundleDownloader` will fetch.
  *
- * Design: D14 (resolver = non-VS-Code slice of adapter), D17 (uses
- * a `TokenProvider` rather than reading env directly).
+ * Uses a `TokenProvider` rather than reading env directly.
  */
 import {
   type BundleSpec,

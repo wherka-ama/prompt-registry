@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 12 — Registry HubConfig (D19).
+ * Registry HubConfig.
  *
  * Mirrors the extension's `src/types/hub.ts` `HubConfig` shape
  * additively. The lib variant intentionally omits the
@@ -21,7 +21,7 @@ import type {
 /**
  * Reference to a hub location (where the hub config lives).
  * `local` is also used internally for the synthetic default-local
- * hub (D23) and for unit-tested fixtures.
+ * hub and for unit-tested fixtures.
  */
 export interface HubReference {
   type: 'github' | 'local' | 'url';
@@ -74,7 +74,7 @@ export interface HubConfig {
 }
 
 /**
- * The synthetic default-local hub identifier (D23). Reserved; users
+ * The synthetic default-local hub identifier. Reserved; users
  * cannot create a hub with this id via `hub add`.
  */
 export const DEFAULT_LOCAL_HUB_ID = 'default-local';

@@ -1,5 +1,5 @@
 /**
- * Phase 3 / Domain Layer — Primitive types.
+ * Domain Layer — Primitive types.
  *
  * Core primitive data shapes used across all features (indexing, search,
  * validation). Feature layers depend on these types; these types have no

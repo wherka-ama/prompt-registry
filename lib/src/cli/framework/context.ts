@@ -1,9 +1,9 @@
 /**
- * Phase 2 / Iter 1 — Context interface skeleton.
+ * Context interface skeleton.
  *
  * The `Context` object is the single seam through which every prompt-registry
- * subcommand performs IO. Spec §11.2 calls this "Context-only IO" and
- * §14.2 invariant #3 makes it ESLint-enforced (rule lands in iter 9).
+ * subcommand performs IO. This is called "Context-only IO" and
+ * is ESLint-enforced (rule lands in a later iteration).
  *
  * `FileSystem` and `Clock` are defined in `../../ports/` and re-exported
  * here as backward-compatible type aliases (`FsAbstraction`, `ClockAbstraction`).
@@ -23,7 +23,7 @@ export type FsAbstraction = FileSystem;
 
 /**
  * Network abstraction — single fetch-like call returning a streaming body.
- * Iter 2 wraps undici; tests use undici's MockAgent (same library in prod
+ * Later wraps undici; tests use undici's MockAgent (same library in prod
  * and test, no global mutation, no nock).
  */
 export interface NetAbstraction {
@@ -59,7 +59,7 @@ export type {
  * `Writable.write()` shape so production wiring (process.stdout) and the
  * test capture sink can share a contract. `captured()` is exposed only
  * by the test sink; production streams expose `flush()` instead (added in
- * iter 5 alongside the formatter).
+ * a later iteration alongside the formatter).
  */
 export interface OutputStream {
   write(chunk: string): void;
@@ -70,9 +70,9 @@ export interface CapturedOutputStream extends OutputStream {
 }
 
 /**
- * Input stream abstraction — Phase 2 only needs static `read()` for
+ * Input stream abstraction — only needs static `read()` for
  * non-interactive command tests (e.g. piped JSON). Streaming stdin
- * (interactive prompts) is added in iter 8 when the doctor stub lands.
+ * (interactive prompts) is added in a later iteration when the doctor stub lands.
  */
 export interface InputStream {
   read(): string;

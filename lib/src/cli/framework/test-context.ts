@@ -1,5 +1,5 @@
 /**
- * Phase 2 / Iter 1 — In-memory Context factory for golden tests.
+ * In-memory Context factory for golden tests.
  *
  * `createTestContext()` builds a Context whose IO surfaces are entirely
  * in-memory:
@@ -9,11 +9,11 @@
  *   - env defaults to {} so tests cannot accidentally leak ambient state;
  *   - cwd defaults to "/" so tests cannot depend on host filesystem layout.
  *
- * fs and net are intentionally stubbed in iter 1 (any call throws). Iter 2
- * wires them to memfs (fs) and undici MockAgent (net). Keeping iter 1 free
- * of those deps keeps the merge tight and avoids a long install step.
+ * fs and net are intentionally stubbed initially (any call throws). Later
+ * wires them to memfs (fs) and undici MockAgent (net). Keeping the initial
+ * version free of those deps keeps the merge tight and avoids a long install step.
  *
- * Test ergonomics (golden-test runner, iter 7) builds on this factory.
+ * Test ergonomics (golden-test runner) builds on this factory.
  *
  * Note on style: this module deliberately uses arrow-function factories
  * rather than ES classes. The repo eslint config prefers arrow-function
@@ -79,10 +79,10 @@ const createManualClock = (initial: number): TestClock => {
 };
 
 const rejectFsCall = (): Promise<never> =>
-  Promise.reject(new Error('Phase 2 iter 1: fs not wired yet (lands in iter 2)'));
+  Promise.reject(new Error('fs not wired yet (lands in a later iteration)'));
 
 /**
- * Iter 1 stub fs — every call throws. Iter 2 replaces with memfs-backed
+ * Initial stub fs — every call throws. Later replaces with memfs-backed
  * implementation. The throw is descriptive so test failures point at the
  * missing wiring rather than at a confusing undefined-property crash.
  */
@@ -98,12 +98,12 @@ const STUB_FS: FsAbstraction = {
 };
 
 /**
- * Iter 1 stub net — every call throws. Iter 2 replaces with undici-backed
+ * Initial stub net — every call throws. Later replaces with undici-backed
  * implementation gated by undici MockAgent in tests.
  */
 const STUB_NET: NetAbstraction = {
   fetch: (): Promise<never> =>
-    Promise.reject(new Error('Phase 2 iter 1: net not wired yet (lands in iter 2)'))
+    Promise.reject(new Error('net not wired yet (lands in a later iteration)'))
 };
 
 /**
@@ -162,7 +162,7 @@ export const isTestContext = (ctx: Context): ctx is TestContext =>
   typeof (ctx as TestContext).exitCode === 'function';
 
 /**
- * Production-context wiring lands in iter 2 (production-context.ts):
+ * Production-context wiring lands in a later iteration (production-context.ts):
  *   - fs    -> node:fs/promises wrapper,
  *   - net   -> undici fetch wrapper,
  *   - clock -> Date.now,

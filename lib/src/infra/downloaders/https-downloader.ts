@@ -3,8 +3,8 @@
  * checks them. As of the GitHub middleware migration this class is
  * a thin adapter over `AssetFetcher` (lib/src/github/asset-fetcher.ts):
  * the downloader keeps the existing `BundleDownloader` API surface
- * while gaining retries, Accept-header switching (I-012) and the
- * inline-bytes shortcut (I-005/I-006) from the shared middleware.
+ * while gaining retries, Accept-header switching and the
+ * inline-bytes shortcut from the shared middleware.
  *
  * Construct it with either:
  *   - a real `AssetFetcher` (recommended for production code), or

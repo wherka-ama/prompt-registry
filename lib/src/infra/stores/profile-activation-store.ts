@@ -1,8 +1,8 @@
 /**
- * Phase 6 / Iter 26-27 — ProfileActivationStore (D21, D22).
+ * ProfileActivationStore.
  *
  * Persists `ProfileActivationState` per (hubId, profileId) under
- * `<userConfig>/profile-activations/`. The store enforces D21
+ * `<userConfig>/profile-activations/`. The store enforces
  * (single-active-profile-globally) at the API level: there is no
  * `setMany` and `get()` returns the single active state if any.
  */
@@ -35,7 +35,7 @@ export class ProfileActivationStore {
 
   /**
    * Persist an activation state. Caller is expected to have
-   * cleared any previously-active profile first (D21).
+   * cleared any previously-active profile first.
    * @param state Activation state.
    */
   public async save(state: ProfileActivationState): Promise<void> {
@@ -79,7 +79,7 @@ export class ProfileActivationStore {
   }
 
   /**
-   * Get the single active profile across all hubs (D21).
+   * Get the single active profile across all hubs.
    * Throws if more than one activation file is present (corrupt
    * state); callers may catch and remediate.
    * @returns The active state or null.
@@ -95,7 +95,7 @@ export class ProfileActivationStore {
     }
     if (files.length > 1) {
       throw new Error(
-        `D21 violation: ${String(files.length)} active profiles on disk, expected at most 1: ${files.join(', ')}`
+        `Violation: ${String(files.length)} active profiles on disk, expected at most 1: ${files.join(', ')}`
       );
     }
     const state = await this.fs.readJson<ProfileActivationState>(path.join(this.dir, files[0]));

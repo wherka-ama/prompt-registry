@@ -1,11 +1,11 @@
 /**
- * Phase 6 / Iter 41-50 — HubManager (lib).
+ * HubManager (lib).
  *
  * Orchestrates HubStore + ActiveHubStore + HubResolver to provide
  * the import / list / use / sync / remove / detached-source flow.
  * Mirrors the extension's `HubManager` (without vscode.* deps).
  *
- * Default-local-hub synthesis (D23): on first detached
+ * Default-local-hub synthesis: on first detached
  * `addDetachedSource()`, the manager auto-creates a synthetic hub
  * with id `default-local` whose `sources[]` accumulates every
  * detached source the user adds. Detached sources are not
@@ -125,7 +125,7 @@ export class HubManager {
   }
 
   /**
-   * I-007: probe whether a hub is still reachable upstream by
+   * Probe whether a hub is still reachable upstream by
    * re-resolving its reference. Returns `'ok'` on success, `'error'`
    * with a short reason on failure. Never throws.
    * @param hubId Hub id.
@@ -207,7 +207,7 @@ export class HubManager {
 
   /**
    * Add a detached source. Creates the synthetic `default-local`
-   * hub on first call (D23). Returns the (possibly auto-generated)
+   * hub on first call. Returns the (possibly auto-generated)
    * sourceId.
    * @param source Source to add (its hubId is ignored — always set to default-local).
    * @returns The persisted source.
@@ -225,7 +225,7 @@ export class HubManager {
         version: '1.0.0',
         metadata: {
           name: 'Local sources',
-          description: 'Auto-managed default-local hub for detached sources (D23).',
+          description: 'Auto-managed default-local hub for detached sources.',
           maintainer: 'cli',
           updatedAt: new Date().toISOString()
         },

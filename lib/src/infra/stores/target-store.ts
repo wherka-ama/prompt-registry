@@ -1,5 +1,5 @@
 /**
- * Phase 5 / Iter 2 — Target store: read/write `targets[]` in the
+ * Target store: read/write `targets[]` in the
  * project config file (`prompt-registry.yml` or `prompt-registry.yaml`).
  *
  * Keeps round-trip *simple*, not perfect: we read the whole YAML

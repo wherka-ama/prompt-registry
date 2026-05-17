@@ -1,13 +1,13 @@
 /**
- * Phase 4 / Iter 5 — `skill new` subcommand.
+ * `skill new` subcommand.
  *
  * Replaces the non-interactive path of `lib/bin/create-skill.js`.
  * Creates a new skill folder under `<cwd>/<skillsDir>/<skillName>/`
  * containing a populated `SKILL.md`.
  *
  * The legacy binary's interactive readline wizard is **deferred** —
- * iter 8 lands `--prompt` style flag wiring, after which a follow-up
- * iter can re-introduce the wizard via `inquirer` (with the prompt
+ * a later iteration lands `--prompt` style flag wiring, after which a follow-up
+ * iteration can re-introduce the wizard via `inquirer` (with the prompt
  * stream injected through `Context.stdin`/`stdout`).
  */
 import {

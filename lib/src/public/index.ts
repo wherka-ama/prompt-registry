@@ -8,7 +8,7 @@
  * Internal implementation details are in other directories and should
  * not be imported directly by external consumers.
  *
- * Phase 1 Step 1.9: Initial public API boundary. Implementation classes
+ * Initial public API boundary. Implementation classes
  * (InstallPipeline, UninstallPipeline, etc.) are temporarily imported from
  * internal layers. Future steps will move these to the public directory.
  */

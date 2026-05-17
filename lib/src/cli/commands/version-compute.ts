@@ -1,5 +1,5 @@
 /**
- * Phase 4 / Iter 4 — `version compute` subcommand.
+ * `version compute` subcommand.
  *
  * Replaces `lib/bin/compute-collection-version.js`. Computes the next
  * semver version + git tag for a collection given:

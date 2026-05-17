@@ -1,12 +1,12 @@
 /**
- * Phase 4 / Iter 7 — `bundle manifest` subcommand.
+ * `bundle manifest` subcommand.
  *
  * Replaces `lib/bin/generate-manifest.js`. Reads a collection YAML
  * file plus the referenced primitive files, then writes a deployment
  * manifest YAML to `outFile`.
  *
  * The legacy script accepts a positional version arg. We surface
- * `version` as an option on the factory; iter 8 wires it to a
+ * `version` as an option on the factory; a later iteration wires it to a
  * clipanion positional.
  */
 import * as path from 'node:path';

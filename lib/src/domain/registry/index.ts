@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 11 — Registry domain barrel.
+ * Registry domain barrel.
  *
  * The "registry" namespace covers the **install-side** Hub / Source /
  * Profile primitives — distinct from the awesome-copilot-flavored
@@ -7,7 +7,7 @@
  * for the primitive-index feature, not registry config).
  *
  * Naming policy: types here are prefixed with `Registry` only when
- * their unprefixed name would clash with a Phase 5 install-layer
+ * their unprefixed name would clash with an install-layer
  * type. Otherwise we use the plain noun (`Hub`, `Profile`).
  * @module domain/registry
  */

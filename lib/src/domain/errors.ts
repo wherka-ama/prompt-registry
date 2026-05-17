@@ -7,8 +7,6 @@
  * `renderError()` (which needs `Context` for stderr) stays in
  * `cli/framework/error.ts` and is still re-exported from the
  * framework barrel for backward compatibility.
- *
- * Spec §10 / decision D5.
  * @module domain/errors
  */
 

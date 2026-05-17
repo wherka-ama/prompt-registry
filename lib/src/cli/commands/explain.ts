@@ -1,13 +1,12 @@
 /**
- * Phase 4 / Iter 19 — `prompt-registry explain <code>`.
+ * `prompt-registry explain <code>`.
  *
  * Looks up a structured RegistryError code and prints a paragraph of
  * documentation. The full code catalog is built incrementally; this
- * iter delivers a stub that recognizes the 11 namespaces (spec §10 /
- * decision D5) and a small initial set of codes that the Phase 4
- * commands actually emit. Codes that aren't yet documented produce
- * a generic "namespace recognized, but no entry yet" message rather
- * than failing — Phase 5 fills out the catalog as new codes appear.
+ * delivers a stub that recognizes the 11 namespaces and a small initial
+ * set of codes that the commands actually emit. Codes that aren't yet
+ * documented produce a generic "namespace recognized, but no entry yet"
+ * message rather than failing — the catalog is filled out as new codes appear.
  */
 import {
   Command,
@@ -58,9 +57,9 @@ interface CatalogEntry {
   docsUrl?: string;
 }
 
-// Initial catalog. Every code emitted by Phase 4 commands gets an
-// entry; new codes added in Phase 5+ should be added here in the
-// same iter that introduces them.
+// Initial catalog. Every code emitted by commands gets an
+// entry; new codes added should be added here in the
+// same iteration that introduces them.
 /**
  * Error code documentation catalog.
  */
@@ -105,7 +104,7 @@ const CATALOG: Record<string, CatalogEntry> = {
     summary: 'An unexpected error escaped a command handler. This is a bug.',
     remediation: 'Please report at https://github.com/AmadeusITGroup/prompt-registry/issues with the stderr output.'
   },
-  // Phase 5 / Iter 32: install-related codes.
+  // Install-related codes.
   'BUNDLE.MANIFEST_MISSING': {
     summary: 'The bundle is missing `deployment-manifest.yml` at its root.',
     remediation: 'Verify the bundle was built with `prompt-registry bundle build`. The manifest must live at the bundle root, not in a subdir.'
@@ -283,7 +282,7 @@ export class ExplainCommand extends Command {
         code: this.code,
         namespace,
         summary: `Code ${this.code} is in the recognized namespace ${namespace} but has no catalog entry yet.`,
-        remediation: 'Phase 5 fills out the catalog as new codes appear. Search the source for `code: \'CODE_NAME\'` if you need the throw site.',
+        remediation: 'The catalog is filled out as new codes appear. Search the source for `code: \'CODE_NAME\'` if you need the throw site.',
         docsUrl: null
       }
       : {

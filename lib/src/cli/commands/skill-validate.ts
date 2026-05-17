@@ -1,5 +1,5 @@
 /**
- * Phase 4 / Iter 6 — `skill validate` subcommand.
+ * `skill validate` subcommand.
  *
  * Replaces `lib/bin/validate-skills.js`. Wraps `validateAllSkills`
  * from `lib/src/skills.ts` and routes the result through the

@@ -1,8 +1,8 @@
 /**
- * Phase 2 / Iter 7 — Golden-test runner.
+ * Golden-test runner.
  *
- * `runCommand(argv, opts)` is a thin convenience wrapper around iter-3's
- * `runCli` + iter-1's `createTestContext`. It builds an ephemeral test
+ * `runCommand(argv, opts)` is a thin convenience wrapper around
+ * `runCli` + `createTestContext`. It builds an ephemeral test
  * Context, runs the dispatcher, and returns `{ exitCode, stdout, stderr }`
  * — exactly the three values almost every end-to-end test needs.
  *
@@ -10,7 +10,7 @@
  *   1. Golden-style tests routinely need all three captured streams plus
  *      the exit code; doing the createTestContext/runCli/captured triple
  *      by hand for every assertion is repetitive.
- *   2. Centralizing the test entry point gives Phase 4's command
+ *   2. Centralizing the test entry point gives the command
  *      extractions a single place to evolve (e.g., adding a `clock`
  *      override or pre-seeding fs/env without touching every test).
  *

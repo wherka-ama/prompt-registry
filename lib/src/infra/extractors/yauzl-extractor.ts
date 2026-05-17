@@ -1,10 +1,10 @@
 /**
- * Phase 5 spillover / Iter 27-28 — YauzlBundleExtractor.
+ * YauzlBundleExtractor.
  *
  * `BundleExtractor` impl that walks a zip with `yauzl` (already a
  * lib dependency for `archiver`) and produces an `ExtractedFiles`
  * map. We deliberately do NOT use `adm-zip` here even though the
- * extension does (D16 was originally adm-zip; revised to yauzl
+ * extension does (originally adm-zip; revised to yauzl
  * because it is already a dep). The two extractors are
  * functionally equivalent for the central-directory inputs we
  * accept, and yauzl avoids adding a new transitive dep to the

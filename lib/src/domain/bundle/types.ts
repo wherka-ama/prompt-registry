@@ -1,5 +1,5 @@
 /**
- * Phase 3 / Domain Layer — Bundle types.
+ * Domain Layer — Bundle types.
  *
  * Core bundle data shapes used across all features (indexing, validation,
  * publishing, install). Feature layers depend on these types; these types
@@ -69,7 +69,7 @@ export interface BundleProvider {
 }
 
 /**
- * Phase 1 / Step 1.6 — Bundle metadata types.
+ * Bundle metadata types.
  *
  * Defines bundle metadata and installation record types for the library.
  * These types mirror the extension's InstalledBundle and related structures

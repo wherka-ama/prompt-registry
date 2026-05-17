@@ -1,17 +1,16 @@
 /**
- * Phase 1 / Step 1.3 — InstallPipeline orchestrator.
+ * InstallPipeline orchestrator.
  *
  * Composes the four stages (resolve → download → extract → validate
  * → write) behind a single `run()` entry. Each stage is plug-in
  * via the constructor so unit tests inject deterministic doubles
- * and the production CLI wires real GitHub/HTTP/zip impls in
- * Phase 5 spillover.
+ * and the production CLI wires real GitHub/HTTP/zip impls.
  *
  * The pipeline emits structured progress events through an optional
  * `onEvent` callback so the install command can render per-step
  * status (verbose mode) or feed the JSON envelope's `meta.events`.
  *
- * Phase 1 Step 1.3: Scope-aware routing.
+ * Scope-aware routing.
  * - Changed from single `writer` to `writerFactory: (target: Target) => TargetWriter`
  * - Factory routes to RepositoryScopeWriter for repository scope, FileTreeTargetWriter for user scope
  * - Enables lockfile updates to include commitMode for repository scope

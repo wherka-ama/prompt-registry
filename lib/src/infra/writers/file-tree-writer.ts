@@ -189,7 +189,7 @@ export class FileTreeTargetWriter implements TargetWriter {
   }
 
   /**
-   * Phase 1 Step 1.8: Remove a file from the target.
+   * Remove a file from the target.
    * @param target - Target chosen via `--target <name>`.
    * @param filePath - Relative file path to remove (from bundle root).
    */

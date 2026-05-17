@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 22-24 — HubStore (D20).
+ * HubStore.
  *
  * Persists hub configs + reference metadata under the user-config
  * dir resolved by `UserConfigPaths.hubs`. One YAML per hub plus a

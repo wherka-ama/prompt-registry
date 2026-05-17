@@ -1,14 +1,14 @@
 /**
- * Phase 4 / Iter 29 → Phase 5 / Iter 3 — `target add`.
+ * `target add`.
  *
- * Iter-3 wires the persist side: parse + validate input, then
+ * Wires the persist side: parse + validate input, then
  * delegate to `addTarget()` from the infra/stores/target-store module.
  * The command writes to the nearest project config (cargo upward
  * walk), creating one in `cwd` when none exists.
  *
- * Per-type fields are kept minimal at this iter: `--scope`, `--path`,
+ * Per-type fields are kept minimal at this point: `--scope`, `--path`,
  * `--allowed-kinds <a,b,c>`. The Target tagged-union admits more
- * fields in future iters as target writers grow.
+ * fields in future iterations as target writers grow.
  */
 import * as path from 'node:path';
 import type {

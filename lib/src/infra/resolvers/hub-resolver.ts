@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 31-34 — HubResolver (fetch a HubConfig from a HubReference).
+ * HubResolver (fetch a HubConfig from a HubReference).
  *
  * Three impls:
  *   - GitHubHubResolver  fetches a `hub-config.yml` from a github

@@ -6,8 +6,6 @@
  * Concrete adapters (`NodeHttpClient`, env-based token resolver) live
  * in `infra/`. The install pipeline and resolvers depend only on these
  * interfaces, never on `node:http` or any HTTP library directly.
- *
- * Spec: decision D17 (pluggable token provider), D14 (resolver contract).
  * @module ports/http
  */
 

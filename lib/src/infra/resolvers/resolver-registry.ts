@@ -1,5 +1,5 @@
 /**
- * Phase 1 / Step 1.5 — SourceDispatcher.
+ * SourceDispatcher.
  *
  * Centralizes source resolution by mapping RegistrySourceType to resolver instances.
  * This unifies the resolver selection logic that was previously scattered

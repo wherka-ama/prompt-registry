@@ -1,7 +1,7 @@
 /**
  * Framework adapter (clipanion wrapping).
  *
- * Spec §14.2 invariant #2 — only this folder is allowed to import
+ * Invariant — only this folder is allowed to import
  * clipanion. Leaf command code uses `defineCommand` and `runCli` from
  * the public barrel; clipanion details never leak.
  *
@@ -12,8 +12,8 @@
  *
  * Exit-code policy
  *   command return value -> propagated as-is
- *   unknown command      -> 64 (EX_USAGE per spec §9.2)
- *   thrown error         -> 70 (EX_SOFTWARE per spec §9.2)
+ *   unknown command      -> 64 (EX_USAGE)
+ *   thrown error         -> 70 (EX_SOFTWARE)
  *   --version / --help   -> 0
  */
 import {
@@ -163,8 +163,8 @@ export const runCli = async (argv: string[], opts: RunCliOptions): Promise<numbe
   };
 
   // We bypass clipanion's `cli.run` because (a) it always returns 0/1,
-  // collapsing the EX_USAGE / EX_SOFTWARE distinction we need per
-  // spec §9.2, and (b) it writes errors to stdout instead of stderr.
+  // collapsing the EX_USAGE / EX_SOFTWARE distinction we need,
+  // and (b) it writes errors to stdout instead of stderr.
   // Instead we use `cli.process()` to parse argv into a Command, wire
   // up the bindings clipanion's run() would otherwise set, then call
   // validateAndExecute() ourselves with a try/catch around each phase.
@@ -173,7 +173,7 @@ export const runCli = async (argv: string[], opts: RunCliOptions): Promise<numbe
     command = cli.process({ input: argv, context: clipanionCtx });
   } catch (err) {
     // process() throws on unknown command, bad flags, missing arg, etc.
-    // Per spec §9.2 that's EX_USAGE = 64.
+    // That's EX_USAGE = 64.
     const message = err instanceof Error ? err.message : String(err);
     opts.ctx.stderr.write(`${message}\n`);
     return 64;

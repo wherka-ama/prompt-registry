@@ -1,10 +1,9 @@
 /**
- * Phase 5 spillover / Iter 9 — sourceId helper.
+ * sourceId helper.
  *
  * Mirrors the algorithm in `src/utils/source-id-utils.ts` of the
  * VS Code extension exactly so that lockfile entries written by the
- * CLI are interchangeable with entries written by the extension
- * (D13 + D14).
+ * CLI are interchangeable with entries written by the extension.
  *
  * Pure function; no IO; safe to import from anywhere.
  */

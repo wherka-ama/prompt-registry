@@ -1,5 +1,5 @@
 /**
- * Phase 1 / Step 1.4 — TargetStateStore.
+ * TargetStateStore.
  *
  * Persists the last-used target configuration for CLI interactions.
  * Enables:

@@ -1,9 +1,9 @@
 /**
- * Phase 6 / Iter 25 — ActiveHubStore.
+ * ActiveHubStore.
  *
  * Persists "which hub is active right now" as a tiny JSON pointer.
- * Singleton across all hubs (D21 mirror at the hub level: the
- * profile invariant builds on top of the active-hub invariant).
+ * Singleton across all hubs (the profile invariant builds on top
+ * of the active-hub invariant).
  */
 import type {
   FileSystem,

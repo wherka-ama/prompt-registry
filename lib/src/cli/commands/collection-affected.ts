@@ -1,5 +1,5 @@
 /**
- * Phase 4 / Iter 3 — `collection affected` subcommand.
+ * `collection affected` subcommand.
  *
  * Replaces `lib/bin/detect-affected-collections.js`. Given a list of
  * changed paths (typically produced by `git diff --name-only` in a

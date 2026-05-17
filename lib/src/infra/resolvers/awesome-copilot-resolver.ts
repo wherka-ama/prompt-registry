@@ -1,5 +1,5 @@
 /**
- * I-005 — `awesome-copilot` BundleResolver.
+ * `awesome-copilot` BundleResolver.
  *
  * Mirrors `AwesomeCopilotAdapter.downloadBundle` from the VS Code
  * extension: the source is a GitHub repo (or local clone) with
@@ -7,7 +7,7 @@
  * `items: [{ path, kind }]`. We fetch the collection YAML, fetch
  * every referenced file, build a `deployment-manifest.yml`, and
  * return everything as an in-memory zip via `Installable.inlineBytes`
- * (extension to the Installable shape introduced for I-005/I-006).
+ * (extension to the Installable shape).
  *
  * Local clones use `LocalAwesomeCopilotBundleResolver` from the
  * companion file; same parser, different IO.

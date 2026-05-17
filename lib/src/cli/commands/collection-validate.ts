@@ -1,5 +1,5 @@
 /**
- * Phase 4 / Iter 2 — `collection validate` subcommand.
+ * `collection validate` subcommand.
  *
  * Replaces `lib/bin/validate-collections.js`. Wraps the existing
  * `validateAllCollections()` and `generateMarkdown()` helpers from
@@ -17,9 +17,9 @@
  *
  * The `validateAllCollections()` helper still uses synchronous
  * `node:fs` internally because it reads YAML files. Wrapping it in
- * `Context` would touch `lib/src/validate.ts` — Phase 3's iter-3 audit
- * said feature-layer IO stays in feature layers. Iter 8 (when the
- * config layer lands) will revisit if needed.
+ * `Context` would touch `lib/src/validate.ts` — an audit
+ * said feature-layer IO stays in feature layers. Future iterations
+ * will revisit if needed.
  */
 import * as path from 'node:path';
 import {

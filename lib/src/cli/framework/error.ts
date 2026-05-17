@@ -1,5 +1,5 @@
 /**
- * Phase 2 / Iter 6 — RegistryError + renderError.
+ * RegistryError + renderError.
  *
  * `RegistryError`, `isRegistryError`, and related types are defined in
  * `../../domain/errors` and re-exported here for backward compatibility.

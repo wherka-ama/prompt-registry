@@ -1,5 +1,5 @@
 /**
- * Phase 3 / Domain Layer — Main barrel.
+ * Domain Layer — Main barrel.
  *
  * The domain layer contains core data shapes (bundle, primitive, hub) that
  * feature layers (indexing, search, validation, publishing, install) depend on.
@@ -70,7 +70,7 @@ export {
   validateSkillDescription,
 } from './skill/validate';
 
-// Phase 5 / Iter 1: install-related domain types (Target tagged union).
+// Install-related domain types (Target tagged union).
 export type {
   Target,
   TargetType,
@@ -83,7 +83,7 @@ export type {
 export { TARGET_TYPES, isTarget } from './install';
 export type { BundleSpec, Installable } from './install';
 
-// Phase 6 / Iter 11-14: registry-config domain (hubs, sources, profiles).
+// Registry-config domain (hubs, sources, profiles).
 export type {
   HubReference,
   HubMetadata,
@@ -103,7 +103,7 @@ export type {
 } from './registry';
 export { isProfile, isProfileBundle } from './registry';
 
-// Domain error type (T2: moved from cli/framework for layer independence).
+// Domain error type (moved from cli/framework for layer independence).
 export type {
   RegistryErrorJson,
   RegistryErrorNamespace,

@@ -1,5 +1,5 @@
 /**
- * Phase 5 / Uninstall — UserScopeWriter.
+ * UserScopeWriter.
  *
  * Writer for user-scoped installations. Places bundle files into
  * user configuration directories based on target type.

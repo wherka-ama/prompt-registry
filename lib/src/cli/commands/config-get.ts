@@ -1,12 +1,12 @@
 /**
- * Phase 4 / Iter 22 — `config get` subcommand.
+ * `config get` subcommand.
  *
  * Reads a value from the layered YAML config (8-layer precedence
- * chain — see Phase 2 / Iter 4's `loadConfig`). The dotted key path
+ * chain — see `loadConfig`). The dotted key path
  * (e.g., `output.json.indent`) drills into the resolved object.
  *
- * Iter-22 scope is intentionally minimal: load config + read key.
- * `config set` / `config list` (iters 23-24) follow the same shape.
+ * Scope is intentionally minimal: load config + read key.
+ * `config set` / `config list` follow the same shape.
  */
 import {
   Command,

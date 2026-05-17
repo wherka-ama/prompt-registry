@@ -1,5 +1,5 @@
 /**
- * Phase 5 / Iter 25-26 — install lockfile.
+ * Install lockfile.
  *
  * The lockfile (`prompt-registry.lock.json` by default) records every
  * installed bundle so a subsequent `prompt-registry install --lockfile`
@@ -7,9 +7,9 @@
  * scope lockfile: an ordered list of entries keyed on
  * `target + sourceId + bundleId`.
  *
- * Schema is stable from this iter on; future fields land additively.
+ * Schema is stable; future fields land additively.
  *
- * Phase 1 Step 1.3: Added commitMode field for repository-scope entries.
+ * Added commitMode field for repository-scope entries.
  */
 
 export interface LockfileEntry {
@@ -28,22 +28,22 @@ export interface LockfileEntry {
   /**
    * List of file paths written. Can be bundle-relative (for install command)
    * or absolute (for profile activation). Readers should handle both formats.
-   * Strings for back-compat with iter-25 schema; readers tolerate both.
+   * Strings for back-compat with earlier schema; readers tolerate both.
    *
-   * When iter-12 (D13) has computed checksums, the same logical
+   * When checksums have been computed, the same logical
    * file is also recorded in `fileChecksums` (parallel array).
-   * Future iters may collapse to `LockfileFileEntry[]` once all
+   * Future versions may collapse to `LockfileFileEntry[]` once all
    * known consumers handle the richer shape.
    */
   files: string[];
   /**
    * Optional per-file SHA-256 sums, parallel to `files`. Emitted
    * only when populated; matches extension's
-   * `LockfileFileEntry.checksum` semantics. (D13)
+   * `LockfileFileEntry.checksum` semantics.
    */
   fileChecksums?: Record<string, string>;
   /**
-   * Phase 1 Step 1.3: Commit mode for repository-scope installations.
+   * Commit mode for repository-scope installations.
    * 'commit' = tracked by git, 'local-only' = excluded via .git/info/exclude.
    * Only present for repository-scope entries.
    */
@@ -53,7 +53,7 @@ export interface LockfileEntry {
 /**
  * Source descriptor recorded in the lockfile so reproducible installs
  * can replay against the same upstream. Mirrors the extension's
- * `LockfileSourceEntry`. (D13)
+ * `LockfileSourceEntry`.
  */
 export interface LockfileSource {
   /** Source type (github, awesome-copilot, apm, skills, local, …). */
@@ -64,7 +64,7 @@ export interface LockfileSource {
   branch?: string;
 }
 
-/** Hub descriptor — mirrors extension's LockfileHubEntry. (D13) */
+/** Hub descriptor — mirrors extension's LockfileHubEntry. */
 export interface LockfileHub {
   /** Display name. */
   name: string;
@@ -72,7 +72,7 @@ export interface LockfileHub {
   url: string;
 }
 
-/** Profile descriptor — mirrors extension's LockfileProfileEntry. (D13) */
+/** Profile descriptor — mirrors extension's LockfileProfileEntry. */
 export interface LockfileProfile {
   /** Display name. */
   name: string;
@@ -81,9 +81,9 @@ export interface LockfileProfile {
 }
 
 /**
- * D24: optional pointer linking a project to a (hubId, profileId).
- * Set by `profile activate` (Phase 6 / iter 88) and consumed by
- * `install --lockfile` replay (iter 89) so a fresh checkout re-runs
+ * Optional pointer linking a project to a (hubId, profileId).
+ * Set by `profile activate` and consumed by
+ * `install --lockfile` replay so a fresh checkout re-runs
  * the same profile activation.
  */
 export interface LockfileUseProfile {
@@ -95,19 +95,19 @@ export interface Lockfile {
   schemaVersion: 1;
   entries: LockfileEntry[];
   /**
-   * D24: project<->profile linkage. When set, install --lockfile
+   * Project<->profile linkage. When set, install --lockfile
    * replay will also re-activate this profile after replaying
    * entries. Unset projects work as before.
    */
   useProfile?: LockfileUseProfile;
   /**
    * Optional source registry; emitted only when populated.
-   * Keys are sourceIds produced by `generateSourceId(type, url, …)`. (D13)
+   * Keys are sourceIds produced by `generateSourceId(type, url, …)`.
    */
   sources?: Record<string, LockfileSource>;
-  /** Optional hub registry; emitted only when populated. (D13) */
+  /** Optional hub registry; emitted only when populated. */
   hubs?: Record<string, LockfileHub>;
-  /** Optional profile registry; emitted only when populated. (D13) */
+  /** Optional profile registry; emitted only when populated. */
   profiles?: Record<string, LockfileProfile>;
 }
 
@@ -179,7 +179,7 @@ export const upsertEntry = (lock: Lockfile, entry: LockfileEntry): Lockfile => {
 
 /**
  * Upsert a source descriptor in `lock.sources`. Pure; doesn't touch
- * disk. (D13 / iter 12)
+ * disk.
  * @param lock - Existing Lockfile.
  * @param sourceId - Stable source id (`generateSourceId` output).
  * @param source - Source descriptor.
@@ -196,7 +196,7 @@ export const upsertSource = (
 });
 
 /**
- * Upsert a hub descriptor in `lock.hubs`. (D13 / iter 12)
+ * Upsert a hub descriptor in `lock.hubs`.
  * @param lock - Existing Lockfile.
  * @param hubKey - Stable hub key (`generateHubKey` output).
  * @param hub - Hub descriptor.
@@ -213,7 +213,7 @@ export const upsertHub = (
 });
 
 /**
- * Upsert a profile descriptor in `lock.profiles`. (D13 / iter 12)
+ * Upsert a profile descriptor in `lock.profiles`.
  * @param lock - Existing Lockfile.
  * @param profileId - Profile id.
  * @param profile - Profile descriptor.
@@ -230,7 +230,7 @@ export const upsertProfile = (
 });
 
 /**
- * D24: set or clear the `useProfile` link.
+ * Set or clear the `useProfile` link.
  * @param lock Existing lockfile.
  * @param useProfile The link to set; pass `null` to clear.
  * @returns Updated lockfile.
@@ -248,7 +248,7 @@ export const upsertUseProfile = (
 };
 
 /**
- * Phase 1 Step 1.8: Remove an entry from a lockfile (matching by target + bundleId).
+ * Remove an entry from a lockfile (matching by target + bundleId).
  * Pure; doesn't touch disk.
  * @param lock - Existing Lockfile.
  * @param entry - Entry to remove.

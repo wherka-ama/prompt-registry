@@ -1,5 +1,5 @@
 /**
- * Phase 5 / Iter 22 — Local-directory bundle source.
+ * Local-directory bundle source.
  *
  * Read a fully-extracted bundle (a directory containing
  * `deployment-manifest.yml` + primitive subdirs) directly from disk
@@ -9,7 +9,7 @@
  * for bundles that have already been built locally (e.g. with
  * `prompt-registry bundle build`).
  *
- * The full GitHub-API + HTTP + zip stack is Phase 5 spillover; this
+ * The full GitHub-API + HTTP + zip stack is spillover work; this
  * adapter unblocks dev-workflow installs today.
  */
 import * as path from 'node:path';

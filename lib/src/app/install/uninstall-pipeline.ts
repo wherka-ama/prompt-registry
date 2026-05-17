@@ -1,5 +1,5 @@
 /**
- * Phase 1 / Step 1.8 — Uninstall Pipeline.
+ * Uninstall Pipeline.
  *
  * Mirrors the install pipeline but for removal operations:
  * - Resolve installed bundle from lockfile/state

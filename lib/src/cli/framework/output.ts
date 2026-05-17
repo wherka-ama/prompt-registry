@@ -1,15 +1,15 @@
 /**
- * Phase 2 / Iter 5 — Output formatter.
+ * Output formatter.
  *
  * Single sink for all command output. Leaf commands compute `data` and
  * call `formatOutput()` once; this module handles serialization and
  * stdout routing for all four modes (text, json, yaml, ndjson). The
- * markdown and table modes from spec §11.4 are deferred to a later
- * iter alongside their domain-specific renderers — they are not
+ * markdown and table modes are deferred to a later
+ * iteration alongside their domain-specific renderers — they are not
  * universally meaningful and carrying empty stubs here would lie about
  * the supported surface.
  *
- * JSON envelope (spec §9.1.1)
+ * JSON envelope
  *   {
  *     schemaVersion: 1,
  *     command:       <dotted.path>,
@@ -24,7 +24,7 @@
  *   text mode: warnings -> ctx.stderr (stdout stays a clean payload)
  *   json mode: warnings stay in the envelope; stderr untouched
  *   quiet=true: suppresses stdout in text mode only; JSON consumers
- *               always need the envelope (spec §9.4)
+ *               always need the envelope
  */
 import {
   dump as toYaml,
@@ -37,7 +37,7 @@ export type OutputFormat = 'text' | 'json' | 'yaml' | 'ndjson';
 export type OutputStatus = 'ok' | 'error' | 'warning';
 
 /**
- * JSON-serializable error envelope item. Iter 6's `RegistryError` will
+ * JSON-serializable error envelope item. RegistryError will
  * produce records of this shape via a `.toJSON()` method.
  */
 export interface OutputError {

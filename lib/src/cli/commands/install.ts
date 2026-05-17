@@ -1,11 +1,11 @@
 /**
- * Phase 4 / Iter 31 — `install` stub (Phase 5 preview).
+ * `install` stub (environment-agnostic install preview).
  *
- * The install command is the primary deliverable of Phase 5
- * (environment-agnostic install). Iter 31 ships the surface so the
- * migration guide can mention it; Phase 5 fills the body.
+ * The install command is the primary deliverable for
+ * environment-agnostic install. This ships the surface so the
+ * migration guide can mention it; the body is filled in later.
  *
- * Final shape (per spec §14.1):
+ * Final shape:
  *   prompt-registry install <bundle>            (imperative)
  *   prompt-registry install --lockfile <path>   (declarative from a lockfile)
  */
@@ -125,8 +125,7 @@ export interface InstallOptions {
    */
   allowTarget?: string;
   /**
-   * Phase 5 spillover / iter 31: Optional source slug for the
-   * remote install path. When `<bundle>` is given without
+   * Optional source slug for the remote install path. When `<bundle>` is given without
    * `--from`, this resolves the bundle via `GitHubBundleResolver`.
    * Format: `owner/repo`. If omitted, the bundleSpec must carry
    * a sourceId of the same form (e.g. `install owner/repo:foo`).
@@ -137,25 +136,23 @@ export interface InstallOptions {
    */
   interactive?: boolean;
   /**
-   * Phase 5 spillover / iter 31: dependency-injection seam for
-   * tests. Production callers leave this undefined; the install
-   * command then constructs a `NodeHttpClient`. Tests pass a
+   * Dependency-injection seam for tests. Production callers leave this
+   * undefined; the install command then constructs a `NodeHttpClient`. Tests pass a
    * `RecordingHttpClient` to avoid real sockets.
    */
   http?: HttpClient;
   /**
-   * Phase 5 spillover / iter 31: dependency-injection seam for
-   * tests. Production callers leave this undefined; the install
-   * command then constructs an `defaultTokenProvider(ctx.env)`.
+   * Dependency-injection seam for tests. Production callers leave this
+   * undefined; the install command then constructs an `defaultTokenProvider(ctx.env)`.
    */
   tokens?: TokenProvider;
   /**
-   * Phase 1 Step 1.3: Installation scope (user or repository).
+   * Installation scope (user or repository).
    * Overrides target's scope if specified.
    */
   scope?: 'user' | 'repository';
   /**
-   * Phase 1 Step 1.3: Commit mode for repository scope.
+   * Commit mode for repository scope.
    * Only applies when scope=repository.
    */
   commitMode?: RepositoryCommitMode;
@@ -340,7 +337,7 @@ async function executeInstallMode(
 }
 
 /**
- * Phase 1 Step 1.3: Create a writer factory that routes to the appropriate
+ * Create a writer factory that routes to the appropriate
  * writer based on target scope.
  * - user scope → FileTreeTargetWriter
  * - repository scope → RepositoryScopeWriter

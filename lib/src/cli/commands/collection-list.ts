@@ -1,12 +1,12 @@
 /**
- * Phase 4 / Iter 1 — `collection list` subcommand.
+ * `collection list` subcommand.
  *
  * Replaces `lib/bin/list-collections.js` (which directly imported
  * `listCollectionFiles` and `readCollection` from `../dist`). The new
  * subcommand:
  *
- *   - Goes through the framework's `Context` for fs access (spec §14.2
- *     invariant #3) — no `node:fs` import.
+ *   - Goes through the framework's `Context` for fs access — no
+ *     `node:fs` import.
  *   - Emits via `formatOutput` (text/json/yaml/ndjson) — the legacy
  *     binary only emitted JSON.
  *   - Uses `RegistryError` (`FS.NOT_FOUND`) on a missing
@@ -86,7 +86,7 @@ export class CollectionListCommand extends BaseCollectionListCommand {
         code: 'FS.NOT_FOUND',
         message: `collections/ directory not found under ${cwd}`,
         hint: 'Run from a repo root that contains a `collections/` folder, '
-          + 'or pass `--cwd <path>` once that flag lands in iter 8.',
+          + 'or pass `--cwd <path>` once that flag lands.',
         context: { collectionsDir }
       });
       if (fmt === 'json' || fmt === 'yaml' || fmt === 'ndjson') {
@@ -193,7 +193,7 @@ export const createCollectionListCommand = (
           code: 'FS.NOT_FOUND',
           message: `collections/ directory not found under ${cwd}`,
           hint: 'Run from a repo root that contains a `collections/` folder, '
-            + 'or pass `--cwd <path>` once that flag lands in iter 8.',
+            + 'or pass `--cwd <path>` once that flag lands.',
           context: { collectionsDir }
         });
         const output = opts.output ?? 'text';
@@ -250,7 +250,7 @@ const listCollections = async (
     if (doc === null || typeof doc !== 'object') {
       // Skip ill-formed YAML files; legacy binary would crash, but the
       // CLI should be tolerant — bad files are caught by `collection
-      // validate` (iter 2).
+      // validate`.
       continue;
     }
     const id = typeof doc.id === 'string' ? doc.id : '';

@@ -1,17 +1,17 @@
 /**
- * Phase 4 / Iter 28 — `target list` stub.
+ * `target list` stub.
  *
- * The full `target` model lives in Phase 5 (environment-agnostic
- * install). Iter 28 ships a list-only stub that reads `targets[]`
- * from the resolved config and prints what's there. Iter 29 adds
- * `target add`; iter 30 adds `target remove`. Each iter is a one-
+ * The full `target` model lives in environment-agnostic install.
+ * This ships a list-only stub that reads `targets[]`
+ * from the resolved config and prints what's there. Later iterations add
+ * `target add` and `target remove`. Each iteration is a one-
  * file delta against the same shape.
  *
- * The point of shipping these stubs in Phase 4 is twofold:
- *   - The migration guide (iter 15) can list every command users
+ * The point of shipping these stubs is twofold:
+ *   - The migration guide can list every command users
  *     might encounter, including ones whose semantics are not
  *     final.
- *   - When Phase 5 lands install, the command tree won't appear to
+ *   - When install lands, the command tree won't appear to
  *     "grow new top-level nouns out of nowhere" — `target` is
  *     already a documented hub.
  */

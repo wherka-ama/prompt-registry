@@ -1,7 +1,7 @@
 /**
- * Phase 2 / Iter 4 — Layered YAML config loader.
+ * Layered YAML config loader.
  *
- * Implements the precedence chain locked in spec §8.1 / decision D3:
+ * Implements the precedence chain:
  *   1. Built-in defaults
  *   2. User config         ($XDG_CONFIG_HOME/prompt-registry/config.yml,
  *                           or ~/.config/prompt-registry/config.yml)
@@ -10,10 +10,10 @@
  *   4. Env vars            (PROMPT_REGISTRY_<DOTTED_PATH> mapped to
  *                           camelCase keys)
  *   5. --config FILE       (explicit file override)
- *   6. --config KEY=VALUE  (single-key override; iter 4 stub, full
- *                           support in a later iter)
+ *   6. --config KEY=VALUE  (single-key override; stub, full
+ *                           support in a later iteration)
  *   7. CLI flags           (handled by `runCli`, not here)
- *   8. Profile activation  (iter 5 alongside the formatter)
+ *   8. Profile activation  (later iteration alongside the formatter)
  *
  * Each layer is a plain object that gets *deeply merged* into the
  * accumulator. Later layers override earlier ones at the leaf level,
@@ -22,8 +22,7 @@
  * No external config-loader library is used. We have js-yaml already as
  * a dependency, and the discovery rules are simple enough that a custom
  * loader stays under 100 lines and gives us full control over the
- * precedence semantics. (Spec D3 left c12 as the recommended candidate;
- * the actual choice is "any loader that gives us full ordering
+ * precedence semantics. (The choice is "any loader that gives us full ordering
  * control", and this hand-rolled implementation qualifies while saving
  * a transitive dep tree.)
  */
@@ -55,9 +54,9 @@ export interface LoadConfigOptions {
 
 /**
  * Resolved config — a plain Record with nested values. Specific keys
- * (`output`, `verbose`, `quiet`, `index`, etc.) are documented in
- * spec §8.1 but iter-4's loader is schema-agnostic: it produces a
- * Record and lets later iters validate.
+ * (`output`, `verbose`, `quiet`, `index`, etc.) are documented
+ * but the loader is schema-agnostic: it produces a
+ * Record and lets later iterations validate.
  */
 export type Config = Record<string, unknown>;
 
@@ -268,7 +267,7 @@ const isPlainObject = (v: unknown): v is Record<string, unknown> =>
  * Deeply merge `over` into `base`. Plain objects merge recursively;
  * arrays and primitives are replaced wholesale by `over`. Later layers
  * win at the leaf level while preserving sibling keys from earlier
- * layers — which is what spec §8.1 means by "deep merge".
+ * layers — which is what "deep merge" means.
  * @param base Earlier (lower-precedence) layer.
  * @param over Later (higher-precedence) layer.
  * @returns Merged Config (new object; inputs are not mutated).

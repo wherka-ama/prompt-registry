@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 14 — Profile (lib variant).
+ * Profile (lib variant).
  *
  * A **Profile** is a User-level grouping of bundles that drives
  * atomic (un)install. It reflects a role / assignment-type / domain
@@ -7,7 +7,7 @@
  * are **target-agnostic**: the same profile activates against
  * whichever user-level targets the user has configured.
  *
- * Per D21 there is one **active profile globally** at any time;
+ * There is one **active profile globally** at any time;
  * activating a new one deactivates the previous one.
  * @module domain/registry/profile
  */
@@ -59,7 +59,7 @@ export interface Profile {
  *
  * Mirrors the extension's `ProfileActivationState` so an extension-
  * activated profile can be deactivated by the CLI and vice versa
- * (modulo the storage location difference per D20).
+ * (modulo the storage location difference).
  */
 export interface ProfileActivationState {
   /** Schema version for migration support. */

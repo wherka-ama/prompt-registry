@@ -8,7 +8,7 @@
 // Public API - curated exports for external consumers
 export * from './public';
 
-// Legacy exports for backward compatibility (Phase 1 Step 1.9: will be phased out)
+// Legacy exports for backward compatibility (will be phased out)
 /** @deprecated Use curated public API from ./public instead */
 export type {
   ValidationResult,

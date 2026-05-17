@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 81-84 — `source` commands (D23 default-local-hub UX).
+ * `source` commands (default-local-hub UX).
  *
  * Subcommands:
  *   source add --type {github|local} --url <ref> [--id <id>] [--name <n>]

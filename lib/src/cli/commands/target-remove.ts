@@ -1,7 +1,7 @@
 /**
- * Phase 4 / Iter 30 → Phase 5 / Iter 4 — `target remove`.
+ * `target remove`.
  *
- * Iter-4 wires the persist side: validates the positional name,
+ * Wires the persist side: validates the positional name,
  * delegates to `removeTargetByName()`, and surfaces a not-found
  * error code distinct from the USAGE.MISSING_FLAG code used for
  * an empty name.

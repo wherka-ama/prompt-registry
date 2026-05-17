@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 51-58 — `hub` commands.
+ * `hub` commands.
  *
  * Subcommands:
  *   hub add <ref>         import a hub from a reference

@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 71-78 — `profile` commands.
+ * `profile` commands.
  *
  * Subcommands:
  *   profile list [--hub <id>]

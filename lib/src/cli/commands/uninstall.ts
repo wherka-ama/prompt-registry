@@ -65,12 +65,12 @@ export interface UninstallOptions {
   /** Dry-run: preview removal without deleting files. */
   dryRun?: boolean;
   /**
-   * Phase 1 Step 1.3: Installation scope (user or repository).
+   * Installation scope (user or repository).
    * Overrides target's scope if specified.
    */
   scope?: 'user' | 'repository';
   /**
-   * Phase 1 Step 1.3: Commit mode for repository scope.
+   * Commit mode for repository scope.
    * Only applies when scope=repository.
    */
   commitMode?: RepositoryCommitMode;

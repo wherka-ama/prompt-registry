@@ -109,6 +109,7 @@ npm run lint:report            # Generate eslint-report.json
 - **CLI flags**: kebab-case (`--collection-file`)
 - **Comments**: JSDoc for public APIs, inline for complex logic
 - **ESLint**: v9 flat config, zero warnings policy for errors
+- **Documentation conventions**: Inline documentation (file headers, JSDoc, comments) should be concise, factual, and practical. Avoid references to development phases, iterations, specifications, decisions, issues, or tasks (e.g., "Phase X / Iter Y", "Spec §", "Dxx", "I-xxx", "Txx"). These references become stale quickly and add unnecessary verbosity.
 
 ---
 

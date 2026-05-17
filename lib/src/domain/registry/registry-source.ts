@@ -1,5 +1,5 @@
 /**
- * Phase 6 / Iter 13 — Registry Source (lib variant).
+ * Registry Source (lib variant).
  *
  * Mirrors the extension's `RegistrySource` shape additively; named
  * `RegistrySource` (not `Source`) to avoid conflict with possible
@@ -10,10 +10,8 @@
 
 /**
  * Source type discriminant. The lib supports `github` + `local`
- * today (D14, D23). The other types are accepted by the schema for
- * forward-compat but no resolver impl exists for them in this phase
- * (D25 defers `apm`/`local-apm`; awesome-copilot/skills are
- * post-phase-6 spillover).
+ * today. The other types are accepted by the schema for
+ * forward-compat but no resolver impl exists for them currently.
  */
 export type RegistrySourceType =
   | 'github'
@@ -28,7 +26,7 @@ export type RegistrySourceType =
 /**
  * A registry source — a place that bundles can come from. Sources
  * may be hub-owned (`hubId` set) or detached (`hubId` set to the
- * synthetic `default-local` hub per D23).
+ * synthetic `default-local` hub).
  */
 export interface RegistrySource {
   /** Stable, deterministic identifier. Format: `<type>-<12-hex>`. */
@@ -55,7 +53,7 @@ export interface RegistrySource {
   config?: Record<string, unknown>;
   /**
    * The hub that introduced this source. `default-local` for
-   * detached sources (D23).
+   * detached sources.
    */
   hubId: string;
 }
