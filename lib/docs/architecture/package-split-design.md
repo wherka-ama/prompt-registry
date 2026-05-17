@@ -1,4 +1,4 @@
-# Package Split and SEA Binary Distribution Design
+# Package Split and Distribution Strategy Design
 
 ## Current State
 
@@ -32,147 +32,154 @@ The project is currently distributed as a single npm package `@prompt-registry/c
 - `create-skill`
 - `hub-release-analyzer`
 
-## Proposed Package Split
+## Distribution Strategy Overview
 
-### Strategy 1: Minimal Disruption Split (Recommended)
+The project will be distributed through two channels:
 
-Split into three packages while maintaining backward compatibility:
+1. **npm packages** for Node.js environments (extension, programmatic usage, npx)
+2. **GitHub CLI extension** for standalone CLI usage without Node.js requirement
 
-#### 1. `@prompt-registry/sdk` (New)
-**Purpose**: Core SDK for programmatic consumption by clients (VS Code extension, other tools)
+### Key Insight: Sidecar Repository for GitHub CLI Extension
 
-**Contents**:
-- Domain types (pure, no I/O)
-- Port interfaces (contracts only)
-- Application layer (use cases with I/O via ports)
-- Public API surface
+GitHub CLI extensions have strict naming requirements:
+- Repository name **must** start with `gh-`
+- Binary assets must follow naming convention: `gh-EXTENSION-NAME-OS-ARCH[EXT]`
+- Example: `gh-prompt-registry-linux-amd64`, `gh-prompt-registry-darwin-arm64`, `gh-prompt-registry-windows-amd64.exe`
 
-**Exports**:
+Since the main repository is `wherka-ama/prompt-registry`, we cannot use it directly for GitHub CLI extension distribution. Instead, we will create a **sidecar repository** at:
+
+**Repository**: `AmadeusITGroup/gh-prompt-registry` (or appropriate owner)
+**Location**: `/home/wherka/workspace/opensource/gh-prompt-registry`
+
+This sidecar repository will:
+1. Clone the official prompt-registry repository
+2. Build CLI binaries for all target platforms
+3. Create GitHub releases with properly named assets
+4. Handle all GitHub CLI extension-specific concerns
+
+This approach keeps the main repository focused on the library/SDK while providing a clean separation for distribution concerns.
+
+## npm Package Distribution
+
+### Standard npm Package (No SEA)
+
+For npm distribution, SEA (Single Executable Application) is **not needed** since `npx` implies the presence of a Node.js runtime. Users installing via npm will already have Node.js available.
+
+Instead, we use standard npm package distribution with:
+- Minimized JavaScript bundles
+- Proper `files` field in package.json to control what gets published
+- Source maps for debugging (optional, can be excluded from published package)
+
+### Package Contents
+
+The npm package will include:
+- `dist/` - Compiled JavaScript
+- `bin/` - CLI entry points
+- `package.json` - Package metadata
+- `README.md` - Documentation
+- `LICENSE` - License file
+
+### Tarball Inspection Command
+
+Add a script to build and inspect the tarball that would be published to npm:
+
 ```json
 {
-  ".": "./dist/index.js",
-  "./domain": "./dist/domain/index.js",
-  "./ports": "./dist/ports/index.js",
-  "./app": "./dist/app/index.js"
+  "scripts": {
+    "pack": "npm pack",
+    "pack:inspect": "npm run pack && tar -tzf *.tgz | head -50"
+  }
 }
 ```
 
-**Dependencies**: Minimal (js-yaml, semver, archiver, yauzl)
+Usage:
+```bash
+# Build tarball
+npm run pack
 
-#### 2. `@prompt-registry/cli` (New)
-**Purpose**: Unified CLI tool for developers and collection authors
+# Inspect tarball contents
+npm run pack:inspect
 
-**Contents**:
-- CLI framework (Context, OutputStream, errors, config)
-- CLI commands (all 12 commands)
-- Infrastructure implementations (downloaders, extractors, resolvers, stores, writers)
-- Depends on `@prompt-registry/sdk`
-
-**Binary**: SEA (Single Executable Application) for distribution
-
-**Distribution**:
-- npm package (for `npx` usage)
-- GitHub CLI extension (gh extension install)
-- Standalone binaries (for direct download)
-
-#### 3. `@prompt-registry/collection-scripts` (Legacy, Deprecated)
-**Purpose**: Backward compatibility for existing consumers
-
-**Contents**:
-- Re-exports from `@prompt-registry/sdk`
-- Re-exports from `@prompt-registry/cli` (binaries only)
-- Deprecation notice in README
-
-**Migration Path**: Document migration to new packages
-
-### Strategy 2: Monorepo with Workspaces (Alternative)
-
-Use npm workspaces with pnpm/yarn:
-```
-packages/
-├── sdk/          # @prompt-registry/sdk
-├── cli/          # @prompt-registry/cli
-└── scripts/      # @prompt-registry/collection-scripts (legacy)
+# Extract and inspect fully
+tar -xzf @prompt-registry-collection-scripts-1.0.4.tgz
+ls -la package/
 ```
 
-**Pros**: Better dependency management, shared dev tools
-**Cons**: More complex setup, requires build system changes
+This allows verification that:
+- Only necessary files are included
+- No test files or development artifacts are published
+- The package structure is as expected
 
-## SEA Binary Distribution
+## GitHub CLI Extension Distribution (Sidecar Repository)
 
-### Build Matrix
+### Sidecar Repository Structure
 
-Following the gh-app-auth pattern, build binaries for:
-- `linux-amd64`
-- `linux-arm64`
-- `darwin-amd64` (macOS Intel)
-- `darwin-arm64` (macOS Apple Silicon)
-- `windows-amd64`
-- `windows-arm64`
+**Repository**: `AmadeusITGroup/gh-prompt-registry`
+**Location**: `/home/wherka/workspace/opensource/gh-prompt-registry`
+
+This repository will be minimal and focused solely on:
+1. Cloning the official prompt-registry repository
+2. Building CLI binaries for all platforms
+3. Creating GitHub releases with properly named assets
+4. Managing GitHub CLI extension lifecycle
+
+### Repository Contents
+
+```
+gh-prompt-registry/
+├── .github/
+│   └── workflows/
+│       └── release.yml          # CI/CD for building and releasing
+├── scripts/
+│   ├── build.sh                  # Build script for all platforms
+│   └── release.sh                # Release creation script
+├── README.md                     # Extension installation docs
+└── Makefile                      # Build targets
+```
+
+### Binary Naming Convention
+
+GitHub CLI extensions require specific naming for binary assets:
+```
+gh-EXTENSION-NAME-OS-ARCH[.exe]
+
+Examples:
+gh-prompt-registry-linux-amd64
+gh-prompt-registry-linux-arm64
+gh-prompt-registry-darwin-amd64
+gh-prompt-registry-darwin-arm64
+gh-prompt-registry-windows-amd64.exe
+gh-prompt-registry-windows-arm64.exe
+```
 
 ### Build Process
 
-#### Local Build
+The sidecar repository will:
+1. Clone the official prompt-registry repository at a specific tag/commit
+2. Install dependencies
+3. Build the CLI using Node.js SEA (Single Executable Application) for each platform
+4. Rename binaries to follow GitHub CLI extension naming convention
+5. Create checksums for verification
+6. Upload as release assets
+
+### Installation
+
+Users will install the extension via:
 ```bash
-# Build for current platform
-npm run build:sea
-
-# Build for specific platform
-npm run build:sea:linux-amd64
-npm run build:sea:darwin-arm64
+gh extension install AmadeusITGroup/gh-prompt-registry
 ```
 
-#### CI Build
-GitHub Actions workflow that:
-1. Builds for all platforms in matrix
-2. Uploads artifacts as release assets
-3. Attaches checksums for verification
-4. Promotes release to latest
+GitHub CLI will automatically:
+- Detect the user's platform
+- Download the appropriate binary from the latest release
+- Install it as a local extension
+- Make it available as `gh prompt-registry`
 
-### Package Naming Convention
-
-```
-prompt-registry-{version}-{platform}.{ext}
-
-Examples:
-prompt-registry-1.0.5-linux-amd64
-prompt-registry-1.0.5-darwin-arm64
-prompt-registry-1.0.5-windows-amd64.exe
-```
-
-### GitHub CLI Extension
-
-#### Extension Manifest
-Create `extension.yml` in CLI package:
-```yaml
-name: prompt-registry
-description: Prompt Registry CLI for managing Copilot prompt collections
-version: "{{ version }}"
-commands:
-  - name: prompt-registry
-    help: Manage prompt collections
-    alias: pr
-```
-
-#### Installation
-```bash
-# Install from release
-gh extension install AmadeusITGroup/prompt-registry
-
-# Install from local build
-gh extension install ./dist/prompt-registry-darwin-arm64
-```
-
-#### Release Workflow
-1. On release (tagged), trigger CI
-2. Build SEA binaries for all platforms
-3. Upload to GitHub release as assets
-4. Set release as latest
-5. GitHub CLI automatically picks up binaries for extension install
-
-### CI/CD Pipeline
+### CI/CD Pipeline (Sidecar Repository)
 
 #### Workflow: `.github/workflows/release.yml`
+
+Located in the sidecar repository (`gh-prompt-registry`), this workflow will:
 
 ```yaml
 name: Release
@@ -202,12 +209,40 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
-      - run: npm run build:sea:${{ matrix.platform }}
+      
+      - name: Clone official repository
+        run: |
+          git clone https://github.com/AmadeusITGroup/prompt-registry.git ../prompt-registry
+          cd ../prompt-registry
+          git checkout ${{ github.event.release.tag_name }}
+      
+      - name: Install dependencies
+        working-directory: ../prompt-registry/lib
+        run: npm ci
+      
+      - name: Build CLI
+        working-directory: ../prompt-registry/lib
+        run: npm run build
+      
+      - name: Build SEA binary for ${{ matrix.platform }}
+        working-directory: ../prompt-registry/lib
+        run: npm run build:sea:${{ matrix.platform }}
+      
+      - name: Rename binary to gh extension naming
+        run: |
+          # Rename to gh-prompt-registry-OS-ARCH[.exe]
+          if [[ "${{ matrix.platform }}" == windows-* ]]; then
+            mv ../prompt-registry/lib/dist/prompt-registry-${{ matrix.platform }} \
+               gh-prompt-registry-${{ matrix.platform }}
+          else
+            mv ../prompt-registry/lib/dist/prompt-registry-${{ matrix.platform }} \
+               gh-prompt-registry-${{ matrix.platform }}
+          fi
+      
       - uses: actions/upload-artifact@v4
         with:
-          name: prompt-registry-${{ matrix.platform }}
-          path: dist/prompt-registry-${{ matrix.platform }}*
+          name: gh-prompt-registry-${{ matrix.platform }}
+          path: gh-prompt-registry-${{ matrix.platform }}*
 
   release:
     needs: build-binaries
@@ -217,6 +252,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist/
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
       - name: Upload release assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -226,128 +265,192 @@ jobs:
           gh release edit "$VERSION" --prerelease=false --latest
 ```
 
-### Local Testing Flow
+### Local Testing Flow (Sidecar Repository)
+
+#### Testing GitHub CLI Extension Locally
+
+To test the GitHub CLI extension locally before publishing:
 
 ```bash
-# Build SEA for current platform
-npm run build:sea
+# Clone sidecar repository
+cd /home/wherka/workspace/opensource/gh-prompt-registry
+
+# Clone official repository and checkout desired tag
+./scripts/build.sh --tag v1.0.4
+
+# Build for current platform only (for quick testing)
+./scripts/build.sh --local
 
 # Install as local GitHub CLI extension
-gh extension install ./dist/prompt-registry-$(uname -s)-$(uname -m)
+gh extension install ./gh-prompt-registry-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)
 
 # Test the extension
-prompt-registry --help
-prompt-registry collection validate --help
+gh prompt-registry --help
+gh prompt-registry collection validate --help
 
 # Uninstall when done
-gh extension remove prompt-registry
+gh extension remove gh-prompt-registry
+```
+
+#### Testing npm Package
+
+To test the npm package before publishing:
+
+```bash
+cd /home/wherka/workspace/opensource/prompt-registry/lib
+
+# Build tarball and inspect contents
+npm run pack:inspect
+
+# Install locally from tarball
+npm install -g ./@prompt-registry-collection-scripts-1.0.4.tgz
+
+# Test CLI
+prompt-registry --help
+
+# Uninstall
+npm uninstall -g @prompt-registry/collection-scripts
 ```
 
 ## Implementation Plan
 
-### Phase 1: Package Structure (High Priority)
-1. Create `packages/sdk/` directory structure
-2. Move domain, ports, app, public to SDK
-3. Update package.json for SDK
-4. Create `packages/cli/` directory structure
-5. Move CLI framework, commands, infra to CLI
-6. Update CLI package.json to depend on SDK
-7. Mark `@prompt-registry/collection-scripts` as deprecated
+### Critical Review: Is Package Split Necessary?
 
-### Phase 2: SEA Binary Build (High Priority)
-1. Enhance existing SEA build script
-2. Add cross-platform build support
-3. Add platform-specific build scripts
+**Question**: Do we actually need to split into SDK and CLI packages?
+
+**Analysis**:
+- Current package `@prompt-registry/collection-scripts` already works well for npm/npx usage
+- VS Code extension can depend on the existing package
+- Splitting into SDK/CLI adds complexity without clear benefit
+- The sidecar repository can depend on the existing npm package
+
+**Recommendation**: **Do NOT split the package**. Keep the current structure and focus on:
+1. Updating package.json description and metadata
+2. Adding tarball inspection script
+3. Creating the sidecar repository for GitHub CLI extension
+4. Improving npm package configuration (files field, etc.)
+
+This is the least disruptive approach that achieves the distribution goals.
+
+### Revised Implementation Plan
+
+#### Phase 1: Improve npm Package Configuration (High Priority)
+1. Update package.json description to be more accurate
+2. Add `pack` and `pack:inspect` scripts to package.json
+3. Review and optimize `files` field in package.json
+4. Test tarball inspection locally
+5. Document npm package structure
+
+#### Phase 2: Create Sidecar Repository (High Priority)
+1. Create repository at `/home/wherka/workspace/opensource/gh-prompt-registry`
+2. Initialize with minimal structure (scripts, workflows, README)
+3. Create build script that clones official repo and builds binaries
+4. Add Makefile with build targets for local testing
+5. Set up GitHub repository and configure topics
+
+#### Phase 3: SEA Binary Build for Sidecar (High Priority)
+1. Enhance existing SEA build script in main repository
+2. Add cross-platform build support (linux, darwin, windows, amd64, arm64)
+3. Add platform-specific build targets
 4. Test local builds for current platform
 5. Add checksum generation
 
-### Phase 3: GitHub CLI Extension (Medium Priority)
-1. Create extension.yml manifest
-2. Test local extension install
-3. Document installation flow
-4. Add extension-specific commands if needed
+#### Phase 4: CI/CD Pipeline for Sidecar (Medium Priority)
+1. Create release workflow in sidecar repository
+2. Configure workflow to clone official repo at tag
+3. Add build matrix for all platforms
+4. Implement binary renaming to gh extension naming convention
+5. Add checksum generation and upload
+6. Test with prerelease
 
-### Phase 4: CI/CD Pipeline (Medium Priority)
-1. Create release workflow
-2. Add build matrix for all platforms
-3. Configure artifact upload
-4. Test with prerelease
-5. Add checksum verification
-
-### Phase 5: Documentation (Low Priority)
-1. Document package split
-2. Document migration path
-3. Document SEA binary usage
-4. Document GitHub CLI extension installation
-5. Update README with new distribution options
+#### Phase 5: Documentation (Low Priority)
+1. Document GitHub CLI extension installation
+2. Update main repository README with extension info
+3. Document sidecar repository purpose and usage
+4. Add npm tarball inspection guide
+5. Update AGENTS.md with distribution insights
 
 ## Migration Path for Consumers
 
-### For Extension Developers
+### For Extension Developers (npm package)
+**No changes required**. The npm package name and exports remain the same:
 ```bash
-# Before
+# Continues to work as before
 import { PrimitiveIndex } from '@prompt-registry/collection-scripts';
-
-# After
-import { PrimitiveIndex } from '@prompt-registry/sdk';
 ```
 
-### For CLI Users
+### For CLI Users (npm/npx)
+**No changes required**. The npm package continues to work with npx:
 ```bash
-# Before (npm)
-npx @prompt-registry/collection-scripts prompt-registry
+# Continues to work as before
+npx @prompt-registry/collection-scripts prompt-registry --help
+npx @prompt-registry/collection-scripts collection validate --help
+```
 
-# After (npm)
-npx @prompt-registry/cli
+### For CLI Users (GitHub CLI Extension - New Option)
+Users can now install as a GitHub CLI extension for standalone usage without Node.js:
+```bash
+# New option: install as GitHub CLI extension
+gh extension install AmadeusITGroup/gh-prompt-registry
 
-# After (GitHub CLI extension)
-gh extension install AmadeusITGroup/prompt-registry
-prompt-registry --help
+# Use the extension
+gh prompt-registry --help
+gh prompt-registry collection validate --help
 ```
 
 ### For Collection Authors
+**No changes required**. Continue using the same npm package:
 ```bash
-# Before
+# Continues to work as before
 npx @prompt-registry/collection-scripts validate-collections
-
-# After (unified CLI)
-npx @prompt-registry/cli collection validate
+npx @prompt-registry/collection-scripts build-collection-bundle
 ```
 
 ## Backward Compatibility
 
-The `@prompt-registry/collection-scripts` package will:
-1. Re-export everything from SDK and CLI
-2. Add deprecation warnings in README
-3. Provide migration guide
-4. Maintain for at least 2 major versions before removal
+**No breaking changes**. The npm package `@prompt-registry/collection-scripts` will:
+1. Continue to work exactly as before
+2. Maintain the same exports and API
+3. Support the same CLI commands
+4. No deprecation needed
+
+The GitHub CLI extension is an **additional distribution channel**, not a replacement. Users can choose:
+- npm/npx for Node.js environments
+- GitHub CLI extension for standalone usage without Node.js
 
 ## Considerations
 
 ### Dependencies
-- SDK should have minimal dependencies (pure library)
-- CLI can have more dependencies (infrastructure)
-- Avoid circular dependencies between packages
+- Keep npm package dependencies minimal and well-maintained
+- SEA binaries for GitHub CLI extension will bundle all dependencies
+- No circular dependencies needed since we're not splitting packages
 
 ### Versioning
-- Use independent versioning for SDK and CLI
-- Or use lerna/changesets for monorepo versioning
-- Document version compatibility matrix
+- npm package and GitHub CLI extension can use independent versioning
+- Sidecar repository should track the main repository's version tags
+- Document version compatibility if needed
 
 ### Build System
-- Update TypeScript config for workspace
-- Update ESLint config for workspace
-- Update test runner for workspace
-- Consider using turborepo or nx for monorepo tooling
+- npm package: Use existing TypeScript build system
+- SEA binaries: Use existing SEA build script with cross-platform support
+- No monorepo tooling needed since we're not splitting packages
 
 ### Performance
-- SEA binaries should be optimized for size
+- npm package: Standard JavaScript distribution (no SEA needed)
+- SEA binaries: Optimize for size and startup time
 - Use compression for release assets
 - Provide checksums for verification
 
+### Sidecar Repository Maintenance
+- Sidecar repo should be minimal and focused on distribution
+- Update sidecar repo when main repository releases new versions
+- Keep sidecar repo in sync with main repository's build process
+
 ## References
 
-- [gh-app-auth Makefile](https://github.com/AmadeusITGroup/gh-app-auth/blob/main/Makefile)
-- [gh-app-auth Release Workflow](https://github.com/AmadeusITGroup/gh-app-auth/blob/main/.github/workflows/release.yml)
-- [Node.js SEA Documentation](https://nodejs.org/api/single-executable-applications.html)
-- [GitHub CLI Extensions](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions)
+- [GitHub CLI Extensions Documentation](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions) - Official GitHub CLI extension requirements
+- [GitHub CLI Extension Naming](https://github.com/cli/cli/blob/14f704fd0da58cc01413ee4ba16f13f27e33d15e/pkg/cmd/extension/manager.go) - Source code for OS/ARCH naming convention
+- [gh-app-auth Makefile](https://github.com/AmadeusITGroup/gh-app-auth/blob/main/Makefile) - Reference for binary build pattern
+- [gh-app-auth Release Workflow](https://github.com/AmadeusITGroup/gh-app-auth/blob/main/.github/workflows/release.yml) - Reference for CI/CD pipeline
+- [Node.js SEA Documentation](https://nodejs.org/api/single-executable-applications.html) - Single Executable Application documentation
+- [npm Pack Documentation](https://docs.npmjs.com/cli/v9/commands/npm-pack) - npm pack command reference
