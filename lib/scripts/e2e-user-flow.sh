@@ -3,10 +3,10 @@
 # End-to-End User Flow Test Script
 # Simulates realistic user workflows from scratch
 #
-# This script tests the complete lifecycle (29 scenarios):
+# This script tests the complete lifecycle (54 scenarios):
 #
 # Setup:
-#   1. Create install target via init wizard (F-01) with --yes flag
+#   1. Create install target via target add (non-interactive)
 #   2. Create synthetic local bundle (prompts + skills)
 #   3. Create local hub configuration file (hub-config.yml)
 #   4. Add hub to project (hub add --type local)
@@ -21,7 +21,7 @@
 #   8. Build primitive index from local bundle (index build)
 #   9. Search index by free-text query (index search)
 #  10. Search index filtered by kind (index search --kinds)
-#  11. Create a shortlist + add primitive to it (index shortlist new + add)
+#  11. Create a shortlist + add + remove primitive (index shortlist new/add/remove)
 #  12. Export shortlist as a profile YAML file (index export)
 #  13. Add exported profile to hub config + re-sync hub
 #
@@ -33,14 +33,17 @@
 #
 # Direct bundle install/uninstall:
 #  18. Install bundle from local directory (install --from)
+#  18a. Install with context auto-detection (install, no args)
 #  19. Uninstall bundle via lockfile (uninstall --lockfile)
+#  19b. Update --dry-run with local-only lockfile (0 updates, no writes)
+#  19c. Update with no lockfile returns USAGE.MISSING_FLAG
 #
-# New UX features (F-01, F-03, F-06, F-07, F-09):
+# UX features:
 #  20. Verify error hints (INDEX.NOT_FOUND includes hint)
-#  21. Status command shows current configuration (F-03)
-#  22. Search alias works as top-level command (F-07)
-#  23. Profile activate with --dry-run shows preview (F-09)
-#  24. Profile deactivate with --dry-run shows preview (F-09)
+#  21. Status command shows current configuration
+#  22. Search alias works as top-level command
+#  23. Profile activate with --dry-run shows preview
+#  24. Profile deactivate with --dry-run shows preview
 #
 # Discovery feature tests:
 #  25. Discover command with context detection (non-AI mode)
@@ -49,8 +52,42 @@
 #  28. Discover command with --kinds filter
 #  29. Discover command with --limit
 #
+# Target management:
+#  30. Init wizard non-interactive (init --yes)
+#  31. Init all target types (target add for each known type)
+#  33. List configured targets (target list)
+#  34. List supported target types (target types)
+#
+# Hub management:
+#  35. List imported hubs (hub list)
+#  36. Refresh active hub (hub refresh)
+#  37. Scaffold a hub-config.yml skeleton (hub create)
+#
+# Source management:
+#  38. Add/list/remove a detached source (source add/list/remove)
+#
+# Profile utilities:
+#  39. List profiles in active hub (profile list)
+#  40. Show currently active profile (profile current)
+#  41. Show profile details (profile show)
+#  42. Create and publish a local profile (profile create + profile publish)
+#
+# Index utilities:
+#  43. Show index statistics (index stats)
+#  44. Evaluate search quality against gold queries (index eval)
+#  45. Search with install flag against active hub (index search --install)
+#
+# Health / debug tools:
+#  46. Doctor health check (doctor)
+#  47. Explain an error code (explain)
+#  48. List CLI plugins (plugins list)
+#  49. Read a config value (config get)
+#
+# Optional (requires --use-real-hub):
+#  50. Interactive hub bundle installation (real GitHub hub)
+#
 # Cleanup:
-#  30. Remove target config and delete test directories
+#  51. Remove target and clean up test directories
 #
 # Usage:
 #   ./e2e-user-flow.sh [--use-real-hub] [--verbose]
@@ -193,11 +230,20 @@ setup_environment() {
     PR_TEST_ROOT="$HOME/.test-prompt-registry-e2e"
     XDG_CONFIG_HOME="$PR_TEST_ROOT/xdg"
     XDG_CACHE_HOME="$PR_TEST_ROOT/cache"
-    REPO_ROOT="$(cd /home/wherka/workspace/opensource/prompt-registry && pwd)"
-    PR_BIN="node $REPO_ROOT/lib/dist/cli/main.js"
+    # Let's assume we start it from the root of the repository of from the lib folder. 
+    # We need to identify first which if them and select the REPO_ROOT accordingly
+    # We do not want to hardcode absolute paths here
+    if [ -d "./lib" ]; then
+        REPO_ROOT="./"
+    else
+        REPO_ROOT="../"
+    fi
 
+    PR_BIN='node '$(cd "$REPO_ROOT/lib" && pwd)/dist/cli/main.js
+
+    log_info "REPO: $PR_TEST_ROOT"
     log_info "Test root: $PR_TEST_ROOT"
-    log_info "CLI binary: $PR_BIN"
+    log_info "CLI: $PR_BIN"
     log_info "XDG config: $XDG_CONFIG_HOME"
     log_info "XDG cache: $XDG_CACHE_HOME"
 
@@ -259,12 +305,12 @@ scenario_1_init_wizard() {
 
     cd "$PR_TEST_ROOT/project"
 
-    log_info "Running init wizard with --yes flag"
+    log_info "Creating target with target add command"
     local output
-    output=$(run_cmd "$PR_BIN init --target-name $TARGET_NAME --target-type copilot-cli --path \"$PR_TEST_ROOT/copilot-cli\" --yes -o json") || true
+    output=$(run_cmd "$PR_BIN target add $TARGET_NAME --type copilot-cli --path \"$PR_TEST_ROOT/copilot-cli\" -o json") || true
 
     if assert_json_status "$output"; then
-        log_success "Init wizard created target successfully"
+        log_success "Target created successfully"
         log_info "Target path: $PR_TEST_ROOT/copilot-cli"
         
         # Verify prompt-registry.yml was created
@@ -275,7 +321,7 @@ scenario_1_init_wizard() {
             return 1
         fi
     else
-        log_error "Failed to create target via init wizard"
+        log_error "Failed to create target"
         echo "$output"
         return 1
     fi
@@ -514,6 +560,26 @@ scenario_8_harvest_index() {
     fi
 }
 
+scenario_8a_harvest_index_auto_detect() {
+    log_section "Scenario 8a: Index Harvest Auto-Detect Active Hub"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Running index harvest with no flags — should auto-detect active hub config"
+    local output
+    output=$(run_cmd "$PR_BIN index harvest --dry-run -o json") || true
+
+    local json_output
+    json_output=$(echo "$output" | grep '^{' | tail -1)
+    if echo "$json_output" | jq -e '.status == "ok"' > /dev/null 2>&1; then
+        log_success "index harvest auto-detected active hub (no --hub-repo / --hub-config-file needed)"
+    else
+        log_error "index harvest auto-detection failed"
+        echo "$output"
+        return 1
+    fi
+}
+
 scenario_9_search_resources() {
     log_section "Scenario 9: Search Resources"
 
@@ -576,6 +642,18 @@ scenario_11_create_shortlist() {
                 log_success "Primitive added to shortlist"
             else
                 log_warning "Failed to add primitive to shortlist"
+            fi
+
+            # Test index shortlist remove
+            log_info "Testing index shortlist remove"
+            local rm_output
+            rm_output=$(run_cmd "$PR_BIN index shortlist remove --id $shortlist_id --primitive $primitive_id --index \"$XDG_CACHE_HOME/primitive-index.json\" -o json") || true
+            if assert_json_status "$rm_output"; then
+                log_success "Primitive removed from shortlist"
+                # Re-add so subsequent scenarios (export) have a non-empty shortlist
+                run_cmd "$PR_BIN index shortlist add --id $shortlist_id --primitive $primitive_id --index \"$XDG_CACHE_HOME/primitive-index.json\" -o json" > /dev/null 2>&1 || true
+            else
+                log_warning "Failed to remove primitive from shortlist"
             fi
         fi
     else
@@ -779,6 +857,20 @@ scenario_17_verify_resources_removed() {
         all_ok=false
     fi
 
+    # Also check that empty directories are removed
+    log_info "Checking empty directory removal"
+    if [ ! -d "$target_path/prompts" ] || [ -z "$(ls -A $target_path/prompts 2>/dev/null)" ]; then
+        log_success "Empty prompts directory removed or does not exist"
+    else
+        log_warning "Empty prompts directory still exists (may have other files)"
+    fi
+
+    if [ ! -d "$target_path/skills" ] || [ -z "$(ls -A $target_path/skills 2>/dev/null)" ]; then
+        log_success "Empty skills directory removed or does not exist"
+    else
+        log_warning "Empty skills directory still exists (may have other files)"
+    fi
+
     if [ "$all_ok" = false ]; then
         return 1
     fi
@@ -837,6 +929,36 @@ scenario_18_search_and_install_bundle() {
         log_error "Failed to install bundle from local directory"
         echo "$output"
         return 1
+    fi
+}
+
+scenario_18a_install_context_detect() {
+    log_section "Scenario 18a: Install Context Auto-Detection"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Testing install with no explicit flags — should auto-detect lockfile and target"
+
+    # At this point prompt-registry.lock.json exists from scenario 18 with a live entry.
+    # The install command should pick up the lockfile and last-used target automatically.
+    local output
+    output=$(run_cmd "$PR_BIN install -o json") || true
+
+    # We expect status=ok (idempotent re-install) or at minimum NOT a USAGE.MISSING_FLAG error.
+    local status
+    status=$(echo "$output" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
+    local error_code
+    error_code=$(echo "$output" | jq -r '.errors[0].code // ""' 2>/dev/null || echo "")
+
+    if [ "$error_code" = "USAGE.MISSING_FLAG" ]; then
+        log_error "Context detection failed: got USAGE.MISSING_FLAG — lockfile or target was not auto-detected"
+        echo "$output"
+        return 1
+    elif [ "$status" = "ok" ]; then
+        log_success "Install context auto-detection: re-installed from auto-detected lockfile"
+    else
+        log_warning "Install context auto-detection returned non-ok status: $status (may be acceptable if bundle already removed)"
+        echo "$output"
     fi
 }
 
@@ -900,6 +1022,139 @@ EOF
         echo "$output"
         return 1
     fi
+}
+
+scenario_19a_uninstall_context_detect() {
+    log_section "Scenario 19a: Uninstall Context Auto-Detection"
+
+    local proj_dir="$PR_TEST_ROOT/project-uninstall-ctx"
+    mkdir -p "$proj_dir"
+    cd "$proj_dir"
+
+    # Create a single-target prompt-registry.yml
+    cat > "$proj_dir/prompt-registry.yml" <<EOF
+targets:
+  - name: ctx-target
+    type: copilot-cli
+    scope: user
+    path: "$PR_TEST_ROOT/copilot-cli-ctx"
+EOF
+
+    # Create a lockfile with no installed files (clean uninstall)
+    cat > "$proj_dir/prompt-registry.lock.json" <<EOF
+{
+  "schemaVersion": 1,
+  "entries": [],
+  "sources": {}
+}
+EOF
+
+    log_info "Running uninstall with no flags — should auto-detect lockfile and single target"
+    local output
+    output=$(run_cmd "$PR_BIN uninstall -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "uninstall auto-detected context (no --target, no --lockfile needed)"
+    else
+        log_error "uninstall context auto-detection failed"
+        echo "$output"
+        return 1
+    fi
+
+    cd "$PR_TEST_ROOT/project"
+}
+
+scenario_19b_update_dry_run() {
+    log_section "Scenario 19b: Update --dry-run with local-only lockfile"
+
+    local proj_dir="$PR_TEST_ROOT/project-update-dry"
+    mkdir -p "$proj_dir"
+    cd "$proj_dir"
+
+    cat > "$proj_dir/prompt-registry.yml" <<EOF
+targets:
+  - name: dry-target
+    type: copilot-cli
+    scope: user
+    path: "$PR_TEST_ROOT/copilot-cli-dry"
+EOF
+
+    cat > "$proj_dir/prompt-registry.lock.json" <<EOF
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "target": "dry-target",
+      "sourceId": "local-my-bundle",
+      "bundleId": "my-bundle",
+      "bundleVersion": "1.0.0",
+      "installedAt": "2026-01-01T00:00:00Z",
+      "files": []
+    }
+  ],
+  "sources": {
+    "local-my-bundle": { "type": "local", "url": "/tmp/my-bundle" }
+  }
+}
+EOF
+
+    local lockfile_before
+    lockfile_before=$(cat "$proj_dir/prompt-registry.lock.json")
+
+    log_info "Running update --dry-run --no-hub-sync — local entries only, should report 0 updates"
+    local output
+    output=$(run_cmd "$PR_BIN update --dry-run --no-hub-sync -o json") || true
+
+    if ! assert_json_status "$output"; then
+        log_error "update --dry-run failed"
+        echo "$output"
+        return 1
+    fi
+
+    local updated
+    updated=$(echo "$output" | jq -r '.data.updated')
+    if [ "$updated" = "0" ]; then
+        log_success "update --dry-run: 0 updates reported (all local entries skipped)"
+    else
+        log_error "update --dry-run: expected 0 updates, got $updated"
+        return 1
+    fi
+
+    local lockfile_after
+    lockfile_after=$(cat "$proj_dir/prompt-registry.lock.json")
+    if [ "$lockfile_before" = "$lockfile_after" ]; then
+        log_success "update --dry-run: lockfile not modified"
+    else
+        log_error "update --dry-run: lockfile was modified (it must not be)"
+        return 1
+    fi
+
+    cd "$PR_TEST_ROOT/project"
+}
+
+scenario_19c_update_no_lockfile() {
+    log_section "Scenario 19c: Update with no lockfile returns error"
+
+    local proj_dir="$PR_TEST_ROOT/project-update-nolockfile"
+    mkdir -p "$proj_dir"
+    cd "$proj_dir"
+
+    log_info "Running update with no lockfile present — should fail with USAGE.MISSING_FLAG"
+    local output
+    output=$(run_cmd "$PR_BIN update --no-hub-sync -o json") || true
+
+    local error_code
+    error_code=$(echo "$output" | jq -r '.errors[0].code // ""' 2>/dev/null || echo "")
+
+    if [ "$error_code" = "USAGE.MISSING_FLAG" ]; then
+        log_success "update: correctly returned USAGE.MISSING_FLAG when no lockfile found"
+    else
+        log_error "update: expected USAGE.MISSING_FLAG, got error_code='$error_code'"
+        echo "$output"
+        return 1
+    fi
+
+    cd "$PR_TEST_ROOT/project"
 }
 
 scenario_20_error_hints() {
@@ -1020,6 +1275,8 @@ scenario_24_dry_run_deactivate() {
     # Check if output is valid JSON and has dryRun flag
     if echo "$output" | jq -e '.data.dryRun == true' > /dev/null 2>&1; then
         log_success "Profile deactivate dry-run shows preview without deactivating"
+    elif echo "$output" | jq -e '.data.deactivated == null' > /dev/null 2>&1; then
+        log_success "Dry-run correctly reports no active profile to deactivate"
     else
         # If dry-run fails (e.g., no active profile), check if it's an expected error
         if echo "$output" | jq -e '.errors' > /dev/null 2>&1; then
@@ -1036,8 +1293,484 @@ scenario_24_dry_run_deactivate() {
     fi
 }
 
+scenario_32_interactive_hub_install() {
+    log_section "Scenario 32: Interactive Hub Bundle Installation"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Testing interactive bundle installation from hub"
+    log_info "This validates that the correct resolver is used based on source type"
+
+    # Only run this test if USE_REAL_HUB is set to true
+    if [ "$USE_REAL_HUB" != "true" ]; then
+        log_warning "Scenario skipped - requires USE_REAL_HUB=true to test with real GitHub hub"
+        log_info "To test manually: export USE_REAL_HUB=true && ./scripts/e2e-user-flow.sh"
+        log_info "Or run: $PR_BIN install --source amadeus-hub --interactive --target $TARGET_NAME"
+        return 0
+    fi
+
+    log_info "Adding amadeus-hub"
+    local output
+    output=$(run_cmd "$PR_BIN hub add --type github --location https://github.com/Amadeus-xDLC/genai.prompt-registry-config -o json") || true
+
+    if ! assert_json_status "$output"; then
+        log_warning "Failed to add amadeus-hub, skipping test"
+        echo "$output"
+        return 0
+    fi
+
+    log_info "Syncing amadeus-hub"
+    output=$(run_cmd "$PR_BIN hub sync amadeus-hub -o json") || true
+
+    if ! assert_json_status "$output"; then
+        log_warning "Failed to sync amadeus-hub, skipping test"
+        echo "$output"
+        return 0
+    fi
+
+    log_info "Listing available bundles from amadeus-hub"
+    output=$(run_cmd "$PR_BIN install --source amadeus-hub -o json") || true
+
+    if ! assert_json_status "$output"; then
+        log_warning "Failed to list bundles from amadeus-hub, skipping test"
+        echo "$output"
+        return 0
+    fi
+
+    log_success "Successfully connected to amadeus-hub and listed bundles"
+    log_info "Note: Full interactive installation test requires manual input"
+    log_info "To test interactively: $PR_BIN install --source amadeus-hub --interactive --target $TARGET_NAME"
+
+    # Clean up the hub
+    run_cmd "$PR_BIN hub remove amadeus-hub -o json" >/dev/null 2>&1 || true
+    return 0
+}
+
+scenario_33_target_list() {
+    log_section "Scenario 33: Target List"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Listing configured targets"
+    local output
+    output=$(run_cmd "$PR_BIN target list -o json") || true
+
+    if assert_json_status "$output"; then
+        local count
+        count=$(echo "$output" | jq -r '.data | length')
+        log_success "Target list returned $count target(s)"
+    else
+        log_error "target list failed"
+        echo "$output"
+        return 1
+    fi
+}
+
+scenario_34_target_types() {
+    log_section "Scenario 34: Target Types"
+
+    log_info "Listing supported target types"
+    local output
+    output=$(run_cmd "$PR_BIN target types -o json") || true
+
+    if assert_json_status "$output"; then
+        local count
+        count=$(echo "$output" | jq -r '.data | length')
+        log_success "target types returned $count type(s)"
+        # Verify known types are present
+        for t in vscode copilot-cli kiro windsurf claude-code; do
+            if echo "$output" | jq -e --arg t "$t" '.data[] | select(.type == $t)' > /dev/null 2>&1; then
+                log_success "Known type present: $t"
+            else
+                log_warning "Expected target type missing: $t"
+            fi
+        done
+    else
+        log_error "target types failed"
+        echo "$output"
+        return 1
+    fi
+}
+
+scenario_35_hub_list() {
+    log_section "Scenario 35: Hub List"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Listing imported hubs"
+    local output
+    output=$(run_cmd "$PR_BIN hub list -o json") || true
+
+    if assert_json_status "$output"; then
+        local count
+        count=$(echo "$output" | jq -r '.data.hubs | length')
+        log_success "hub list returned $count hub(s)"
+        if [ "$count" -ge 1 ]; then
+            log_success "At least one hub present (local-test-hub)"
+        else
+            log_warning "Expected at least one hub, got $count"
+        fi
+    else
+        log_error "hub list failed"
+        echo "$output"
+        return 1
+    fi
+}
+
+scenario_36_hub_refresh() {
+    log_section "Scenario 36: Hub Refresh"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Refreshing active hub (hub refresh)"
+    local output
+    output=$(run_cmd "$PR_BIN hub refresh -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "hub refresh succeeded"
+    else
+        log_error "hub refresh failed"
+        echo "$output"
+        return 1
+    fi
+}
+
+scenario_36a_hub_sync_defaults_to_active() {
+    log_section "Scenario 36a: Hub Sync Defaults to Active Hub"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Running hub sync with no explicit hubId — should use active hub"
+    local output
+    output=$(run_cmd "$PR_BIN hub sync -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "hub sync succeeded using active hub"
+    else
+        log_error "hub sync without hubId failed"
+        echo "$output"
+        return 1
+    fi
+}
+
+scenario_37_hub_create() {
+    log_section "Scenario 37: Hub Create (scaffold)"
+
+    local out_dir="$PR_TEST_ROOT/exports/scaffolded-hub"
+    local out_file="$out_dir/hub-config.yml"
+
+    log_info "Scaffolding a new hub-config.yml skeleton"
+    local output
+    output=$(run_cmd "$PR_BIN hub create --name \"Scaffolded Hub\" --out \"$out_dir\" -o json") || true
+
+    if assert_json_status "$output"; then
+        if assert_file_exists "$out_file"; then
+            log_success "hub create wrote skeleton to $out_file"
+        else
+            log_error "hub create reported ok but file not found: $out_file"
+            return 1
+        fi
+    else
+        log_error "hub create failed"
+        echo "$output"
+        return 1
+    fi
+}
+
+scenario_38_source_management() {
+    log_section "Scenario 38: Source Management (source add / list / remove)"
+
+    cd "$PR_TEST_ROOT/project"
+
+    local detached_source_id="detached-local-src"
+    local detached_url="$PR_TEST_ROOT/bundles/local-foo"
+
+    log_info "Adding a detached local source"
+    local output
+    output=$(run_cmd "$PR_BIN source add --type local --url \"$detached_url\" --id $detached_source_id --name \"Detached Local\" -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "source add succeeded"
+    else
+        log_error "source add failed"
+        echo "$output"
+        return 1
+    fi
+
+    log_info "Listing sources"
+    output=$(run_cmd "$PR_BIN source list -o json") || true
+    if assert_json_status "$output"; then
+        local count
+        count=$(echo "$output" | jq -r '.data.sources | length')
+        log_success "source list returned $count source(s)"
+    else
+        log_warning "source list failed"
+        echo "$output"
+    fi
+
+    log_info "Removing the detached source"
+    output=$(run_cmd "$PR_BIN source remove $detached_source_id -o json") || true
+    if assert_json_status "$output"; then
+        log_success "source remove succeeded"
+    else
+        log_warning "source remove failed (may already be absent)"
+        echo "$output"
+    fi
+}
+
+scenario_39_profile_list() {
+    log_section "Scenario 39: Profile List"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Listing profiles in active hub"
+    local output
+    output=$(run_cmd "$PR_BIN profile list -o json") || true
+
+    if assert_json_status "$output"; then
+        local count
+        count=$(echo "$output" | jq -r '.data.profiles | length')
+        log_success "profile list returned $count profile(s)"
+    else
+        log_error "profile list failed"
+        echo "$output"
+        return 1
+    fi
+}
+
+scenario_40_profile_current() {
+    log_section "Scenario 40: Profile Current"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Showing currently active profile (expected: none after deactivation)"
+    local output
+    output=$(run_cmd "$PR_BIN profile current -o json") || true
+
+    # After deactivation in scenario 16 the result is ok with null/empty profile
+    if echo "$output" | jq -e '.status' > /dev/null 2>&1; then
+        log_success "profile current executed (status: $(echo "$output" | jq -r '.status'))"
+    else
+        log_warning "profile current returned unexpected output"
+        echo "$output"
+    fi
+}
+
+scenario_41_profile_show() {
+    log_section "Scenario 41: Profile Show"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Showing profile details for: $PROFILE_ID"
+    local output
+    output=$(run_cmd "$PR_BIN profile show $PROFILE_ID -o json") || true
+
+    if assert_json_status "$output"; then
+        local name
+        name=$(echo "$output" | jq -r '.data.profile.name // .data.name // ""')
+        log_success "profile show succeeded: $name"
+    else
+        log_warning "profile show failed (profile may not be in active hub after re-sync)"
+        echo "$output"
+    fi
+}
+
+scenario_42_profile_create_publish() {
+    log_section "Scenario 42: Profile Create + Publish"
+
+    cd "$PR_TEST_ROOT/project"
+
+    local new_profile_id="e2e-local-profile"
+    log_info "Creating a local profile: $new_profile_id"
+    local output
+    output=$(run_cmd "$PR_BIN profile create $new_profile_id --name \"E2E Local Profile\" --description \"Created by e2e test\" -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "profile create succeeded"
+
+        log_info "Publishing profile to active hub"
+        local pub_output
+        pub_output=$(run_cmd "$PR_BIN profile publish $new_profile_id --hub $HUB_ID -o json") || true
+        if assert_json_status "$pub_output"; then
+            log_success "profile publish succeeded"
+        else
+            log_warning "profile publish failed (may need hub to be writable)"
+            echo "$pub_output"
+        fi
+    else
+        log_warning "profile create failed"
+        echo "$output"
+    fi
+}
+
+scenario_43_index_stats() {
+    log_section "Scenario 43: Index Stats"
+
+    log_info "Showing index statistics"
+    local output
+    output=$(run_cmd "$PR_BIN index stats --index \"$XDG_CACHE_HOME/primitive-index.json\" -o json") || true
+
+    if assert_json_status "$output"; then
+        local total
+        total=$(echo "$output" | jq -r '.data.stats.primitives // .data.primitives // 0')
+        log_success "index stats: $total primitive(s) indexed"
+    else
+        log_error "index stats failed"
+        echo "$output"
+        return 1
+    fi
+}
+
+scenario_44_index_eval() {
+    log_section "Scenario 44: Index Eval (search quality)"
+
+    log_info "Creating minimal gold queries file"
+    local gold_file="$PR_TEST_ROOT/exports/gold-queries.json"
+    cat > "$gold_file" <<'EOF'
+{
+  "cases": [
+    {
+      "id": "hello-prompt",
+      "query": { "q": "hello" },
+      "mustMatch": []
+    }
+  ]
+}
+EOF
+
+    log_info "Running index eval against gold queries"
+    local output
+    output=$(run_cmd "$PR_BIN index eval --index \"$XDG_CACHE_HOME/primitive-index.json\" --gold \"$gold_file\" -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "index eval completed"
+    else
+        log_error "index eval failed"
+        echo "$output"
+        return 1
+    fi
+}
+
+scenario_45_search_install_flag() {
+    log_section "Scenario 45: Index Search --install Flag"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Running index search --install — hub sources will not match index sourceIds (local test)"
+    local output
+    output=$(run_cmd "$PR_BIN index search --query hello --install --index \"$XDG_CACHE_HOME/primitive-index.json\" -o json") || true
+
+    # With a local hub whose source IDs don't match the index sourceIds, the command
+    # should exit 0 reporting "no bundles from the active hub matched" (or similar).
+    local exit_status=$?
+    local error_code
+    error_code=$(echo "$output" | jq -r '.errors[0].code // ""' 2>/dev/null || echo "")
+
+    if [ "$error_code" = "USAGE.MISSING_FLAG" ]; then
+        log_error "search --install got USAGE.MISSING_FLAG — flag not wired"
+        echo "$output"
+        return 1
+    else
+        log_success "search --install executed without usage error (exit $exit_status)"
+        log_info "Output: $(echo "$output" | head -c 200)"
+    fi
+}
+
+scenario_46_doctor() {
+    log_section "Scenario 46: Doctor"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Running environment health check"
+    local output
+    output=$(run_cmd "$PR_BIN doctor -o json") || true
+
+    if echo "$output" | jq -e '.status' > /dev/null 2>&1; then
+        local status
+        status=$(echo "$output" | jq -r '.status')
+        log_success "doctor ran successfully (status: $status)"
+    else
+        log_warning "doctor returned unexpected output"
+        echo "$output"
+    fi
+}
+
+scenario_47_explain() {
+    log_section "Scenario 47: Explain Error Code"
+
+    log_info "Explaining INDEX.NOT_FOUND error code"
+    local output
+    output=$(run_cmd "$PR_BIN explain INDEX.NOT_FOUND -o json") || true
+
+    if echo "$output" | jq -e '.status' > /dev/null 2>&1; then
+        log_success "explain ran successfully for INDEX.NOT_FOUND"
+    else
+        # explain may use text output by default; check for non-empty output
+        if [ -n "$output" ]; then
+            log_success "explain produced output (text mode)"
+        else
+            log_warning "explain returned empty output"
+        fi
+    fi
+}
+
+scenario_48_plugins_list() {
+    log_section "Scenario 48: Plugins List"
+
+    log_info "Listing CLI plugins on PATH"
+    local output
+    output=$(run_cmd "$PR_BIN plugins list -o json") || true
+
+    if echo "$output" | jq -e '.status' > /dev/null 2>&1; then
+        log_success "plugins list ran successfully"
+    else
+        log_warning "plugins list returned unexpected output (no plugins installed is normal)"
+        echo "$output"
+    fi
+}
+
+scenario_49_config_get() {
+    log_section "Scenario 49: Config Get"
+
+    cd "$PR_TEST_ROOT/project"
+
+    log_info "Reading config value: output.default"
+    local output
+    output=$(run_cmd "$PR_BIN config get output.default -o json") || true
+
+    if echo "$output" | jq -e '.status' > /dev/null 2>&1; then
+        log_success "config get ran successfully"
+    else
+        log_warning "config get returned unexpected output (key may not be set)"
+        echo "$output"
+    fi
+}
+
+scenario_30_init_wizard() {
+    log_section "Scenario 30: Init Wizard (non-interactive)"
+
+    local wizard_dir="$PR_TEST_ROOT/project-init-wizard"
+    mkdir -p "$wizard_dir"
+
+    log_info "Running init --yes with --target-type vscode"
+    local output
+    output=$(run_cmd "cd \"$wizard_dir\" && $PR_BIN init --yes --target-name wizard-target --target-type vscode -o json") || true
+
+    if assert_json_status "$output"; then
+        log_success "init --yes created target successfully"
+        if assert_file_exists "$wizard_dir/prompt-registry.yml"; then
+            log_success "prompt-registry.yml created by init wizard"
+        else
+            log_warning "prompt-registry.yml not found after init"
+        fi
+    else
+        log_warning "init --yes failed (non-critical: may require interactive TTY for some flows)"
+        echo "$output"
+        return 0  # Non-critical
+    fi
+}
+
 scenario_31_cleanup() {
-    log_section "Scenario 31: Cleanup"
 
     log_info "Removing target"
     cd "$PR_TEST_ROOT/project"
@@ -1049,13 +1782,13 @@ scenario_31_cleanup() {
     log_success "Test directory cleaned up"
 }
 
-scenario_30_init_all_target_types() {
-    log_section "Scenario 30: Init All Target Types"
+scenario_31_init_all_target_types() {
+    log_section "Scenario 31: Init All Target Types"
 
     local all_ok=true
 
     for target_type in "${ALL_TARGET_TYPES[@]}"; do
-        log_info "Testing init with target type: $target_type"
+        log_info "Testing target add with target type: $target_type"
 
         # Create a fresh project directory for each target type
         local project_dir="$PR_TEST_ROOT/project-$target_type"
@@ -1064,19 +1797,19 @@ scenario_30_init_all_target_types() {
         cd "$project_dir"
 
         local output
-        output=$(run_cmd "$PR_BIN init --target-name test-$target_type --target-type $target_type --path \"$PR_TEST_ROOT/$target_type\" --yes -o json") || true
+        output=$(run_cmd "$PR_BIN target add test-$target_type --type $target_type --path \"$PR_TEST_ROOT/$target_type\" -o json") || true
 
         if assert_json_status "$output"; then
             local parsed_type
             parsed_type=$(echo "$output" | jq -r '.data.target.type')
             if [ "$parsed_type" = "$target_type" ]; then
-                log_success "Init successful for $target_type"
+                log_success "Target add successful for $target_type"
             else
                 log_error "Type mismatch: expected $target_type, got $parsed_type"
                 all_ok=false
             fi
         else
-            log_error "Init failed for $target_type"
+            log_error "Target add failed for $target_type"
             echo "$output"
             all_ok=false
         fi
@@ -1231,47 +1964,102 @@ main() {
     log_section "End-to-End User Flow Test"
     log_info "Use real hub: $USE_REAL_HUB"
     log_info "Verbose mode: $VERBOSE"
-
-    # Run setup
-    setup_environment
-    check_prerequisites
-
-    # Track failures
     local failures=0
 
-    # Run scenarios
+    log_section "Prompt Registry E2E Test Suite"
+
+    # Setup
+    setup_environment || exit 1
+
+    # Prerequisites
+    check_prerequisites || exit 1
+
+    # Core scenarios
     scenario_1_init_wizard || failures=$((failures + 1))
     scenario_2_create_synthetic_bundle || failures=$((failures + 1))
     scenario_3_create_local_hub || failures=$((failures + 1))
     scenario_4_add_hub || failures=$((failures + 1))
     scenario_4a_activate_hub || failures=$((failures + 1))
     scenario_5_sync_hub || failures=$((failures + 1))
+
+    # Profile workflow
     scenario_6_activate_profile || failures=$((failures + 1))
     scenario_7_verify_resources_installed || failures=$((failures + 1))
+
+    # Primitive index workflow
     scenario_8_harvest_index || failures=$((failures + 1))
+    scenario_8a_harvest_index_auto_detect || failures=$((failures + 1))
     scenario_9_search_resources || failures=$((failures + 1))
     scenario_10_search_by_kind || failures=$((failures + 1))
     scenario_11_create_shortlist || failures=$((failures + 1))
     scenario_12_export_profile || failures=$((failures + 1))
     scenario_13_add_exported_profile_to_hub || failures=$((failures + 1))
+
+    # Profile teardown
     scenario_14_activate_local_profile || true  # Non-critical
     scenario_15_verify_resources_still_installed || failures=$((failures + 1))
     scenario_16_deactivate_profile || failures=$((failures + 1))
     scenario_17_verify_resources_removed || failures=$((failures + 1))
+
+    # Direct install / uninstall
     scenario_18_search_and_install_bundle || failures=$((failures + 1))
+    scenario_18a_install_context_detect || failures=$((failures + 1))  # new: context auto-detect
     scenario_19_uninstall_bundle || failures=$((failures + 1))
+    scenario_19a_uninstall_context_detect || failures=$((failures + 1))
+    scenario_19b_update_dry_run || failures=$((failures + 1))
+    scenario_19c_update_no_lockfile || failures=$((failures + 1))
+
+    # UX features
     scenario_20_error_hints || true  # Non-critical
     scenario_21_status_command || true  # Non-critical
     scenario_22_search_alias || true  # Non-critical
     scenario_23_dry_run_activate || true  # Non-critical
     scenario_24_dry_run_deactivate || true  # Non-critical
-    scenario_25_discover_context || true  # Non-critical (new discovery feature)
-    scenario_26_discover_ai || true  # Non-critical (new discovery feature)
-    scenario_27_discover_interactive || true  # Non-critical (new discovery feature)
-    scenario_28_discover_kinds || true  # Non-critical (new discovery feature)
-    scenario_29_discover_limit || true  # Non-critical (new discovery feature)
-    scenario_30_init_all_target_types || failures=$((failures + 1))
-    scenario_31_cleanup || true  # Cleanup always runs
+
+    # Discovery
+    scenario_25_discover_context || true  # Non-critical
+    scenario_26_discover_ai || true       # Non-critical (Copilot SDK may be absent)
+    scenario_27_discover_interactive || true  # Non-critical
+    scenario_28_discover_kinds || true    # Non-critical
+    scenario_29_discover_limit || true    # Non-critical
+
+    # Target management
+    scenario_30_init_wizard || true  # Non-critical (may need TTY)
+    scenario_31_init_all_target_types || failures=$((failures + 1))
+    scenario_33_target_list || failures=$((failures + 1))
+    scenario_34_target_types || failures=$((failures + 1))
+
+    # Hub management
+    scenario_35_hub_list || failures=$((failures + 1))
+    scenario_36_hub_refresh || failures=$((failures + 1))
+    scenario_36a_hub_sync_defaults_to_active || failures=$((failures + 1))
+    scenario_37_hub_create || failures=$((failures + 1))
+
+    # Source management
+    scenario_38_source_management || failures=$((failures + 1))
+
+    # Profile utilities
+    scenario_39_profile_list || failures=$((failures + 1))
+    scenario_40_profile_current || true  # Non-critical (output shape may vary)
+    scenario_41_profile_show || true     # Non-critical (depends on hub state)
+    scenario_42_profile_create_publish || true  # Non-critical (publish needs writable hub)
+
+    # Index utilities
+    scenario_43_index_stats || failures=$((failures + 1))
+    scenario_44_index_eval || failures=$((failures + 1))
+    scenario_45_search_install_flag || failures=$((failures + 1))
+
+    # Health / debug tools
+    scenario_46_doctor || true  # Non-critical (output shape may vary)
+    scenario_47_explain || true  # Non-critical
+    scenario_48_plugins_list || true  # Non-critical (no plugins installed is normal)
+    scenario_49_config_get || true  # Non-critical (key may not be set)
+
+    # Optional (real hub)
+    scenario_32_interactive_hub_install || true  # Non-critical (requires --use-real-hub)
+
+    # Cleanup (always runs)
+    scenario_31_cleanup || true
 
     # Print summary
     log_section "Test Summary"

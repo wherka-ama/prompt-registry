@@ -10,7 +10,7 @@
 import * as nodeFs from 'node:fs';
 import * as nodePath from 'node:path';
 import {
-  envTokenProvider,
+  defaultTokenProvider,
 } from '../infra/github/token';
 import {
   NodeHttpClient,
@@ -127,11 +127,14 @@ import {
   TargetRemoveCommand,
 } from './commands/target-remove';
 import {
-  createTargetTypesCommand,
+  TargetTypesCommand,
 } from './commands/target-types';
 import {
   UninstallCommand,
 } from './commands/uninstall';
+import {
+  UpdateCommand,
+} from './commands/update';
 import {
   VersionComputeCommand,
 } from './commands/version-compute';
@@ -161,11 +164,10 @@ export const main = async (argv: string[]): Promise<number> => {
 
   // Create HTTP client and token provider for hub/profile commands
   const httpClient = new NodeHttpClient();
-  const tokenProvider = envTokenProvider(ctx.env);
+  const tokenProvider = defaultTokenProvider(ctx.env);
 
   const commands: CommandDefinition[] = [
-    createApplyCommand({ output: parsed.output }),
-    createTargetTypesCommand({ output: parsed.output })
+    createApplyCommand({ output: parsed.output })
   ];
 
   const commandClasses = [
@@ -177,6 +179,7 @@ export const main = async (argv: string[]): Promise<number> => {
     TargetAddCommand,
     TargetListCommand,
     TargetRemoveCommand,
+    TargetTypesCommand,
     BundleBuildCommand,
     BundleManifestCommand,
     CollectionAffectedCommand,
@@ -215,6 +218,7 @@ export const main = async (argv: string[]): Promise<number> => {
     ProfilePublishCommand,
     InstallCommand,
     UninstallCommand,
+    UpdateCommand,
     InitCommand,
     StatusCommand,
     HubCreateCommand,
