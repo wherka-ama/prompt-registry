@@ -611,13 +611,30 @@ export class HubHarvester {
         for await (const r of provider.listBundles()) {
           refs.push(r);
         }
-        const ref = refs[0];
-        const prims = await harvestBundle(provider, ref);
-        primsTotal = prims.length;
-        out.push(...prims);
+        const sha = commitSha;
+        const harvestOne = async (ref: Parameters<typeof harvestBundle>[1]): Promise<number> => {
+          const perStart = Date.now();
+          await log.recordStart({
+            sourceId: spec.id, bundleId: ref.bundleId, commitSha: sha
+          });
+          const prims = await harvestBundle(provider, ref);
+          const ms = Date.now() - perStart;
+          out.push(...prims);
+          await log.recordDone({
+            sourceId: spec.id, bundleId: ref.bundleId, commitSha: sha,
+            primitives: prims.length, ms
+          });
+          return prims.length;
+        };
+        const bundleConcurrency = Math.max(1, Math.floor((this.opts.concurrency ?? 1) / Math.max(1, refs.length)));
+        for (let i = 0; i < refs.length; i += bundleConcurrency) {
+          const batch = refs.slice(i, i + bundleConcurrency);
+          const counts = await Promise.all(batch.map((r) => harvestOne(r)));
+          primsTotal += counts.reduce((a, b) => a + b, 0);
+        }
         await log.recordDone({
           sourceId: spec.id, bundleId, commitSha,
-          primitives: prims.length, ms: Date.now() - startedRepo
+          primitives: 0, ms: Date.now() - startedRepo
         });
       }
       this.opts.onEvent?.({
