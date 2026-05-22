@@ -20,6 +20,7 @@ import {
 } from 'vitest';
 import {
   CompositeHubResolver,
+  GitHubHubResolver,
   LocalHubResolver,
 } from '../src/infra/resolvers/hub-resolver';
 import {
@@ -99,6 +100,35 @@ describe('LocalHubResolver', () => {
     await expect(
       resolver.resolve({ type: 'local', location: cfgPath })
     ).rejects.toThrow('malformed');
+  });
+});
+
+describe('GitHubHubResolver', () => {
+  const ref = { type: 'github' as const, location: 'owner/private-repo' };
+
+  it('throws with no-token auth hint when 404 and no token available', async () => {
+    const http = { fetch: vi.fn().mockResolvedValue({ statusCode: 404, body: new Uint8Array() }) };
+    const tokens = { getToken: vi.fn().mockResolvedValue(null) };
+    const resolver = new GitHubHubResolver(http, tokens);
+    await expect(resolver.resolve(ref)).rejects.toThrow(
+      /hub-config\.yml not found at owner\/private-repo \(no token/
+    );
+  });
+
+  it('throws with token-present auth hint when 404 and token is present', async () => {
+    const http = { fetch: vi.fn().mockResolvedValue({ statusCode: 404, body: new Uint8Array() }) };
+    const tokens = { getToken: vi.fn().mockResolvedValue('gho_faketoken') };
+    const resolver = new GitHubHubResolver(http, tokens);
+    await expect(resolver.resolve(ref)).rejects.toThrow(
+      /hub-config\.yml not found at owner\/private-repo \(your token may not have read access/
+    );
+  });
+
+  it('throws for 401 with authentication failed message', async () => {
+    const http = { fetch: vi.fn().mockResolvedValue({ statusCode: 401, body: new Uint8Array() }) };
+    const tokens = { getToken: vi.fn().mockResolvedValue('bad-token') };
+    const resolver = new GitHubHubResolver(http, tokens);
+    await expect(resolver.resolve(ref)).rejects.toThrow(/Authentication failed/);
   });
 });
 

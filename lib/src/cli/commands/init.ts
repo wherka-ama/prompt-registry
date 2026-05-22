@@ -155,6 +155,7 @@ export class InitCommand extends Command {
 
   public targetName = Option.String('--target-name');
   public targetType = Option.String('--target-type');
+  public scope = Option.String('--scope');
   public hub = Option.String('--hub');
   public hubType = Option.String('--hub-type');
   public yes = Option.Boolean('-y,--yes', false);
@@ -168,6 +169,7 @@ export class InitCommand extends Command {
       output: (this.output ?? 'text') as OutputFormat,
       targetName: this.targetName,
       targetType: this.targetType,
+      scope: this.scope as 'user' | 'repository' | undefined,
       hub: this.hub,
       hubType: this.hubType as 'github' | 'local' | 'url' | undefined,
       yes: this.yes,
@@ -550,10 +552,22 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
       return failWith(ctx, fmt, cause);
     }
     const causeMsg = cause instanceof Error ? cause.message : String(cause);
-    const isAuthError = causeMsg.toLowerCase().includes('401')
-      || causeMsg.toLowerCase().includes('403')
+
+    const isHubAccessError = causeMsg.includes('hub-config.yml not found at');
+    if (isHubAccessError) {
+      return failWith(ctx, fmt, new RegistryError({
+        code: 'HUB.ACCESS_DENIED',
+        message: `Cannot access hub: ${causeMsg}`,
+        hint: 'Run `gh auth status` to check which account is active. Use `gh auth switch` to select an account with access, or choose a different hub.',
+        cause: cause instanceof Error ? cause : undefined
+      }));
+    }
+
+    const isAuthError = causeMsg.includes('401')
+      || causeMsg.includes('403')
       || causeMsg.toLowerCase().includes('unauthorized')
-      || causeMsg.toLowerCase().includes('forbidden');
+      || causeMsg.toLowerCase().includes('forbidden')
+      || causeMsg.toLowerCase().includes('authentication failed');
 
     if (isAuthError) {
       return failWith(ctx, fmt, new RegistryError({

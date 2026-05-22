@@ -477,7 +477,7 @@ This is a test prompt.
       fs.mkdirSync(path.join(targetDir, 'prompts'), { recursive: true });
       fs.mkdirSync(path.join(targetDir, 'skills'), { recursive: true });
 
-      const r = runCli(['init', '--target-name', 'test-target', '--target-type', 'copilot-cli', '--yes', '-o', 'json'], tmp);
+      const r = runCli(['init', '--target-name', 'test-target', '--target-type', 'copilot-cli', '--scope', 'repository', '--yes', '-o', 'json'], tmp);
       expect(r.code).toBe(0);
       const parsed = JSON.parse(r.stdout) as { status: string };
       expect(parsed.status).toBe('ok');

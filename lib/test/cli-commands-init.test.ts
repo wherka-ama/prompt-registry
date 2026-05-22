@@ -318,6 +318,44 @@ describe('cli `init`', () => {
     expect(userLockfile).toBe(true);
   });
 
+  it('returns HUB.ACCESS_DENIED with auth hint when hub returns 404 (private repo / wrong token)', async () => {
+    const mockHttp = {
+      fetch: (_req: { url: string; headers?: Record<string, string> }) => Promise.resolve({
+        statusCode: 404,
+        body: new Uint8Array(),
+        headers: {},
+        finalUrl: 'https://api.github.com/repos/owner/private-hub/contents/hub-config.yml'
+      })
+    };
+    const mockTokens = {
+      getToken: (_host: string) => Promise.resolve('gho_wrong_account_token')
+    };
+    const { exitCode, stdout } = await runCommand(
+      ['init'],
+      {
+        commands: [createInitCommand({
+          output: 'json',
+          yes: true,
+          scope: 'repository',
+          hub: 'owner/private-hub',
+          hubType: 'github',
+          http: mockHttp,
+          tokens: mockTokens
+        })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const parsed = JSON.parse(stdout) as { status: string; errors: { code: string; hint: string }[] };
+    expect(parsed.status).toBe('error');
+    expect(parsed.errors[0].code).toBe('HUB.ACCESS_DENIED');
+    expect(parsed.errors[0].hint).toContain('gh auth status');
+  });
+
   it('repository scope: writes target and lockfile to cwd', async () => {
     const { exitCode } = await runCommand(
       ['init'],
