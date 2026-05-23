@@ -16,7 +16,7 @@
 
 import type {
   HubSourceSpec,
-} from '../../domain';
+} from '../../domain/hub/types';
 import {
   normalizeRepoFromUrl,
 } from './hub-config-parser';
