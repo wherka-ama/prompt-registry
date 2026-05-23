@@ -129,19 +129,58 @@ export interface LockfileFs {
  * @returns Parsed Lockfile.
  * @throws {Error} On schemaVersion mismatch or invalid JSON.
  */
+/**
+ * Migrate VS Code extension lockfile format to CLI format.
+ * VS Code format uses `bundles` (object), CLI format uses `entries` (array).
+ */
+function migrateLockfile(parsed: unknown): Lockfile {
+  const raw = parsed as Record<string, unknown>;
+  // If the lockfile uses the VS Code extension format with `bundles`, migrate it
+  if ('bundles' in raw && typeof raw.bundles === 'object' && raw.bundles !== null && !('entries' in raw)) {
+    const bundles = raw.bundles as Record<string, unknown>;
+    const entries: LockfileEntry[] = [];
+    for (const [bundleId, bundleData] of Object.entries(bundles)) {
+      if (typeof bundleData !== 'object' || bundleData === null) {
+        continue;
+      }
+      const data = bundleData as Record<string, unknown>;
+      entries.push({
+        bundleId,
+        sourceId: (data.sourceId as string) ?? '',
+        bundleVersion: (data.version as string) ?? '',
+        target: (data.target as string) ?? 'copilot',
+        installedAt: (data.installedAt as string) ?? new Date().toISOString(),
+        sha256: (data.checksum as string | undefined),
+        files: Array.isArray(data.files) ? data.files as string[] : []
+      });
+    }
+    return {
+      schemaVersion: 1,
+      entries,
+      sources: (raw.sources as Record<string, LockfileSource> | undefined),
+      hubs: (raw.hubs as Record<string, LockfileHub> | undefined),
+      profiles: (raw.profiles as Record<string, LockfileProfile> | undefined),
+      useProfile: (raw.useProfile as LockfileUseProfile | undefined)
+    };
+  }
+  // Already in CLI format
+  return parsed as Lockfile;
+}
+
 export const readLockfile = async (file: string, fs: LockfileFs): Promise<Lockfile> => {
   if (!(await fs.exists(file))) {
     return { ...EMPTY };
   }
   const raw = await fs.readFile(file);
-  const parsed = JSON.parse(raw) as Lockfile;
-  if (parsed.schemaVersion !== 1) {
-    throw new Error(`unsupported lockfile schemaVersion ${String(parsed.schemaVersion)}`);
+  const parsed = JSON.parse(raw);
+  const migrated = migrateLockfile(parsed);
+  if (migrated.schemaVersion !== 1) {
+    throw new Error(`unsupported lockfile schemaVersion ${String(migrated.schemaVersion)}`);
   }
-  if (!Array.isArray(parsed.entries)) {
+  if (!Array.isArray(migrated.entries)) {
     throw new TypeError('lockfile entries must be an array');
   }
-  return parsed;
+  return migrated;
 };
 
 /**
