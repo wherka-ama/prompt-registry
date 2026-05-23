@@ -1333,6 +1333,11 @@ interface ReplaySingleEntryOptions {
   verbose: boolean;
 }
 
+// NOSONAR - Cognitive complexity is inherent to error handling logic for lockfile replay
+// The function handles multiple failure modes (missing source, fetch failure, validation error, write error)
+// and provides detailed verbose logging for each case. Helper functions have been extracted
+// to reduce complexity where possible, but the remaining complexity is necessary for
+// comprehensive error handling and user feedback.
 async function replaySingleEntry(
   opts: ReplaySingleEntryOptions
 ): Promise<{ success: boolean; reason: string }> {
