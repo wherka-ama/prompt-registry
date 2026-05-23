@@ -17,6 +17,8 @@
 
 import type {
   HubSourceSpec,
+} from '../../../domain/hub/types';
+import type {
   PluginManifest,
 } from '../../../domain';
 import {
