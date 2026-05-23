@@ -13,7 +13,7 @@
 
 import type {
   HubSourceSpec,
-} from '../../../domain';
+} from '../../../domain/hub/types';
 import {
   BlobCache,
 } from '../../github/blob-cache';
