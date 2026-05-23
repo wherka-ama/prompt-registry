@@ -1342,12 +1342,11 @@ async function replaySingleEntry(
     return handleMissingSource(entry, verbose, ctx);
   }
 
-  const files = await fetchFilesForSource(src, entry, http, tokens, ctx, verbose);
-  if (files === null) {
-    return handleFetchFailure(entry, src, verbose, ctx);
-  }
-
   try {
+    const files = await fetchFilesForSource(src, entry, http, tokens, ctx, verbose);
+    if (files === null) {
+      return handleFetchFailure(entry, src, verbose, ctx);
+    }
     await validateAndWrite(files, entry, writer, target, ctx, verbose);
     return { success: true, reason: '' };
   } catch (cause) {
