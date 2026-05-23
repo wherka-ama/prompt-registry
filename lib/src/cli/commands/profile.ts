@@ -830,8 +830,8 @@ async function removeEmptyParentDirs(ctx: Context, parentDirs: string[]): Promis
  */
 async function cleanupKindRouteDirectories(ctx: Context, target: any, layout: { baseDir: string; kindRoutes: Record<string, string> }): Promise<void> {
   const baseDir: string = layout.baseDir
-    .replaceAll(/\$\{workspaceRoot\}/g, ctx.cwd())
-    .replaceAll(/\$\{HOME\}/g, ctx.env.HOME ?? '')
+    .replaceAll('${workspaceRoot}', ctx.cwd())
+    .replaceAll('${HOME}', ctx.env.HOME ?? '')
     .replace(/^~/, ctx.env.HOME ?? '');
 
   for (const outPrefix of Object.values(layout.kindRoutes)) {
