@@ -198,7 +198,7 @@ export class UpdateCommand extends BaseUpdateCommand {
       return renderDryRun(ctx, fmt, lockPath, scopedEntries.length, skipped.length, candidates);
     }
 
-    const toInstall = await selectUpdatesInteractively(this.interactive, candidates, ctx);
+    const toInstall = await selectUpdatesInteractively(this.interactive, candidates);
     if (toInstall.length === 0) {
       return renderNoUpdates(ctx, fmt, scopedEntries.length, skipped.length);
     }
@@ -293,7 +293,7 @@ function renderDryRun(
   return 0;
 }
 
-async function selectUpdatesInteractively(interactive: boolean, candidates: UpdateCandidate[], ctx: Context): Promise<UpdateCandidate[]> {
+async function selectUpdatesInteractively(interactive: boolean, candidates: UpdateCandidate[]): Promise<UpdateCandidate[]> {
   if (!interactive || candidates.length === 0) {
     return candidates;
   }
