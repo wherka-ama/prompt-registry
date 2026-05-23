@@ -95,12 +95,8 @@ export class AwesomeCopilotPluginBundleProvider implements BundleProvider {
     }
     const rawUrl = `https://raw.githubusercontent.com/${this.opts.spec.owner}/${this.opts.spec.repo}/${this.opts.spec.branch}/${relPath}`;
     const bytes = await this.opts.cache.getOrFetch(entry.blobSha, async () => {
-      const req = new Request(rawUrl);
-      const res = await this.opts.client.fetchImpl(req);
-      if (!res.ok) {
-        throw new Error(`Failed to fetch ${rawUrl}: ${res.statusText}`);
-      }
-      return Buffer.from(await res.arrayBuffer());
+      const text = await this.opts.client.getText(rawUrl);
+      return Buffer.from(text);
     });
     return bytes.toString('utf8');
   }

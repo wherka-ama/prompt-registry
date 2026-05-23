@@ -95,6 +95,43 @@ function makeSpec(): HubSourceSpec {
 }
 
 describe('GitHubSingleBundleProvider', () => {
+  it('readFile sends Authorization header so private repos are accessible', async () => {
+    const skillContent = '---\ntitle: My Skill\n---\n\n# My Skill\nBody text.\n';
+    const skillBytes = Buffer.from(skillContent, 'utf8');
+    const skillSha = computeGitBlobSha(skillBytes);
+
+    const authRequiredFetch: FetchLike = async (req) => {
+      const url = new URL(req.url);
+      if (/\/commits\/[^/]+$/.test(url.pathname)) {
+        return jsonResp({ sha: 'deadbeef' });
+      }
+      if (url.pathname.includes('/git/trees/') && url.searchParams.get('recursive') === '1') {
+        return jsonResp({
+          sha: 'deadbeef', truncated: false,
+          tree: [{ path: 'skills/my-skill/SKILL.md', type: 'blob', sha: skillSha, size: skillBytes.length }]
+        });
+      }
+      if (url.hostname === 'raw.githubusercontent.com') {
+        const auth = req.headers.get('authorization');
+        if (!auth || !auth.startsWith('Bearer ')) {
+          return new Response('Not Found', { status: 404, statusText: 'Not Found' });
+        }
+        return new Response(skillContent, { status: 200, headers: { 'content-type': 'text/plain' } });
+      }
+      return jsonResp({ message: `unexpected: ${url.pathname}` }, 500);
+    };
+
+    const client = new GitHubClient({ tokens: staticTokenProvider('secret-token'), fetch: authRequiredFetch });
+    const cache = new BlobCache(tmp);
+    const provider = new GitHubSingleBundleProvider({ spec: makeSpec(), client, cache });
+
+    const refs: Awaited<ReturnType<typeof provider.listBundles> extends AsyncIterable<infer T> ? T : never>[] = [];
+    for await (const r of provider.listBundles()) refs.push(r);
+
+    const content = await provider.readFile(refs[0], 'skills/my-skill/SKILL.md');
+    expect(content).toContain('title: My Skill');
+  });
+
   it('lists one bundle with commit sha from the branch ref', async () => {
     const fetch = fakeGithubFetch({ commitSha: 'abc123', tree: [], blobs: new Map() });
     const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
