@@ -1339,24 +1339,13 @@ async function replaySingleEntry(
   const { entry, sources, http, tokens, writer, target, ctx, verbose } = opts;
   const src = sources[entry.sourceId];
   if (src === undefined) {
-    const reason = `source ${entry.sourceId} missing from lockfile.sources`;
-    if (verbose) {
-      ctx.stdout.write(`[verbose] Skipping ${entry.bundleId}: ${reason}\n`);
-    }
-    return { success: false, reason };
+    return handleMissingSource(entry, verbose, ctx);
   }
 
   try {
-    if (verbose) {
-      ctx.stdout.write(`[verbose] Fetching ${entry.bundleId} (version ${entry.bundleVersion}) from ${src.type} source ${entry.sourceId}\n`);
-    }
     const files = await fetchFilesForSource(src, entry, http, tokens, ctx, verbose);
     if (files === null) {
-      const reason = `failed to fetch files from ${src.type} source`;
-      if (verbose) {
-        ctx.stdout.write(`[verbose] Skipping ${entry.bundleId}: ${reason}\n`);
-      }
-      return { success: false, reason };
+      return handleFetchFailure(entry, src, verbose, ctx);
     }
     validateManifest(files, {
       expectedId: entry.bundleId,
@@ -1368,12 +1357,46 @@ async function replaySingleEntry(
     }
     return { success: true, reason: '' };
   } catch (cause) {
-    const reason = (cause as Error).message;
-    if (verbose) {
-      ctx.stdout.write(`[verbose] Failed to install ${entry.bundleId}: ${reason}\n`);
-    }
-    return { success: false, reason };
+    return handleInstallError(entry, cause, verbose, ctx);
   }
+}
+
+function handleMissingSource(
+  entry: LockfileEntry,
+  verbose: boolean,
+  ctx: Context
+): { success: boolean; reason: string } {
+  const reason = `source ${entry.sourceId} missing from lockfile.sources`;
+  if (verbose) {
+    ctx.stdout.write(`[verbose] Skipping ${entry.bundleId}: ${reason}\n`);
+  }
+  return { success: false, reason };
+}
+
+function handleFetchFailure(
+  entry: LockfileEntry,
+  src: LockfileSource,
+  verbose: boolean,
+  ctx: Context
+): { success: boolean; reason: string } {
+  const reason = `failed to fetch files from ${src.type} source`;
+  if (verbose) {
+    ctx.stdout.write(`[verbose] Skipping ${entry.bundleId}: ${reason}\n`);
+  }
+  return { success: false, reason };
+}
+
+function handleInstallError(
+  entry: LockfileEntry,
+  cause: unknown,
+  verbose: boolean,
+  ctx: Context
+): { success: boolean; reason: string } {
+  const reason = (cause as Error).message;
+  if (verbose) {
+    ctx.stdout.write(`[verbose] Failed to install ${entry.bundleId}: ${reason}\n`);
+  }
+  return { success: false, reason };
 }
 
 async function fetchFilesForSource(
