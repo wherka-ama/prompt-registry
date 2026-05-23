@@ -172,6 +172,10 @@ export interface InstallOptions {
    * If provided, SourceDispatcher will select the appropriate resolver.
    */
   sourceConfig?: RegistrySource;
+  /**
+   * Verbose mode: show detailed progress and error messages.
+   */
+  verbose?: boolean;
 }
 
 /**
@@ -217,6 +221,7 @@ export class InstallCommand extends BaseInstallCommand {
         --dry-run               Validate and plan without writing
         --scope <scope>         Installation scope (user or repository)
         --commit-mode <mode>    Commit mode for repository scope
+        --verbose               Show detailed progress and error messages
     `
   });
 
@@ -229,6 +234,7 @@ export class InstallCommand extends BaseInstallCommand {
   public dryRun = Option.Boolean('--dry-run');
   public scope = Option.String('--scope');
   public commitMode = Option.String('--commit-mode');
+  public verbose = Option.Boolean('--verbose', false);
   public bundle = Option.String({ required: false }); // Optional positional argument
 
   public async execute(): Promise<number> {
@@ -249,7 +255,8 @@ export class InstallCommand extends BaseInstallCommand {
       http,
       tokens,
       scope: this.scope as 'user' | 'repository' | undefined,
-      commitMode: this.commitMode as RepositoryCommitMode | undefined
+      commitMode: this.commitMode as RepositoryCommitMode | undefined,
+      verbose: this.verbose
     };
 
     await detectInstallContext(opts, ctx);
@@ -898,7 +905,8 @@ async function performLockfileInstall(
     tokens,
     writer,
     target,
-    ctx
+    ctx,
+    opts.verbose ?? false
   );
 
   if (replayed.length > 0) {
@@ -1274,23 +1282,43 @@ async function replayLockfileEntries(
   tokens: TokenProvider,
   writer: TargetWriter,
   target: Target,
-  ctx: Context
+  ctx: Context,
+  verbose: boolean
 ): Promise<{ replayed: string[]; failures: { bundleId: string; reason: string }[] }> {
   const replayed: string[] = [];
   const failures: { bundleId: string; reason: string }[] = [];
 
+  if (verbose) {
+    ctx.stdout.write(`[verbose] Planning to replay ${matching.length} bundles\n`);
+  }
+
   for (const e of matching) {
     const src = sources[e.sourceId];
     if (src === undefined) {
+      const reason = `source ${e.sourceId} missing from lockfile.sources`;
+      if (verbose) {
+        ctx.stdout.write(`[verbose] Skipping ${e.bundleId}: ${reason}\n`);
+      }
       failures.push({
         bundleId: e.bundleId,
-        reason: `source ${e.sourceId} missing from lockfile.sources`
+        reason
       });
       continue;
     }
     try {
-      const files = await fetchFilesForSource(src, e, http, tokens, ctx);
+      if (verbose) {
+        ctx.stdout.write(`[verbose] Fetching ${e.bundleId} (version ${e.bundleVersion}) from ${src.type} source ${e.sourceId}\n`);
+      }
+      const files = await fetchFilesForSource(src, e, http, tokens, ctx, verbose);
       if (files === null) {
+        const reason = `failed to fetch files from ${src.type} source`;
+        if (verbose) {
+          ctx.stdout.write(`[verbose] Skipping ${e.bundleId}: ${reason}\n`);
+        }
+        failures.push({
+          bundleId: e.bundleId,
+          reason
+        });
         continue;
       }
       validateManifest(files, {
@@ -1298,11 +1326,18 @@ async function replayLockfileEntries(
         expectedVersion: e.bundleVersion
       });
       await writer.write(target, files);
+      if (verbose) {
+        ctx.stdout.write(`[verbose] Successfully installed ${e.bundleId}\n`);
+      }
       replayed.push(e.bundleId);
     } catch (cause) {
+      const reason = (cause as Error).message;
+      if (verbose) {
+        ctx.stdout.write(`[verbose] Failed to install ${e.bundleId}: ${reason}\n`);
+      }
       failures.push({
         bundleId: e.bundleId,
-        reason: (cause as Error).message
+        reason
       });
     }
   }
@@ -1315,14 +1350,21 @@ async function fetchFilesForSource(
   entry: LockfileEntry,
   http: HttpClient,
   tokens: TokenProvider,
-  ctx: Context
+  ctx: Context,
+  verbose: boolean
 ): Promise<Map<string, Buffer> | null> {
   if (src.type === 'local') {
+    if (verbose) {
+      ctx.stdout.write(`[verbose] Reading local bundle from ${src.url}\n`);
+    }
     const files = await readLocalBundle(src.url, ctx.fs);
     return files as unknown as Map<string, Buffer>;
   }
   if (src.type === 'github') {
     const repoSlug = src.url.replace(/^https?:\/\/github\.com\//, '');
+    if (verbose) {
+      ctx.stdout.write(`[verbose] Resolving ${entry.bundleId}@${entry.bundleVersion} from ${repoSlug}\n`);
+    }
     const resolver = new GitHubBundleResolver({ repoSlug, http, tokens });
     const downloader = new HttpsBundleDownloader(http, tokens);
     const installable = await resolver.resolve({
@@ -1330,14 +1372,29 @@ async function fetchFilesForSource(
       bundleVersion: entry.bundleVersion
     });
     if (installable === null) {
+      if (verbose) {
+        ctx.stdout.write(`[verbose] Resolver returned null for ${entry.bundleId}@${entry.bundleVersion}\n`);
+      }
       return null;
+    }
+    if (verbose) {
+      ctx.stdout.write(`[verbose] Downloading from ${installable.downloadUrl}\n`);
     }
     const dl = await downloader.download(installable);
     if (entry.sha256 !== undefined && dl.sha256 !== entry.sha256) {
+      if (verbose) {
+        ctx.stdout.write(`[verbose] SHA256 mismatch: expected ${entry.sha256}, got ${dl.sha256}\n`);
+      }
       return null;
+    }
+    if (verbose) {
+      ctx.stdout.write(`[verbose] Extracting bundle\n`);
     }
     const files = await new YauzlBundleExtractor().extract(dl.bytes);
     return files as unknown as Map<string, Buffer>;
+  }
+  if (verbose) {
+    ctx.stdout.write(`[verbose] Unsupported source type: ${src.type}\n`);
   }
   return null;
 }
