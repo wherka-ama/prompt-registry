@@ -13,7 +13,7 @@
 import * as yaml from 'js-yaml';
 import type {
   HubSourceSpec,
-} from '../../domain';
+} from '../../domain/hub/types';
 
 // HubSourceSpec was promoted into `lib/src/domain/hub/`.
 // The back-compat re-export from this module was removed after
