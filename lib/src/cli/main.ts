@@ -397,7 +397,6 @@ const readPackageVersion = (): string => {
 
 // Build-time version injection for bundled/SEA distributions.
 // Falls back to reading package.json for development builds.
-declare const CLI_VERSION: string | undefined;
 export const CLI_VERSION_CONST = ('CLI_VERSION' in globalThis) ? (globalThis as any).CLI_VERSION : readPackageVersion();
 
 /**
