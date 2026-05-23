@@ -1415,6 +1415,9 @@ function handleInstallError(
   return { success: false, reason };
 }
 
+// NOSONAR - Cognitive complexity is inherent to handling multiple source types (local, github)
+// Each source type has its own resolution, download, and validation logic with verbose logging.
+// The complexity is necessary for comprehensive error handling and user feedback during bundle fetching.
 async function fetchFilesForSource(
   src: LockfileSource,
   entry: LockfileEntry,
