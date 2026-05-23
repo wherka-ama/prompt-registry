@@ -534,20 +534,7 @@ async function interactiveBundleSelection(
   const hubId = opts.source as string;
 
   try {
-    const userPaths = resolveUserConfigPaths(ctx.env);
-    const httpClient = new NodeHttpClient();
-    const tokenProvider = defaultTokenProvider(ctx.env);
-    const resolver = new CompositeHubResolver(
-      new GitHubHubResolver(httpClient, tokenProvider),
-      new LocalHubResolver(ctx.fs),
-      new UrlHubResolver(httpClient, tokenProvider)
-    );
-    const mgr = new HubManager(
-      new HubStore(userPaths.hubs, ctx.fs),
-      new ActiveHubStore(userPaths.activeHub, ctx.fs),
-      resolver
-    );
-
+    const mgr = await setupHubManager(ctx);
     await mgr.syncHub(hubId);
     const active = await mgr.getActiveHub();
     if (active?.id !== hubId) {
@@ -558,79 +545,22 @@ async function interactiveBundleSelection(
       }));
     }
 
-    // Create a map from source ID to RegistrySource
-    const sourceMap = new Map<string, RegistrySource>();
-    for (const source of active.config.sources) {
-      sourceMap.set(source.id, source);
-      sourceMap.set(source.name, source);
-    }
+    const sourceMap = buildSourceMap(active.config.sources);
+    const bundles = deduplicateBundles(active.config.profiles);
+    const bundleChoices = buildBundleChoices(bundles);
+    const selectedBundles = await promptBundleSelection(bundleChoices, bundles, ctx);
 
-    const allBundles = active.config.profiles.flatMap((p: { bundles: { id: string; version: string; source: string }[] }) => p.bundles);
-    const seenBundleKeys = new Set<string>();
-    const bundles = allBundles.filter((b: { id: string; source: string }) => {
-      const key = `${b.id}::${b.source}`;
-      if (seenBundleKeys.has(key)) {
-        return false;
-      }
-      seenBundleKeys.add(key);
-      return true;
-    });
-    const bundleChoices = bundles.map((b: { id: string; version: string; source: string }) => ({
-      name: `${b.id}@${b.version} (source: ${b.source})`,
-      value: b.id,
-      short: b.id
-    }));
-
-    const answers = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedBundles',
-        message: 'Select bundles to install:',
-        choices: bundleChoices,
-        validate: (input: string[]) => input.length > 0 || 'Please select at least one bundle'
-      }
-    ]);
-
-    const selectedBundleIds = answers.selectedBundles as string[];
-    const selectedBundles = bundles.filter((b: { id: string }) => selectedBundleIds.includes(b.id));
-
-    ctx.stdout.write(`\nPreview: Installing ${selectedBundles.length} bundle${selectedBundles.length === 1 ? '' : 's'} to target "${target.name}"\n`);
-    for (const b of selectedBundles) {
-      ctx.stdout.write(`  - ${b.id}@${b.version} (source: ${b.source})\n`);
-    }
-
-    const confirm = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'proceed',
-        message: 'Proceed with installation?',
-        default: true
-      }
-    ]);
-
-    if (!confirm.proceed) {
-      ctx.stdout.write('Installation cancelled.\n');
+    if (selectedBundles.length === 0) {
       return 0;
     }
 
-    let installedCount = 0;
-    for (const bundle of selectedBundles) {
-      // Resolve the source from the hub's sources
-      const source = sourceMap.get(bundle.source);
-      if (!source) {
-        ctx.stderr.write(`Failed to install ${bundle.id}@${bundle.version}: source "${bundle.source}" not found in hub\n`);
-        continue;
-      }
-      const bundleOpts = { ...opts, bundle: bundle.id, source: source.url, sourceConfig: source };
-      try {
-        const result = await performRemoteInstall(bundleOpts, target, ctx, fmt);
-        if (result === 0) {
-          installedCount++;
-        }
-      } catch (err) {
-        ctx.stderr.write(`Failed to install ${bundle.id}@${bundle.version}: ${err instanceof Error ? err.message : String(err)}\n`);
-      }
+    await previewInstallation(selectedBundles, target.name, ctx);
+    const confirmed = await confirmInstallation(ctx);
+    if (!confirmed) {
+      return 0;
     }
+
+    const installedCount = await installSelectedBundles(selectedBundles, sourceMap, opts, target, ctx, fmt);
 
     formatOutput({
       ctx,
@@ -644,6 +574,119 @@ async function interactiveBundleSelection(
   } catch (err) {
     return failWith(ctx, fmt, buildInstallError(err));
   }
+}
+
+async function setupHubManager(ctx: Context): Promise<HubManager> {
+  const userPaths = resolveUserConfigPaths(ctx.env);
+  const httpClient = new NodeHttpClient();
+  const tokenProvider = defaultTokenProvider(ctx.env);
+  const resolver = new CompositeHubResolver(
+    new GitHubHubResolver(httpClient, tokenProvider),
+    new LocalHubResolver(ctx.fs),
+    new UrlHubResolver(httpClient, tokenProvider)
+  );
+  return new HubManager(
+    new HubStore(userPaths.hubs, ctx.fs),
+    new ActiveHubStore(userPaths.activeHub, ctx.fs),
+    resolver
+  );
+}
+
+function buildSourceMap(sources: RegistrySource[]): Map<string, RegistrySource> {
+  const sourceMap = new Map<string, RegistrySource>();
+  for (const source of sources) {
+    sourceMap.set(source.id, source);
+    sourceMap.set(source.name, source);
+  }
+  return sourceMap;
+}
+
+function deduplicateBundles(profiles: { bundles: { id: string; version: string; source: string }[] }[]): { id: string; version: string; source: string }[] {
+  const allBundles = profiles.flatMap((p) => p.bundles);
+  const seenBundleKeys = new Set<string>();
+  return allBundles.filter((b) => {
+    const key = `${b.id}::${b.source}`;
+    if (seenBundleKeys.has(key)) {
+      return false;
+    }
+    seenBundleKeys.add(key);
+    return true;
+  });
+}
+
+function buildBundleChoices(bundles: { id: string; version: string; source: string }[]): { name: string; value: string; short: string }[] {
+  return bundles.map((b) => ({
+    name: `${b.id}@${b.version} (source: ${b.source})`,
+    value: b.id,
+    short: b.id
+  }));
+}
+
+async function promptBundleSelection(bundleChoices: { name: string; value: string; short: string }[], bundles: { id: string }[], ctx: Context): Promise<{ id: string; version: string; source: string }[]> {
+  const answers = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'selectedBundles',
+      message: 'Select bundles to install:',
+      choices: bundleChoices,
+      validate: (input: string[]) => input.length > 0 || 'Please select at least one bundle'
+    }
+  ]);
+
+  const selectedBundleIds = answers.selectedBundles as string[];
+  return bundles.filter((b) => selectedBundleIds.includes(b.id)) as { id: string; version: string; source: string }[];
+}
+
+async function previewInstallation(bundles: { id: string; version: string; source: string }[], targetName: string, ctx: Context): Promise<void> {
+  ctx.stdout.write(`\nPreview: Installing ${bundles.length} bundle${bundles.length === 1 ? '' : 's'} to target "${targetName}"\n`);
+  for (const b of bundles) {
+    ctx.stdout.write(`  - ${b.id}@${b.version} (source: ${b.source})\n`);
+  }
+}
+
+async function confirmInstallation(ctx: Context): Promise<boolean> {
+  const confirm = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'proceed',
+      message: 'Proceed with installation?',
+      default: true
+    }
+  ]);
+
+  if (!confirm.proceed) {
+    ctx.stdout.write('Installation cancelled.\n');
+    return false;
+  }
+  return true;
+}
+
+async function installSelectedBundles(
+  bundles: { id: string; version: string; source: string }[],
+  sourceMap: Map<string, RegistrySource>,
+  opts: InstallOptions,
+  target: Target,
+  ctx: Context,
+  fmt: OutputFormat
+): Promise<number> {
+  let installedCount = 0;
+  for (const bundle of bundles) {
+    const source = sourceMap.get(bundle.source);
+    if (!source) {
+      ctx.stderr.write(`Failed to install ${bundle.id}@${bundle.version}: source "${bundle.source}" not found in hub\n`);
+      continue;
+    }
+    const bundleOpts = { ...opts, bundle: bundle.id, source: source.url, sourceConfig: source };
+    try {
+      const result = await performRemoteInstall(bundleOpts, target, ctx, fmt);
+      if (result === 0) {
+        installedCount++;
+      }
+    } catch (err) {
+      ctx.stderr.write(`Failed to install ${bundle.id}@${bundle.version}: ${err instanceof Error ? err.message : String(err)}\n`);
+    }
+  }
+  return installedCount;
 }
 
 /**
