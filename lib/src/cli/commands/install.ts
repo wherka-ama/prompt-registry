@@ -548,7 +548,7 @@ async function interactiveBundleSelection(
     const sourceMap = buildSourceMap(active.config.sources);
     const bundles = deduplicateBundles(active.config.profiles);
     const bundleChoices = buildBundleChoices(bundles);
-    const selectedBundles = await promptBundleSelection(bundleChoices, bundles, ctx);
+    const selectedBundles = await promptBundleSelection(bundleChoices, bundles);
 
     if (selectedBundles.length === 0) {
       return 0;
@@ -622,7 +622,10 @@ function buildBundleChoices(bundles: { id: string; version: string; source: stri
   }));
 }
 
-async function promptBundleSelection(bundleChoices: { name: string; value: string; short: string }[], bundles: { id: string }[], ctx: Context): Promise<{ id: string; version: string; source: string }[]> {
+async function promptBundleSelection(
+  bundleChoices: { name: string; value: string; short: string }[],
+  bundles: { id: string }[]
+): Promise<{ id: string; version: string; source: string }[]> {
   const answers = await inquirer.prompt([
     {
       type: 'checkbox',
