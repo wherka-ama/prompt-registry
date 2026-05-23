@@ -49,17 +49,19 @@
         "baseDir": "${HOME}/.copilot",
         "kindRoutes": {
           "prompts/": "prompts/",
+          "agents/": "agents/",
           "skills/": "skills/"
         },
-        "skipPaths": ["deployment-manifest.yml", "README.md"]
+        "skipPaths": ["deployment-manifest.yml", "README.md", "collections/", "prompt-registry/"]
       },
       "repository": {
         "baseDir": "${workspaceRoot}",
         "kindRoutes": {
           "prompts/": ".github/prompts/",
+          "agents/": ".github/agents/",
           "skills/": ".github/skills/"
         },
-        "skipPaths": ["deployment-manifest.yml", "README.md"]
+        "skipPaths": ["deployment-manifest.yml", "README.md", "collections/", "prompt-registry/"]
       }
     },
     "kiro": {
