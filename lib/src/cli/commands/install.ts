@@ -1347,17 +1347,28 @@ async function replaySingleEntry(
     if (files === null) {
       return handleFetchFailure(entry, src, verbose, ctx);
     }
-    validateManifest(files, {
-      expectedId: entry.bundleId,
-      expectedVersion: entry.bundleVersion
-    });
-    await writer.write(target, files);
-    if (verbose) {
-      ctx.stdout.write(`[verbose] Successfully installed ${entry.bundleId}\n`);
-    }
+    await validateAndWrite(files, entry, writer, target, ctx, verbose);
     return { success: true, reason: '' };
   } catch (cause) {
     return handleInstallError(entry, cause, verbose, ctx);
+  }
+}
+
+async function validateAndWrite(
+  files: Map<string, Buffer>,
+  entry: LockfileEntry,
+  writer: TargetWriter,
+  target: Target,
+  ctx: Context,
+  verbose: boolean
+): Promise<void> {
+  validateManifest(files, {
+    expectedId: entry.bundleId,
+    expectedVersion: entry.bundleVersion
+  });
+  await writer.write(target, files);
+  if (verbose) {
+    ctx.stdout.write(`[verbose] Successfully installed ${entry.bundleId}\n`);
   }
 }
 
