@@ -39,6 +39,8 @@ import {
 import type {
   IndexStats,
   Primitive,
+  BundleProvider,
+  BundleRef,
 } from '../search/types';
 import {
   saveIndex,
@@ -520,146 +522,15 @@ export class HubHarvester {
     this.opts.onEvent?.({ kind: 'source-start', sourceId: spec.id });
     let commitSha: string | undefined;
     try {
-      // Cheap conditional /commits/ check first. If the sha matches what
-      // the progress log already marked "done", we skip the entire tree
-      // enumeration — the biggest warm-path saving available.
-      commitSha = await resolveCommitSha(this.opts.client, {
-        owner: spec.owner,
-        repo: spec.repo,
-        ref: spec.branch,
-        etagStore: this.opts.etagStore
-      });
-      if (!this.opts.force && !log.shouldResume(spec.id, bundleId, commitSha)) {
-        await log.recordSkip({
-          sourceId: spec.id, bundleId, commitSha,
-          reason: 'already-harvested'
-        });
-        // Reuse previously harvested primitives from the snapshot so the
-        // index returned from this run is complete even when every source
-        // is skipped. Missing snapshot => skip silently (the user can run
-        // with --force to repopulate if they care).
-        const cached = snapshot.get(spec.id) ?? [];
-        out.push(...cached);
-        this.opts.onEvent?.({
-          kind: 'source-skip', sourceId: spec.id, commitSha, reason: 'already-harvested'
-        });
+      commitSha = await this.resolveCommitShaForSource(spec);
+      const shouldSkip = await this.checkSkipConditions(spec, bundleId, commitSha, log, snapshot, out);
+      if (shouldSkip) {
         return;
       }
-      if (this.opts.dryRun) {
-        await log.recordSkip({
-          sourceId: spec.id, bundleId, commitSha,
-          reason: 'dry-run'
-        });
-        this.opts.onEvent?.({
-          kind: 'source-skip', sourceId: spec.id, commitSha, reason: 'dry-run'
-        });
-        return;
-      }
-      // Plugin sources expose N bundles per repo (one per plugin), so
-      // we dispatch on spec.type and use a different provider + bundle
-      // loop. Source-level resume (above) already short-circuits the
-      // common "nothing changed in the repo" case for both kinds.
-      let primsTotal = 0;
-      const startedRepo = Date.now();
-      if (spec.type === 'awesome-copilot-plugin') {
-        const provider = new AwesomeCopilotPluginBundleProvider({
-          spec, client: this.opts.client, cache: this.opts.cache,
-          etagStore: this.opts.etagStore
-        });
-        // Collect refs first, then harvest plugins in parallel with the
-        // same concurrency cap as the outer source-level loop. Each
-        // harvestBundle already fetches its item blobs in parallel, so
-        // this adds a second layer of parallelism that scales well
-        // because plugins share the blob cache + client rate budget.
-        const refs: Parameters<typeof harvestBundle>[1][] = [];
-        for await (const ref of provider.listBundles()) {
-          refs.push(ref);
-        }
-        const pluginConcurrency = Math.max(1, this.opts.concurrency ?? 4);
-        const sha = commitSha;
-        const harvestOne = async (ref: Parameters<typeof harvestBundle>[1]): Promise<number> => {
-          const perStart = Date.now();
-          await log.recordStart({
-            sourceId: spec.id, bundleId: ref.bundleId, commitSha: sha
-          });
-          const prims = await harvestBundle(provider, ref);
-          const ms = Date.now() - perStart;
-          // out.push is safe under parallelism because Node is single-threaded;
-          // the spread pushes are atomic w.r.t. each other.
-          out.push(...prims);
-          await log.recordDone({
-            sourceId: spec.id, bundleId: ref.bundleId, commitSha: sha,
-            primitives: prims.length, ms
-          });
-          return prims.length;
-        };
-        for (let i = 0; i < refs.length; i += pluginConcurrency) {
-          const batch = refs.slice(i, i + pluginConcurrency);
-          const counts = await Promise.all(batch.map((r) => harvestOne(r)));
-          primsTotal += counts.reduce((a, b) => a + b, 0);
-        }
-        // A final source-level "done" marker uses the spec.id as bundleId
-        // (matching the github case) so the shouldResume() fast-path works
-        // unchanged on warm runs: unchanged repo sha → all plugins skipped.
-        await log.recordDone({
-          sourceId: spec.id, bundleId, commitSha,
-          primitives: 0, ms: Date.now() - startedRepo
-        });
-      } else if (spec.type === 'awesome-copilot') {
-        const provider = new AwesomeCopilotBundleProvider({
-          spec, client: this.opts.client, cache: this.opts.cache
-        });
-        // Collect refs first, then harvest collections in parallel
-        const refs: Parameters<typeof harvestBundle>[1][] = [];
-        for await (const ref of provider.listBundles()) {
-          refs.push(ref);
-        }
-        const collectionConcurrency = Math.max(1, this.opts.concurrency ?? 4);
-        const sha = commitSha;
-        const harvestOne = async (ref: Parameters<typeof harvestBundle>[1]): Promise<number> => {
-          const perStart = Date.now();
-          await log.recordStart({
-            sourceId: spec.id, bundleId: ref.bundleId, commitSha: sha
-          });
-          const prims = await harvestBundle(provider, ref);
-          const ms = Date.now() - perStart;
-          out.push(...prims);
-          await log.recordDone({
-            sourceId: spec.id, bundleId: ref.bundleId, commitSha: sha,
-            primitives: prims.length, ms
-          });
-          return prims.length;
-        };
-        for (let i = 0; i < refs.length; i += collectionConcurrency) {
-          const batch = refs.slice(i, i + collectionConcurrency);
-          const counts = await Promise.all(batch.map((r) => harvestOne(r)));
-          primsTotal += counts.reduce((a, b) => a + b, 0);
-        }
-        await log.recordDone({
-          sourceId: spec.id, bundleId, commitSha,
-          primitives: 0, ms: Date.now() - startedRepo
-        });
-      } else {
-        await log.recordStart({ sourceId: spec.id, bundleId, commitSha });
-        const provider = new GitHubSingleBundleProvider({
-          spec, client: this.opts.client, cache: this.opts.cache
-        });
-        const refs: Parameters<typeof harvestBundle>[1][] = [];
-        for await (const r of provider.listBundles()) {
-          refs.push(r);
-        }
-        const ref = refs[0];
-        const prims = await harvestBundle(provider, ref);
-        primsTotal = prims.length;
-        out.push(...prims);
-        await log.recordDone({
-          sourceId: spec.id, bundleId, commitSha,
-          primitives: prims.length, ms: Date.now() - startedRepo
-        });
-      }
+      const primsTotal = await this.harvestSource(spec, bundleId, commitSha, log, out);
       this.opts.onEvent?.({
         kind: 'source-done', sourceId: spec.id, commitSha,
-        primitives: primsTotal, ms: Date.now() - startedRepo
+        primitives: primsTotal, ms: Date.now()
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -669,6 +540,171 @@ export class HubHarvester {
       });
       this.opts.onEvent?.({ kind: 'source-error', sourceId: spec.id, error: msg });
     }
+  }
+
+  private async resolveCommitShaForSource(spec: HubSourceSpec): Promise<string> {
+    return resolveCommitSha(this.opts.client, {
+      owner: spec.owner,
+      repo: spec.repo,
+      ref: spec.branch,
+      etagStore: this.opts.etagStore
+    });
+  }
+
+  private async checkSkipConditions(
+    spec: HubSourceSpec,
+    bundleId: string,
+    commitSha: string,
+    log: HarvestProgressLog,
+    snapshot: Map<string, Primitive[]>,
+    out: Primitive[]
+  ): Promise<boolean> {
+    if (!this.opts.force && !log.shouldResume(spec.id, bundleId, commitSha)) {
+      await log.recordSkip({
+        sourceId: spec.id, bundleId, commitSha,
+        reason: 'already-harvested'
+      });
+      const cached = snapshot.get(spec.id) ?? [];
+      out.push(...cached);
+      this.opts.onEvent?.({
+        kind: 'source-skip', sourceId: spec.id, commitSha, reason: 'already-harvested'
+      });
+      return true;
+    }
+    if (this.opts.dryRun) {
+      await log.recordSkip({
+        sourceId: spec.id, bundleId, commitSha,
+        reason: 'dry-run'
+      });
+      this.opts.onEvent?.({
+        kind: 'source-skip', sourceId: spec.id, commitSha, reason: 'dry-run'
+      });
+      return true;
+    }
+    return false;
+  }
+
+  private async harvestSource(
+    spec: HubSourceSpec,
+    bundleId: string,
+    commitSha: string,
+    log: HarvestProgressLog,
+    out: Primitive[]
+  ): Promise<number> {
+    const startedRepo = Date.now();
+    if (spec.type === 'awesome-copilot-plugin') {
+      return this.harvestPluginSource(spec, bundleId, commitSha, log, out, startedRepo);
+    }
+    if (spec.type === 'awesome-copilot') {
+      return this.harvestAwesomeCopilotSource(spec, bundleId, commitSha, log, out, startedRepo);
+    }
+    return this.harvestGitHubSource(spec, bundleId, commitSha, log, out, startedRepo);
+  }
+
+  private async harvestPluginSource(
+    spec: HubSourceSpec,
+    bundleId: string,
+    commitSha: string,
+    log: HarvestProgressLog,
+    out: Primitive[],
+    startedRepo: number
+  ): Promise<number> {
+    const provider = new AwesomeCopilotPluginBundleProvider({
+      spec, client: this.opts.client, cache: this.opts.cache,
+      etagStore: this.opts.etagStore
+    });
+    const refs = await this.collectRefs(provider);
+    const pluginConcurrency = Math.max(1, this.opts.concurrency ?? 4);
+    const primsTotal = await this.harvestBatches(provider, refs, spec.id, commitSha, log, out, pluginConcurrency);
+    await log.recordDone({
+      sourceId: spec.id, bundleId, commitSha,
+      primitives: 0, ms: Date.now() - startedRepo
+    });
+    return primsTotal;
+  }
+
+  private async harvestAwesomeCopilotSource(
+    spec: HubSourceSpec,
+    bundleId: string,
+    commitSha: string,
+    log: HarvestProgressLog,
+    out: Primitive[],
+    startedRepo: number
+  ): Promise<number> {
+    const provider = new AwesomeCopilotBundleProvider({
+      spec, client: this.opts.client, cache: this.opts.cache
+    });
+    const refs = await this.collectRefs(provider);
+    const collectionConcurrency = Math.max(1, this.opts.concurrency ?? 4);
+    const primsTotal = await this.harvestBatches(provider, refs, spec.id, commitSha, log, out, collectionConcurrency);
+    await log.recordDone({
+      sourceId: spec.id, bundleId, commitSha,
+      primitives: 0, ms: Date.now() - startedRepo
+    });
+    return primsTotal;
+  }
+
+  private async harvestGitHubSource(
+    spec: HubSourceSpec,
+    bundleId: string,
+    commitSha: string,
+    log: HarvestProgressLog,
+    out: Primitive[],
+    startedRepo: number
+  ): Promise<number> {
+    await log.recordStart({ sourceId: spec.id, bundleId, commitSha });
+    const provider = new GitHubSingleBundleProvider({
+      spec, client: this.opts.client, cache: this.opts.cache
+    });
+    const refs = await this.collectRefs(provider);
+    const ref = refs[0];
+    const prims = await harvestBundle(provider, ref);
+    out.push(...prims);
+    await log.recordDone({
+      sourceId: spec.id, bundleId, commitSha,
+      primitives: prims.length, ms: Date.now() - startedRepo
+    });
+    return prims.length;
+  }
+
+  private async collectRefs(provider: BundleProvider): Promise<Parameters<typeof harvestBundle>[1][]> {
+    const refs: Parameters<typeof harvestBundle>[1][] = [];
+    for await (const ref of provider.listBundles()) {
+      refs.push(ref);
+    }
+    return refs;
+  }
+
+  private async harvestBatches(
+    provider: BundleProvider,
+    refs: Parameters<typeof harvestBundle>[1][],
+    sourceId: string,
+    commitSha: string,
+    log: HarvestProgressLog,
+    out: Primitive[],
+    concurrency: number
+  ): Promise<number> {
+    let primsTotal = 0;
+    const harvestOne = async (ref: Parameters<typeof harvestBundle>[1]): Promise<number> => {
+      const perStart = Date.now();
+      await log.recordStart({
+        sourceId, bundleId: ref.bundleId, commitSha
+      });
+      const prims = await harvestBundle(provider, ref);
+      const ms = Date.now() - perStart;
+      out.push(...prims);
+      await log.recordDone({
+        sourceId, bundleId: ref.bundleId, commitSha,
+        primitives: prims.length, ms
+      });
+      return prims.length;
+    };
+    for (let i = 0; i < refs.length; i += concurrency) {
+      const batch = refs.slice(i, i + concurrency);
+      const counts = await Promise.all(batch.map((r) => harvestOne(r)));
+      primsTotal += counts.reduce((a, b) => a + b, 0);
+    }
+    return primsTotal;
   }
 }
 
