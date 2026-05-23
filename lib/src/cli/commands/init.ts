@@ -12,9 +12,6 @@
  *   prompt-registry init --target-name copilot --target-type copilot-cli --hub owner/repo --yes
  */
 import * as path from 'node:path';
-
-type TargetScope = 'user' | 'repository';
-type HubType = 'github' | 'local' | 'url';
 import inquirer from 'inquirer';
 import {
   HubManager,
@@ -71,6 +68,9 @@ import {
   RegistryError,
   renderError,
 } from '../framework';
+
+type TargetScope = 'user' | 'repository';
+type HubType = 'github' | 'local' | 'url';
 
 const DEFAULT_TARGET_NAME = 'copilot';
 const DEFAULT_TARGET_TYPE: TargetType = 'copilot-cli';
