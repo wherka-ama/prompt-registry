@@ -12,6 +12,9 @@
  *   prompt-registry init --target-name copilot --target-type copilot-cli --hub owner/repo --yes
  */
 import * as path from 'node:path';
+
+type TargetScope = 'user' | 'repository';
+type HubType = 'github' | 'local' | 'url';
 import inquirer from 'inquirer';
 import {
   HubManager,
@@ -98,11 +101,11 @@ export interface InitOptions {
   /** Target type (default: 'copilot-cli'). */
   targetType?: string;
   /** Target scope (default: 'user'). */
-  scope?: 'user' | 'repository';
+  scope?: TargetScope;
   /** Hub location ref (e.g. owner/repo or file:./hub-config.yml). */
   hub?: string;
   /** Hub type override (default: auto-detect from ref). */
-  hubType?: 'github' | 'local' | 'url';
+  hubType?: HubType;
   /** Skip confirmation prompt. */
   yes?: boolean;
   /** Verbose output with file paths and verification commands. */
@@ -169,9 +172,9 @@ export class InitCommand extends Command {
       output: (this.output ?? 'text') as OutputFormat,
       targetName: this.targetName,
       targetType: this.targetType,
-      scope: this.scope as 'user' | 'repository' | undefined,
+      scope: this.scope as TargetScope | undefined,
       hub: this.hub,
-      hubType: this.hubType as 'github' | 'local' | 'url' | undefined,
+      hubType: this.hubType as HubType | undefined,
       yes: this.yes,
       verbose: this.verbose,
       http,
@@ -225,14 +228,14 @@ async function buildHubChoices(
 async function runInteractiveWizard(ctx: Context, _opts: InitOptions): Promise<{
   targetType: TargetType;
   targetName: string;
-  targetScope: 'user' | 'repository';
+  targetScope: TargetScope;
   hubRef?: string;
-  hubType?: 'github' | 'local' | 'url';
+  hubType?: HubType;
   hubRefParam?: string;
 }> {
   interface WizardAnswers {
     ide: string;
-    scope?: 'user' | 'repository';
+    scope?: TargetScope;
     connectHub: boolean;
     hubChoice?: string;
     hubPath?: string;
@@ -327,7 +330,7 @@ async function runInteractiveWizard(ctx: Context, _opts: InitOptions): Promise<{
   }
 
   let hubRef: string | undefined;
-  let hubType: 'github' | 'local' | 'url' | undefined;
+  let hubType: HubType | undefined;
   let hubRefParam: string | undefined;
 
   if (answers.hubChoice === 'local' && answers.hubPath) {
@@ -405,7 +408,7 @@ async function createOrReuseTarget(
 async function importAndSyncHub(
   ctx: Context,
   hubRef: string,
-  hubType: 'github' | 'local' | 'url' | undefined,
+  hubType: HubType | undefined,
   hubRefParam: string | undefined,
   opts: InitOptions
 ): Promise<string | null> {
@@ -523,9 +526,9 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
   const userPaths = resolveUserConfigPaths(ctx.env);
   let targetName = opts.targetName ?? DEFAULT_TARGET_NAME;
   let targetType = (opts.targetType ?? DEFAULT_TARGET_TYPE) as TargetType;
-  let targetScope = (opts.scope as 'user' | 'repository') ?? 'user';
+  let targetScope = (opts.scope as TargetScope) ?? 'user';
   let hubRef = opts.hub;
-  let hubType: 'github' | 'local' | 'url' | undefined = opts.hubType;
+  let hubType: HubType | undefined = opts.hubType;
   let hubRefParam: string | undefined;
 
   if (isInteractive) {
@@ -601,7 +604,7 @@ async function runInit(ctx: Context, opts: InitOptions): Promise<number> {
  * @param location Hub reference string.
  * @returns Inferred reference type.
  */
-function inferHubType(location: string): 'github' | 'local' | 'url' {
+function inferHubType(location: string): HubType {
   if (location.startsWith('file:') || path.isAbsolute(location)) {
     return 'local';
   }
