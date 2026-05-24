@@ -100,6 +100,11 @@ describe('HttpsBundleDownloader', () => {
     const auth = findHeader(http.seen[0].headers, 'authorization');
     expect(auth).toBeUndefined();
   });
+
+  it('throws error when HttpClient passed without TokenProvider', () => {
+    const http = new RecordingHttpClient({});
+    expect(() => new HttpsBundleDownloader(http)).toThrow('TokenProvider required');
+  });
 });
 
 const findHeader = (
