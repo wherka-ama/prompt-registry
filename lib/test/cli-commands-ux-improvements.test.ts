@@ -295,6 +295,170 @@ describe('F-11: apply command', () => {
     expect(parsed.errors[0].code).toBe('USAGE.MISSING_FLAG');
     expect(parsed.errors[0].hint).toContain('profile activate');
   });
+
+  it('errors with HUB.NOT_FOUND when hub is not active', async () => {
+    const hubsDir = path.join(xdgConfig, 'prompt-registry', 'hubs');
+    const activeHubFile = path.join(xdgConfig, 'prompt-registry', 'active-hub.json');
+    await fs.mkdir(hubsDir, { recursive: true });
+    await fs.writeFile(
+      path.join(hubsDir, 'my-hub.yml'),
+      [
+        'version: "1.0.0"',
+        'metadata:',
+        '  name: my-hub',
+        '  description: ""',
+        '  maintainer: ""',
+        '  updatedAt: "2026-01-01T00:00:00Z"',
+        'sources: []',
+        'profiles:',
+        '  - id: backend',
+        '    name: Backend',
+        '    bundles: []'
+      ].join('\n')
+    );
+    await fs.writeFile(
+      activeHubFile,
+      JSON.stringify({ hubId: 'different-hub', setAt: new Date().toISOString() })
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.lock.json'),
+      JSON.stringify({ schemaVersion: 1, entries: [], useProfile: { hubId: 'my-hub', profileId: 'backend' } })
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'targets:\n  - name: t1\n    type: copilot-cli\n    scope: user\n'
+    );
+
+    const { exitCode, stderr } = await runCommand(
+      ['apply'],
+      {
+        commands: [createApplyCommand({ noSync: true })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain('HUB.NOT_FOUND');
+    expect(stderr).toContain('hub use');
+  });
+
+  it('errors with BUNDLE.NOT_FOUND when profile not found in hub', async () => {
+    const hubsDir = path.join(xdgConfig, 'prompt-registry', 'hubs');
+    const activeHubFile = path.join(xdgConfig, 'prompt-registry', 'active-hub.json');
+    await fs.mkdir(hubsDir, { recursive: true });
+    await fs.writeFile(
+      path.join(hubsDir, 'my-hub.yml'),
+      [
+        'version: "1.0.0"',
+        'metadata:',
+        '  name: my-hub',
+        '  description: ""',
+        '  maintainer: ""',
+        '  updatedAt: "2026-01-01T00:00:00Z"',
+        'sources: []',
+        'profiles:',
+        '  - id: other-profile',
+        '    name: Other',
+        '    bundles: []'
+      ].join('\n')
+    );
+    await fs.writeFile(
+      activeHubFile,
+      JSON.stringify({ hubId: 'my-hub', setAt: new Date().toISOString() })
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.lock.json'),
+      JSON.stringify({ schemaVersion: 1, entries: [], useProfile: { hubId: 'my-hub', profileId: 'nonexistent' } })
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'targets:\n  - name: t1\n    type: copilot-cli\n    scope: user\n'
+    );
+
+    const { exitCode, stderr } = await runCommand(
+      ['apply'],
+      {
+        commands: [createApplyCommand({ noSync: true })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain('BUNDLE.NOT_FOUND');
+    expect(stderr).toContain('profile list');
+  });
+
+  it('errors when no targets are configured', async () => {
+    const hubsDir = path.join(xdgConfig, 'prompt-registry', 'hubs');
+    const activeHubFile = path.join(xdgConfig, 'prompt-registry', 'active-hub.json');
+    await fs.mkdir(hubsDir, { recursive: true });
+    await fs.writeFile(
+      path.join(hubsDir, 'my-hub.yml'),
+      [
+        'version: "1.0.0"',
+        'metadata:',
+        '  name: my-hub',
+        '  description: ""',
+        '  maintainer: ""',
+        '  updatedAt: "2026-01-01T00:00:00Z"',
+        'sources: []',
+        'profiles:',
+        '  - id: backend',
+        '    name: Backend',
+        '    bundles: []'
+      ].join('\n')
+    );
+    await fs.writeFile(
+      activeHubFile,
+      JSON.stringify({ hubId: 'my-hub', setAt: new Date().toISOString() })
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.lock.json'),
+      JSON.stringify({ schemaVersion: 1, entries: [], useProfile: { hubId: 'my-hub', profileId: 'backend' } })
+    );
+
+    const { exitCode, stderr } = await runCommand(
+      ['apply'],
+      {
+        commands: [createApplyCommand({ noSync: true })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain('USAGE.MISSING_FLAG');
+    expect(stderr).toContain('target add');
+  });
+
+  it('yaml output wraps error in envelope', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.lock.json'),
+      JSON.stringify({ schemaVersion: 1, entries: [] })
+    );
+    const { exitCode, stdout } = await runCommand(
+      ['apply'],
+      {
+        commands: [createApplyCommand({ output: 'yaml' })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(1);
+    expect(stdout).toContain('status: error');
+    expect(stdout).toContain('USAGE.MISSING_FLAG');
+  });
 });
 
 describe('F-07: top-level search alias', () => {
