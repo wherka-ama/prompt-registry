@@ -280,4 +280,36 @@ describe('GitHubSingleBundleProvider', () => {
     expect(manifest.items?.[4].kind).toBe('skill');
     expect(manifest.items?.[5].kind).toBe('mcp-server');
   });
+
+  it('throws error when reading file not in repo tree', async () => {
+    const fetch = fakeGithubFetch({ commitSha: 'sha1', tree: [], blobs: new Map() });
+    const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
+    const cache = new BlobCache(tmp);
+    const provider = new GitHubSingleBundleProvider({
+      spec: makeSpec(),
+      client,
+      cache
+    });
+    const refs: Awaited<ReturnType<typeof provider.listBundles> extends AsyncIterable<infer T> ? T : never>[] = [];
+    for await (const r of provider.listBundles()) {
+      refs.push(r);
+    }
+    await expect(provider.readFile(refs[0], 'prompts/missing.prompt.md')).rejects.toThrow('not found in repo tree');
+  });
+
+  it('throws error when reading non-primitive candidate file', async () => {
+    const fetch = fakeGithubFetch({ commitSha: 'sha1', tree: [], blobs: new Map() });
+    const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
+    const cache = new BlobCache(tmp);
+    const provider = new GitHubSingleBundleProvider({
+      spec: makeSpec(),
+      client,
+      cache
+    });
+    const refs: Awaited<ReturnType<typeof provider.listBundles> extends AsyncIterable<infer T> ? T : never>[] = [];
+    for await (const r of provider.listBundles()) {
+      refs.push(r);
+    }
+    await expect(provider.readFile(refs[0], 'README.md')).rejects.toThrow('not a primitive candidate');
+  });
 });
