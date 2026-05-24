@@ -17,6 +17,7 @@ import {
 } from '../../infra/stores/json-index-store';
 import {
   Command,
+  failWith,
   Option,
 } from '../framework';
 import {
@@ -26,7 +27,6 @@ import {
   formatOutput,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 export interface IndexStatsOptions {
@@ -100,7 +100,7 @@ export class IndexStatsCommand extends BaseIndexStatsCommand {
           message: `failed to load index ${indexPath}: ${msg}`,
           cause: cause instanceof Error ? cause : undefined
         });
-      return failWith(ctx, fmt, err);
+      return failWithAsync(ctx, fmt, 'index.stats', err);
     }
   }
 }
@@ -204,27 +204,25 @@ export const createIndexStatsCommand = (
             message: `failed to load index ${indexPath}: ${msg}`,
             cause: cause instanceof Error ? cause : undefined
           });
-        return failWith(ctx, fmt, err);
+        return failWithAsync(ctx, fmt, 'index.stats', err);
       }
     }
   });
 
-// eslint-disable-next-line @typescript-eslint/require-await -- synchronous body, Promise return type required by callers
-const failWith = async (ctx: Context, output: OutputFormat, err: RegistryError): Promise<number> => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx,
-      command: 'index.stats',
-      output,
-      status: 'error',
-      data: null,
-      errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
+/**
+ * Async wrapper for failWith to support async command execution.
+ * @param ctx CLI context.
+ * @param output Output format.
+ * @param command Command name.
+ * @param err Registry error.
+ * @returns Exit code wrapped in Promise.
+ */
+const failWithAsync = async (
+  ctx: Context,
+  output: OutputFormat,
+  command: string,
+  err: RegistryError
+): Promise<number> => failWith(ctx, output, command, err);
 
 const renderStatsText = (s: IndexStats): string =>
   [

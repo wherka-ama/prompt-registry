@@ -1,10 +1,10 @@
 /**
- * RegistryError + renderError.
+ * RegistryError + renderError + failWith.
  *
  * `RegistryError`, `isRegistryError`, and related types are defined in
  * `../../domain/errors` and re-exported here for backward compatibility.
- * Only `renderError` lives here, because it depends on `Context` (a CLI
- * concept) for stderr output.
+ * Only `renderError` and `failWith` live here, because they depend on
+ * `Context` and `formatOutput` (CLI concepts) for stderr and structured output.
  */
 import {
   isRegistryError,
@@ -13,6 +13,12 @@ import {
 import type {
   Context,
 } from './context';
+import {
+  formatOutput,
+} from './output';
+import type {
+  OutputFormat,
+} from './output';
 
 export type {
   RegistryErrorNamespace,
@@ -59,4 +65,36 @@ const asInternalError = (err: unknown): RegistryError => {
     message,
     cause: err
   });
+};
+
+/**
+ * Shared error formatter for CLI commands.
+ *
+ * Outputs structured error data for json/yaml/ndjson formats, or renders
+ * human-readable error to stderr for text format. Returns exit code 1.
+ * @param ctx CLI context.
+ * @param output Output format (json, yaml, ndjson, text).
+ * @param command Command name for structured output (e.g., 'index.build').
+ * @param err RegistryError to format.
+ * @returns Exit code 1.
+ */
+export const failWith = (
+  ctx: Context,
+  output: OutputFormat,
+  command: string,
+  err: RegistryError
+): number => {
+  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
+    formatOutput({
+      ctx,
+      command,
+      output,
+      status: 'error',
+      data: null,
+      errors: [err.toJSON()]
+    });
+  } else {
+    renderError(err, ctx);
+  }
+  return 1;
 };

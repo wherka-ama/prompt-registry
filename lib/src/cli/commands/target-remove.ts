@@ -11,6 +11,7 @@ import {
 } from '../../infra/stores/target-store';
 import {
   Command,
+  failWith,
   Option,
 } from '../framework';
 import {
@@ -20,7 +21,6 @@ import {
   formatOutput,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 /**
@@ -72,7 +72,7 @@ export class TargetRemoveCommand extends BaseTargetRemoveCommand {
     const name = this.name ?? '';
 
     if (name.length === 0) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'target.remove', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'target remove: missing target name',
         hint: 'Usage: `prompt-registry target remove <name>`'
@@ -95,7 +95,7 @@ export class TargetRemoveCommand extends BaseTargetRemoveCommand {
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       const isMissing = message.includes('not found');
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'target.remove', new RegistryError({
         code: isMissing ? 'USAGE.MISSING_FLAG' : 'INTERNAL.UNEXPECTED',
         message: `target remove: ${message}`,
         hint: isMissing
@@ -181,7 +181,7 @@ export const createTargetRemoveCommand = (
     run: async ({ ctx }: { ctx: Context }): Promise<number> => {
       const fmt = opts.output ?? 'text';
       if (opts.name.length === 0) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'target.remove', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'target remove: missing target name',
           hint: 'Usage: `prompt-registry target remove <name>`'
@@ -204,7 +204,7 @@ export const createTargetRemoveCommand = (
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
         const isMissing = message.includes('not found');
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'target.remove', new RegistryError({
           code: isMissing ? 'USAGE.MISSING_FLAG' : 'INTERNAL.UNEXPECTED',
           message: `target remove: ${message}`,
           hint: isMissing
@@ -224,18 +224,3 @@ export const createTargetRemoveCommand = (
  * @param err Registry error.
  * @returns Exit code.
  */
-const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): number => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx,
-      command: 'target.remove',
-      output,
-      status: 'error',
-      data: null,
-      errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};

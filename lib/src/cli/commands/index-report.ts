@@ -26,11 +26,11 @@ import {
   type CommandDefinition,
   type Context,
   defineCommand,
+  failWith,
   formatOutput,
   Option,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 export interface IndexReportOptions {
@@ -93,22 +93,10 @@ export const createIndexReportCommand = (
           message: `index report failed: ${cause instanceof Error ? cause.message : String(cause)}`,
           cause: cause instanceof Error ? cause : undefined
         });
-        return failWith(ctx, fmt, err);
+        return failWith(ctx, fmt, 'index.report', err);
       }
     }
   });
-
-const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): number => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx, command: 'index.report', output, status: 'error',
-      data: null, errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
 
 const renderReportMarkdown = (progressFile: string, d: ReportData): string => {
   const lines: string[] = [
@@ -205,7 +193,7 @@ export class IndexReportCommand extends Command {
         message: `index report failed: ${cause instanceof Error ? cause.message : String(cause)}`,
         cause: cause instanceof Error ? cause : undefined
       });
-      return failWith(ctx, fmt, err);
+      return failWith(ctx, fmt, 'index.report', err);
     }
   }
 }

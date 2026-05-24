@@ -35,6 +35,7 @@ import {
 } from '../../infra/stores/json-index-store';
 import {
   Command,
+  failWith,
   Option,
 } from '../framework';
 import {
@@ -44,7 +45,6 @@ import {
   formatOutput,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 /**
@@ -155,7 +155,7 @@ export const createDiscoverCommand = (
         });
         return 0;
       } catch (cause) {
-        return failWith(ctx, fmt, classifyError(cause, indexPath));
+        return failWithAsync(ctx, fmt, 'discover', classifyError(cause, indexPath));
       }
     }
   });
@@ -342,25 +342,16 @@ const classifyError = (cause: unknown, indexPath: string): RegistryError => {
 };
 
 /**
- * Fail with error.
+ * Async wrapper for failWith to support async command execution.
  * @param ctx CLI context.
- * @param fmt Output format.
- * @param err RegistryError.
- * @returns Exit code.
+ * @param output Output format.
+ * @param command Command name.
+ * @param err Registry error.
+ * @returns Exit code wrapped in Promise.
  */
-// eslint-disable-next-line @typescript-eslint/require-await -- synchronous body, Promise return type required by callers
-const failWith = async (ctx: Context, fmt: OutputFormat, err: RegistryError): Promise<number> => {
-  if (fmt === 'json' || fmt === 'yaml' || fmt === 'ndjson') {
-    formatOutput({
-      ctx,
-      command: 'discover',
-      output: fmt,
-      status: 'error',
-      data: null,
-      errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
+const failWithAsync = async (
+  ctx: Context,
+  output: OutputFormat,
+  command: string,
+  err: RegistryError
+): Promise<number> => failWith(ctx, output, command, err);

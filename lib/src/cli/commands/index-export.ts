@@ -28,11 +28,11 @@ import {
   type CommandDefinition,
   type Context,
   defineCommand,
+  failWith,
   formatOutput,
   Option,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 export interface IndexExportOptions {
@@ -76,13 +76,13 @@ export const createIndexExportCommand = (
     run: ({ ctx }: { ctx: Context }): Promise<number> => {
       const fmt = opts.output ?? 'text';
       if (opts.shortlistId.length === 0) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWithAsync(ctx, fmt, 'index.export', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'index export: --shortlist <SHORTLIST_ID> is required'
         }));
       }
       if (opts.profileId.length === 0) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWithAsync(ctx, fmt, 'index.export', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'index export: --profile-id <ID> is required'
         }));
@@ -92,7 +92,7 @@ export const createIndexExportCommand = (
         const idx = loadIndex(indexPath);
         const sl = idx.getShortlist(opts.shortlistId);
         if (sl === undefined) {
-          return failWith(ctx, fmt, new RegistryError({
+          return failWithAsync(ctx, fmt, 'index.export', new RegistryError({
             code: 'INDEX.SHORTLIST_NOT_FOUND',
             message: `index export: unknown shortlist "${opts.shortlistId}"`
           }));
@@ -141,23 +141,25 @@ export const createIndexExportCommand = (
             message: `index export failed: ${msg}`,
             cause: cause instanceof Error ? cause : undefined
           });
-        return failWith(ctx, fmt, err);
+        return failWithAsync(ctx, fmt, 'index.export', err);
       }
     }
   });
 
-// eslint-disable-next-line @typescript-eslint/require-await -- synchronous body, Promise return type required by callers
-const failWith = async (ctx: Context, output: OutputFormat, err: RegistryError): Promise<number> => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx, command: 'index.export', output, status: 'error',
-      data: null, errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
+/**
+ * Async wrapper for failWith to support async command execution.
+ * @param ctx CLI context.
+ * @param output Output format.
+ * @param command Command name.
+ * @param err Registry error.
+ * @returns Exit code wrapped in Promise.
+ */
+const failWithAsync = async (
+  ctx: Context,
+  output: OutputFormat,
+  command: string,
+  err: RegistryError
+): Promise<number> => failWith(ctx, output, command, err);
 
 const buildIndexExportError = (cause: unknown, indexPath: string): RegistryError => {
   const msg = cause instanceof Error ? cause.message : String(cause);
@@ -215,13 +217,13 @@ export class IndexExportCommand extends Command {
     const fmt = (this.output ?? 'text') as OutputFormat;
 
     if (!this.shortlist || this.shortlist.length === 0) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWithAsync(ctx, fmt, 'index.export', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'index export: --shortlist <SHORTLIST_ID> is required'
       }));
     }
     if (!this.profileId || this.profileId.length === 0) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWithAsync(ctx, fmt, 'index.export', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'index export: --profile-id <ID> is required'
       }));
@@ -233,7 +235,7 @@ export class IndexExportCommand extends Command {
       const idx = loadIndex(indexPath);
       const sl = idx.getShortlist(this.shortlist);
       if (sl === undefined) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWithAsync(ctx, fmt, 'index.export', new RegistryError({
           code: 'INDEX.SHORTLIST_NOT_FOUND',
           message: `index export: unknown shortlist "${this.shortlist}"`
         }));
@@ -269,7 +271,7 @@ export class IndexExportCommand extends Command {
       });
       return 0;
     } catch (cause) {
-      return failWith(ctx, fmt, buildIndexExportError(cause, indexPath));
+      return failWithAsync(ctx, fmt, 'index.export', buildIndexExportError(cause, indexPath));
     }
   }
 }

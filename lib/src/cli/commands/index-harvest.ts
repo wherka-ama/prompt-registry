@@ -26,11 +26,11 @@ import {
   type CommandDefinition,
   type Context,
   defineCommand,
+  failWith,
   formatOutput,
   Option,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 /** Pipeline runner type — matches `harvestHub` from the pipeline module. */
@@ -79,7 +79,7 @@ export const createIndexHarvestCommand = (
       const hubConfigFile = opts.hubConfigFile;
       if (!noHubConfig && hubConfigFile === undefined
         && (opts.hubRepo === undefined || opts.hubRepo.length === 0)) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'index.harvest', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'index harvest: --hub-repo <OWNER/REPO> is required (or use --no-hub-config / --hub-config-file)'
         }));
@@ -116,7 +116,7 @@ export const createIndexHarvestCommand = (
       try {
         result = await runner(pipelineOpts, ctx.env as NodeJS.ProcessEnv);
       } catch (cause) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'index.harvest', new RegistryError({
           code: 'INDEX.HARVEST_FAILED',
           message: `index harvest failed: ${cause instanceof Error ? cause.message : String(cause)}`,
           cause: cause instanceof Error ? cause : undefined
@@ -172,18 +172,6 @@ async function autoDetectHubFromActive(
     // If detection fails for any reason, fall through to the explicit error below.
   }
 }
-
-const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): number => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx, command: 'index.harvest', output, status: 'error',
-      data: null, errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
 
 const buildHarvestError = (cause: unknown): RegistryError => new RegistryError({
   code: 'INDEX.HARVEST_FAILED',
@@ -247,7 +235,7 @@ export class IndexHarvestCommand extends Command {
     const hubConfigFile = this.hubConfigFile;
 
     if (isHubRefMissing(noHubConfig, hubConfigFile, this.hubRepo)) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'index.harvest', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'index harvest: --hub-repo <OWNER/REPO> is required (or use --no-hub-config / --hub-config-file)',
         hint: 'Run `prompt-registry hub add <ref>` and `hub use <id>` to configure an active hub, or pass --hub-repo directly.'
@@ -289,7 +277,7 @@ export class IndexHarvestCommand extends Command {
     try {
       result = await runner(pipelineOpts, ctx.env as NodeJS.ProcessEnv);
     } catch (cause) {
-      return failWith(ctx, fmt, buildHarvestError(cause));
+      return failWith(ctx, fmt, 'index.harvest', buildHarvestError(cause));
     }
 
     formatOutput({

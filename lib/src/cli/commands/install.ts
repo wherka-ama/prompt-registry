@@ -97,6 +97,7 @@ import {
 } from '../../ports/source-resolver';
 import {
   Command,
+  failWith,
   Option,
 } from '../framework';
 import {
@@ -106,7 +107,6 @@ import {
   formatOutput,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 /**
@@ -275,7 +275,7 @@ export class InstallCommand extends BaseInstallCommand {
 
     const { noBundle, noLockfile } = validateInstallInputs(opts);
     if (noBundle && noLockfile && !opts.from && !opts.source) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'install', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'install: provide either <bundle-id> (imperative), --lockfile <path> (declarative), --from <path> (local directory), or --source <hub-id> (list bundles)',
         hint: 'Examples:\n'
@@ -298,7 +298,7 @@ export class InstallCommand extends BaseInstallCommand {
       return await executeInstallMode(mode, opts, target, ctx, fmt);
     } catch (err) {
       if (err instanceof RegistryError) {
-        return failWith(ctx, fmt, err);
+        return failWith(ctx, fmt, 'install', err);
       }
       throw err;
     }
@@ -494,7 +494,7 @@ async function listSourceBundles(
     await mgr.syncHub(hubId);
     const active = await mgr.getActiveHub();
     if (active?.id !== hubId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'install', new RegistryError({
         code: 'HUB.NOT_FOUND',
         message: `install: hub "${hubId}" is not active or not found`,
         hint: `Run \`prompt-registry hub use ${hubId}\` first.`
@@ -518,9 +518,9 @@ async function listSourceBundles(
     return 0;
   } catch (err) {
     if (err instanceof RegistryError) {
-      return failWith(ctx, fmt, err);
+      return failWith(ctx, fmt, 'install', err);
     }
-    return failWith(ctx, fmt, new RegistryError({
+    return failWith(ctx, fmt, 'install', new RegistryError({
       code: 'HUB.LOAD_FAILED',
       message: `Failed to load hub "${hubId}": ${err instanceof Error ? err.message : String(err)}`,
       cause: err instanceof Error ? err : undefined
@@ -557,7 +557,7 @@ async function interactiveBundleSelection(
     await mgr.syncHub(hubId);
     const active = await mgr.getActiveHub();
     if (active?.id !== hubId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'install', new RegistryError({
         code: 'HUB.NOT_FOUND',
         message: `install: hub "${hubId}" is not active or not found`,
         hint: `Run \`prompt-registry hub use ${hubId}\` first.`
@@ -591,7 +591,7 @@ async function interactiveBundleSelection(
     });
     return 0;
   } catch (err) {
-    return failWith(ctx, fmt, buildInstallError(err));
+    return failWith(ctx, fmt, 'install', buildInstallError(err));
   }
 }
 
@@ -1223,7 +1223,7 @@ export const createInstallCommand = (
       const fmt = opts.output ?? 'text';
       const { noBundle, noLockfile } = validateInstallInputs(opts);
       if (noBundle && noLockfile) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'install', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'install: provide either <bundle-id> (imperative) or --lockfile <path> (declarative)',
           hint: 'Examples:\n'
@@ -1248,7 +1248,7 @@ export const createInstallCommand = (
         return await performRemoteInstall(opts, target, ctx, fmt);
       } catch (err) {
         if (err instanceof RegistryError) {
-          return failWith(ctx, fmt, err);
+          return failWith(ctx, fmt, 'install', err);
         }
         throw err;
       }
@@ -1262,21 +1262,6 @@ export const createInstallCommand = (
  * @param err Registry error.
  * @returns Exit code.
  */
-const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): number => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx,
-      command: 'install',
-      output,
-      status: 'error',
-      data: null,
-      errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
 
 /**
  * Replay lockfile entries for installation.

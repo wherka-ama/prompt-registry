@@ -26,11 +26,11 @@ import {
   type CommandDefinition,
   Context,
   defineCommand,
+  failWith,
   formatOutput,
   Option,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 /**
@@ -123,21 +123,6 @@ async function ensureTargetDirectory(fs: Context['fs'], targetPath: string | und
  * @param output Output format.
  * @param err Registry error.
  */
-const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): number => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx,
-      command: 'target.add',
-      output,
-      status: 'error',
-      data: null,
-      errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
 
 /**
  * Build the `target add` command using defineCommand (for test compatibility).
@@ -155,7 +140,7 @@ export const createTargetAddCommand = (
       const fmt = opts.output ?? 'text';
       const validationError = validateTargetInputs(opts);
       if (validationError) {
-        return failWith(ctx, fmt, validationError);
+        return failWith(ctx, fmt, 'target.add', validationError);
       }
       const cwd = ctx.cwd();
       opts.path = normalizeTargetPath(opts.path, cwd);
@@ -179,7 +164,7 @@ export const createTargetAddCommand = (
         return 0;
       } catch (cause) {
         const error = buildTargetAddError(cause, opts);
-        return failWith(ctx, fmt, error);
+        return failWith(ctx, fmt, 'target.add', error);
       }
     }
   });
@@ -232,7 +217,7 @@ export class TargetAddCommand extends Command {
 
     const validationError = validateTargetInputs(opts);
     if (validationError) {
-      return failWith(ctx, fmt, validationError);
+      return failWith(ctx, fmt, 'target.add', validationError);
     }
     const cwd = ctx.cwd();
     opts.path = normalizeTargetPath(opts.path, cwd);
@@ -256,7 +241,7 @@ export class TargetAddCommand extends Command {
       return 0;
     } catch (cause) {
       const error = buildTargetAddError(cause, opts);
-      return failWith(ctx, fmt, error);
+      return failWith(ctx, fmt, 'target.add', error);
     }
   }
 }

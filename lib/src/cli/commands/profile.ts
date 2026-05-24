@@ -63,6 +63,7 @@ import {
 } from '../../ports/http';
 import {
   Command,
+  failWith,
   Option,
 } from '../framework';
 import {
@@ -70,7 +71,6 @@ import {
   formatOutput,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 /**
@@ -166,7 +166,7 @@ export class ProfileListCommand extends BaseProfileCommand {
     // Re-load the hub config to pull profiles[].
     const hubs = await mgr.listHubs();
     if (!hubs.some((h) => h.id === hubId)) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'HUB.NOT_FOUND',
         message: `profile list: hub "${hubId}" not found`,
         hint: 'Run `prompt-registry hub list` to see available hubs.'
@@ -205,7 +205,7 @@ export class ProfileShowCommand extends BaseProfileCommand {
     const mgr = built.mgr;
 
     if (!this.profileId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'profile show: <profileId> required'
       }));
@@ -215,14 +215,14 @@ export class ProfileShowCommand extends BaseProfileCommand {
 
     const active = await mgr.getActiveHub();
     if (active?.id !== hubId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: `profile show: hub "${hubId}" must be active to load profiles (run \`hub use ${hubId}\` first)`
       }));
     }
     const profile = active.config.profiles.find((p) => p.id === this.profileId);
     if (profile === undefined) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'BUNDLE.NOT_FOUND',
         message: `profile show: "${this.profileId}" not in hub "${hubId}"`,
         hint: 'Run `prompt-registry profile list` to see available profiles.'
@@ -254,7 +254,7 @@ export class ProfileActivateCommand extends BaseProfileCommand {
     const built = buildHubMgr(ctx, http, tokens);
 
     if (!this.profileId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'profile activate: <profileId> required',
         hint: 'Run `prompt-registry profile list` to see available profile IDs.'
@@ -265,14 +265,14 @@ export class ProfileActivateCommand extends BaseProfileCommand {
 
     const active = await built.mgr.getActiveHub();
     if (active?.id !== hubId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: `profile activate: hub "${hubId}" must be active`
       }));
     }
     const profile = active.config.profiles.find((p) => p.id === this.profileId);
     if (profile === undefined) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'BUNDLE.NOT_FOUND',
         message: `profile activate: "${this.profileId}" not in hub "${hubId}"`,
         hint: 'Run `prompt-registry profile list` to see available profiles.'
@@ -285,7 +285,7 @@ export class ProfileActivateCommand extends BaseProfileCommand {
       targets = targets.filter((t) => wanted.has(t.name));
     }
     if (targets.length === 0) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'profile activate: no targets configured',
         hint: 'Run `prompt-registry target add <name> --type <type>` to configure a target.'
@@ -455,14 +455,14 @@ export class ProfileCreateCommand extends BaseProfileCommand {
     const mgr = built.mgr;
 
     if (!this.profileId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'profile create: <profile-id> is required'
       }));
     }
 
     if (!this.name) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'profile create: --name is required'
       }));
@@ -556,7 +556,7 @@ export class ProfileEditCommand extends BaseProfileCommand {
     const mgr = built.mgr;
 
     if (!this.profileId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'profile edit: <profile-id> is required'
       }));
@@ -568,7 +568,7 @@ export class ProfileEditCommand extends BaseProfileCommand {
     const hubs = await mgr.listHubs();
     const hub = hubs.find((h) => h.id === hubId);
     if (!hub) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: `profile edit: hub "${hubId}" not found`
       }));
@@ -579,7 +579,7 @@ export class ProfileEditCommand extends BaseProfileCommand {
     const existingProfile = profiles.find((p) => p.id === this.profileId);
 
     if (!existingProfile) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: `profile edit: profile "${this.profileId}" not found in hub "${hubId}"`
       }));
@@ -697,7 +697,7 @@ export class ProfilePublishCommand extends BaseProfileCommand {
     const mgr = built.mgr;
 
     if (!this.profileId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'profile publish: <profile-id> is required',
         hint: 'Run `prompt-registry profile publish <id> --hub <hub-id>`'
@@ -705,7 +705,7 @@ export class ProfilePublishCommand extends BaseProfileCommand {
     }
 
     if (!this.hubId) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'profile publish: --hub <id> is required',
         hint: 'Run `prompt-registry hub list` to see available hubs.'
@@ -715,7 +715,7 @@ export class ProfilePublishCommand extends BaseProfileCommand {
     // Load profile YAML
     const profilePath = this.profileFile ?? path.join(ctx.cwd(), `${this.profileId}.profile.yml`);
     if (!(await ctx.fs.exists(profilePath))) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'FS.NOT_FOUND',
         message: `Profile file not found: ${profilePath}`,
         hint: 'Export a profile first with `index export --shortlist <id> --profile-id <id>` or provide --file <path>.'
@@ -726,7 +726,7 @@ export class ProfilePublishCommand extends BaseProfileCommand {
     const load = await import('js-yaml');
     const profile = load.load(profileYaml) as { id: string; name?: string; bundles?: string[] };
     if (!profile || typeof profile !== 'object') {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'PROFILE.INVALID_YAML',
         message: 'Profile YAML is invalid or empty'
       }));
@@ -736,7 +736,7 @@ export class ProfilePublishCommand extends BaseProfileCommand {
     const hubs = await mgr.listHubs();
     const hub = hubs.find((h) => h.id === this.hubId);
     if (!hub) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'profile', new RegistryError({
         code: 'HUB.NOT_FOUND',
         message: `Hub "${this.hubId}" not found`,
         hint: 'Run `prompt-registry hub list` to see available hubs.'
@@ -913,12 +913,3 @@ async function cleanupDeactivatedLockfile(ctx: Context, lockPath: string): Promi
 
   await writeLockfile(lockPath, { ...existing, entries: [], sources: {}, useProfile: undefined }, ctx.fs);
 }
-
-const failWith = (ctx: Context, fmt: OutputFormat, err: RegistryError): number => {
-  if (fmt === 'json' || fmt === 'yaml' || fmt === 'ndjson') {
-    formatOutput({ ctx, command: 'profile', output: fmt, status: 'error', errors: [err.toJSON()], data: {}, textRenderer: () => '' });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};

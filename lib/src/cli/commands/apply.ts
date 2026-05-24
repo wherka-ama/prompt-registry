@@ -51,10 +51,10 @@ import {
   type CommandDefinition,
   type Context,
   defineCommand,
+  failWith,
   formatOutput,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 /**
@@ -67,15 +67,6 @@ export interface ApplyOptions {
   /** Force hub sync even if recently synced. */
   force?: boolean;
 }
-
-const failWith = (ctx: Context, fmt: OutputFormat, err: RegistryError): number => {
-  if (fmt === 'json' || fmt === 'yaml' || fmt === 'ndjson') {
-    formatOutput({ ctx, command: 'apply', output: fmt, status: 'error', errors: [err.toJSON()], data: {}, textRenderer: () => '' });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
 
 /**
  * Build hub manager with dependencies.
@@ -206,7 +197,7 @@ export const createApplyCommand = (opts: ApplyOptions = {}): CommandDefinition =
       const lock = await readLockfile(lockPath, ctx.fs);
 
       if (!lock.useProfile) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'apply', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'apply: no profile recorded in lockfile',
           hint: 'Run `prompt-registry profile activate <profileId>` first to record a profile.'
@@ -224,14 +215,14 @@ export const createApplyCommand = (opts: ApplyOptions = {}): CommandDefinition =
         profile = await validateHubAndProfile(mgr, hubId, profileId, ctx, fmt);
       } catch (err) {
         if (err instanceof RegistryError) {
-          return failWith(ctx, fmt, err);
+          return failWith(ctx, fmt, 'apply', err);
         }
         throw err;
       }
 
       const targets = await readTargets({ cwd: ctx.cwd(), fs: ctx.fs });
       if (targets.length === 0) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'apply', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'apply: no targets configured',
           hint: 'Run `prompt-registry target add <name>` to configure a target.'

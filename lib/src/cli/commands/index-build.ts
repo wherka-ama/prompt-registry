@@ -25,11 +25,11 @@ import {
   type CommandDefinition,
   type Context,
   defineCommand,
+  failWith,
   formatOutput,
   Option,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 export interface IndexBuildOptions {
@@ -62,7 +62,7 @@ export const createIndexBuildCommand = (
     run: async ({ ctx }: { ctx: Context }): Promise<number> => {
       const fmt = opts.output ?? 'text';
       if (opts.root.length === 0) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'index.build', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'index build: --root <DIR> is required'
         }));
@@ -96,26 +96,10 @@ export const createIndexBuildCommand = (
           message: `index build failed: ${cause instanceof Error ? cause.message : String(cause)}`,
           cause: cause instanceof Error ? cause : undefined
         });
-        return failWith(ctx, fmt, err);
+        return failWith(ctx, fmt, 'index.build', err);
       }
     }
   });
-
-const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): number => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx,
-      command: 'index.build',
-      output,
-      status: 'error',
-      data: null,
-      errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
 
 /**
  * Index build command class.
@@ -151,7 +135,7 @@ export class IndexBuildCommand extends Command {
     const fmt = (this.output ?? 'text') as OutputFormat;
 
     if (!this.root || this.root.length === 0) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'index.build', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'index build: --root <DIR> is required'
       }));
@@ -186,7 +170,7 @@ export class IndexBuildCommand extends Command {
         message: `index build failed: ${cause instanceof Error ? cause.message : String(cause)}`,
         cause: cause instanceof Error ? cause : undefined
       });
-      return failWith(ctx, fmt, err);
+      return failWith(ctx, fmt, 'index.build', err);
     }
   }
 }

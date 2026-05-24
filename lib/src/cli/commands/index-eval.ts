@@ -27,11 +27,11 @@ import {
   type CommandDefinition,
   type Context,
   defineCommand,
+  failWith,
   formatOutput,
   Option,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 export interface IndexEvalOptions {
@@ -58,7 +58,7 @@ export const createIndexEvalCommand = (
     run: async ({ ctx }: { ctx: Context }): Promise<number> => {
       const fmt = opts.output ?? 'text';
       if (opts.goldFile.length === 0) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'index.eval', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'index eval: --gold <FILE> is required'
         }));
@@ -84,7 +84,7 @@ export const createIndexEvalCommand = (
             message: `index eval failed: ${msg}`,
             cause: cause instanceof Error ? cause : undefined
           });
-        return failWith(ctx, fmt, err);
+        return failWith(ctx, fmt, 'index.eval', err);
       }
       formatOutput({
         ctx, command: 'index.eval', output: fmt, status: 'ok',
@@ -95,18 +95,6 @@ export const createIndexEvalCommand = (
       return report.aggregate.failed > 0 ? 1 : 0;
     }
   });
-
-const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): number => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx, command: 'index.eval', output, status: 'error',
-      data: null, errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
 
 /**
  * Index eval command class.
@@ -140,7 +128,7 @@ export class IndexEvalCommand extends Command {
     const fmt = (this.output ?? 'text') as OutputFormat;
 
     if (!this.gold || this.gold.length === 0) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'index.eval', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'index eval: --gold <FILE> is required'
       }));
@@ -168,7 +156,7 @@ export class IndexEvalCommand extends Command {
           message: `index eval failed: ${msg}`,
           cause: cause instanceof Error ? cause : undefined
         });
-      return failWith(ctx, fmt, err);
+      return failWith(ctx, fmt, 'index.eval', err);
     }
 
     formatOutput({

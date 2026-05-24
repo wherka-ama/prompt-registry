@@ -25,11 +25,11 @@ import {
   type CommandDefinition,
   type Context,
   defineCommand,
+  failWith,
   formatOutput,
   Option,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 export interface IndexBenchOptions {
@@ -58,7 +58,7 @@ export const createIndexBenchCommand = (
     run: async ({ ctx }: { ctx: Context }): Promise<number> => {
       const fmt = opts.output ?? 'text';
       if (opts.goldFile.length === 0) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'index.bench', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'index bench: --gold <FILE> is required'
         }));
@@ -91,22 +91,10 @@ export const createIndexBenchCommand = (
             message: `index bench failed: ${msg}`,
             cause: cause instanceof Error ? cause : undefined
           });
-        return failWith(ctx, fmt, err);
+        return failWith(ctx, fmt, 'index.bench', err);
       }
     }
   });
-
-const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): number => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx, command: 'index.bench', output, status: 'error',
-      data: null, errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};
 
 /**
  * Index bench command class.

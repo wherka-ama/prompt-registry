@@ -42,6 +42,7 @@ import {
 } from '../../infra/writers/repo-scope-writer';
 import {
   Command,
+  failWith,
   Option,
 } from '../framework';
 import {
@@ -51,7 +52,6 @@ import {
   formatOutput,
   type OutputFormat,
   RegistryError,
-  renderError,
 } from '../framework';
 
 /**
@@ -189,7 +189,7 @@ export class UninstallCommand extends BaseUninstallCommand {
 
     const { noBundle, noLockfile, noAll } = validateUninstallInputs(opts);
     if (noBundle && noLockfile && noAll) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'uninstall', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'uninstall: provide <bundle-id>, --lockfile <path>, or --all',
         hint: 'Examples:\n'
@@ -216,7 +216,7 @@ export class UninstallCommand extends BaseUninstallCommand {
       return await performBundleUninstall(opts, target, ctx, fmt);
     } catch (err) {
       if (err instanceof RegistryError) {
-        return failWith(ctx, fmt, err);
+        return failWith(ctx, fmt, 'uninstall', err);
       }
       throw err;
     }
@@ -630,7 +630,7 @@ export const createUninstallCommand = (
       const fmt = opts.output ?? 'text';
       const { noBundle, noLockfile, noAll } = validateUninstallInputs(opts);
       if (noBundle && noLockfile && noAll) {
-        return failWith(ctx, fmt, new RegistryError({
+        return failWith(ctx, fmt, 'uninstall', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'uninstall: provide <bundle-id>, --lockfile <path>, or --all',
           hint: 'Examples:\n'
@@ -655,7 +655,7 @@ export const createUninstallCommand = (
         return await performBundleUninstall(opts, target, ctx, fmt);
       } catch (err) {
         if (err instanceof RegistryError) {
-          return failWith(ctx, fmt, err);
+          return failWith(ctx, fmt, 'uninstall', err);
         }
         throw err;
       }
@@ -669,18 +669,3 @@ export const createUninstallCommand = (
  * @param err Registry error.
  * @returns Exit code.
  */
-const failWith = (ctx: Context, output: OutputFormat, err: RegistryError): number => {
-  if (output === 'json' || output === 'yaml' || output === 'ndjson') {
-    formatOutput({
-      ctx,
-      command: 'uninstall',
-      output,
-      status: 'error',
-      data: null,
-      errors: [err.toJSON()]
-    });
-  } else {
-    renderError(err, ctx);
-  }
-  return 1;
-};

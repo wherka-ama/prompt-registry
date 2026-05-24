@@ -68,6 +68,7 @@ export {
   RegistryError,
   isRegistryError,
   renderError,
+  failWith,
 } from './error';
 export type {
   RunCommandOptions,
