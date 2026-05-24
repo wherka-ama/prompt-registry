@@ -18,6 +18,9 @@ import {
   resolveUserConfigPaths,
 } from '../../app/registry';
 import {
+  type Target,
+} from '../../domain/install';
+import {
   type ProfileBundle,
 } from '../../domain/registry';
 import {
@@ -828,7 +831,7 @@ async function removeEmptyParentDirs(ctx: Context, parentDirs: string[]): Promis
  * @param layout.kindRoutes Kind route directory mapping.
  * @returns Promise that resolves when cleanup is complete.
  */
-async function cleanupKindRouteDirectories(ctx: Context, target: any, layout: { baseDir: string; kindRoutes: Record<string, string> }): Promise<void> {
+async function cleanupKindRouteDirectories(ctx: Context, target: Target, layout: { baseDir: string; kindRoutes: Record<string, string> }): Promise<void> {
   const baseDir: string = layout.baseDir
     .replaceAll('${workspaceRoot}', ctx.cwd())
     .replaceAll('${HOME}', ctx.env.HOME ?? '')

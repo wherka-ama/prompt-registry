@@ -26,6 +26,10 @@ import type {
   CommandClass,
 } from 'clipanion';
 import type {
+  HttpClient,
+  TokenProvider,
+} from '../../ports/http';
+import type {
   Context,
 } from './context';
 
@@ -59,9 +63,9 @@ export interface RunCliOptions {
   /** Binary version reported by --version. */
   version: string;
   /** Optional HTTP client for hub/profile commands. */
-  http?: any;
+  http?: HttpClient;
   /** Optional token provider for hub/profile commands. */
-  tokens?: any;
+  tokens?: TokenProvider;
   /** Default output format applied to commands that have no explicit -o flag. */
   defaultOutput?: string;
 }
