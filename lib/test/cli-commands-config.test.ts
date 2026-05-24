@@ -192,4 +192,60 @@ describe('config commands', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).not.toContain('"status"');
   });
+
+  it('renders hubs section when hubs are configured', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'hubs:\n  activeHub: test-hub\n  configuredHubs:\n    test-hub: {}\n'
+    );
+    const result = await runCommand(['config', 'list'], {
+      commands: [createConfigListCommand()],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('=== Hubs ===');
+    expect(result.stdout).toContain('Active hub: test-hub');
+  });
+
+  it('renders profiles section when profiles are configured', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'profiles:\n  activeProfile: default\n'
+    );
+    const result = await runCommand(['config', 'list'], {
+      commands: [createConfigListCommand()],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('=== Profiles ===');
+    expect(result.stdout).toContain('Active profile: default');
+  });
+
+  it('renders github section when token is configured', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'github:\n  token: dummy-token\n'
+    );
+    const result = await runCommand(['config', 'list'], {
+      commands: [createConfigListCommand()],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('=== GitHub Authentication ===');
+    expect(result.stdout).toContain('Token configured: yes');
+  });
+
+  it('renders paths section when paths are configured', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'paths:\n  configPath: /path/to/config\n  cachePath: /path/to/cache\n'
+    );
+    const result = await runCommand(['config', 'list'], {
+      commands: [createConfigListCommand()],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('=== Paths ===');
+    expect(result.stdout).toContain('Config path: /path/to/config');
+  });
 });
