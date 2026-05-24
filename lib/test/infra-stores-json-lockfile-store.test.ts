@@ -106,6 +106,52 @@ describe('readLockfile', () => {
     vi.mocked(mockFs.readFile).mockResolvedValue('invalid json');
     await expect(readLockfile('/path/to/lock.json', mockFs)).rejects.toThrow();
   });
+
+  it('migrates VS Code extension format with bundles to CLI format with entries', async () => {
+    const vsCodeFormat = {
+      schemaVersion: 1,
+      bundles: {
+        'test-bundle': {
+          sourceId: 'owner/repo',
+          version: '1.0.0',
+          target: 'copilot',
+          installedAt: '2024-01-01T00:00:00Z',
+          checksum: 'abc123',
+          files: ['prompts/test.md']
+        }
+      }
+    };
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
+    vi.mocked(mockFs.exists).mockResolvedValue(true);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
+    vi.mocked(mockFs.readFile).mockResolvedValue(JSON.stringify(vsCodeFormat));
+    const lock = await readLockfile('/path/to/lock.json', mockFs);
+    expect(lock.entries).toHaveLength(1);
+    expect(lock.entries[0].bundleId).toBe('test-bundle');
+    expect(lock.entries[0].sha256).toBe('abc123');
+  });
+
+  it('handles malformed bundle data during migration gracefully', async () => {
+    const vsCodeFormat = {
+      schemaVersion: 1,
+      bundles: {
+        'valid-bundle': {
+          sourceId: 'owner/repo',
+          version: '1.0.0',
+          files: ['prompts/test.md']
+        },
+        'invalid-bundle': 'not an object'
+      }
+    };
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
+    vi.mocked(mockFs.exists).mockResolvedValue(true);
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- vi.mocked is a utility function, not a method
+    vi.mocked(mockFs.readFile).mockResolvedValue(JSON.stringify(vsCodeFormat));
+    const lock = await readLockfile('/path/to/lock.json', mockFs);
+    // Should skip the invalid bundle and only include the valid one
+    expect(lock.entries).toHaveLength(1);
+    expect(lock.entries[0].bundleId).toBe('valid-bundle');
+  });
 });
 
 describe('writeLockfile', () => {
