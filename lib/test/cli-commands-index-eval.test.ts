@@ -84,6 +84,88 @@ describe('cli `index eval`', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toMatch(/Pattern eval|cases/i);
   });
+
+  it('renders yaml output format', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'eval'],
+      {
+        commands: [createIndexEvalCommand({ indexFile, goldFile, output: 'yaml' })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('command: index.eval');
+    expect(stdout).toContain('status: ok');
+  });
+
+  it('renders ndjson output format', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'eval'],
+      {
+        commands: [createIndexEvalCommand({ indexFile, goldFile, output: 'ndjson' })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const lines = stdout.trim().split('\n');
+    expect(lines.length).toBe(1);
+    const parsed = JSON.parse(lines[0]) as { perCase: unknown[] };
+    expect(Array.isArray(parsed.perCase)).toBe(true);
+  });
+
+  it('exits 1 when gold file is missing', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'eval'],
+      {
+        commands: [createIndexEvalCommand({ indexFile, goldFile: '/nonexistent.json', output: 'json' })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout);
+    expect(env.errors[0].code).toBe('INDEX.NOT_FOUND');
+  });
+
+  it('exits 1 when gold file is empty string', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'eval'],
+      {
+        commands: [createIndexEvalCommand({ indexFile, goldFile: '', output: 'json' })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout);
+    expect(env.errors[0].code).toBe('USAGE.MISSING_FLAG');
+  });
+
+  it('exits 1 when index file is missing', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'eval'],
+      {
+        commands: [createIndexEvalCommand({ indexFile: '/nonexistent-index.json', goldFile, output: 'json' })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout);
+    expect(env.errors[0].code).toBe('INDEX.NOT_FOUND');
+  });
+
+  it('exits 1 when gold file has invalid JSON', async () => {
+    const invalidGold = path.join(tmpRoot, 'invalid.json');
+    fs.writeFileSync(invalidGold, 'invalid json{', 'utf8');
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'eval'],
+      {
+        commands: [createIndexEvalCommand({ indexFile, goldFile: invalidGold, output: 'json' })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout);
+    expect(env.errors[0].code).toBe('INDEX.EVAL_FAILED');
+  });
 });
 
 describe('cli `index bench`', () => {
