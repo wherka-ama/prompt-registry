@@ -187,4 +187,97 @@ describe('GitHubSingleBundleProvider', () => {
 
     await expect(provider.readFile(refs[0], 'README.md')).rejects.toThrow(/not a primitive candidate/);
   });
+
+  it('respects pathPrefix option when enumerating tree', async () => {
+    const promptBytes = Buffer.from('---\ntitle: P\n---\n\n# P\n', 'utf8');
+    const promptSha = computeGitBlobSha(promptBytes);
+    const fetch = fakeGithubFetch({
+      commitSha: 'sha1',
+      tree: [
+        { path: 'subdir/prompts/p.prompt.md', sha: promptSha, size: promptBytes.length }
+      ],
+      blobs: new Map([[promptSha, promptBytes]])
+    });
+    const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
+    const cache = new BlobCache(tmp);
+    const provider = new GitHubSingleBundleProvider({
+      spec: makeSpec(),
+      client,
+      cache,
+      pathPrefix: 'subdir'
+    });
+    const refs: Awaited<ReturnType<typeof provider.listBundles> extends AsyncIterable<infer T> ? T : never>[] = [];
+    for await (const r of provider.listBundles()) {
+      refs.push(r);
+    }
+    const manifest = await provider.readManifest(refs[0]);
+    expect(manifest.items?.length).toBe(1);
+    expect(manifest.items?.[0].path).toBe('subdir/prompts/p.prompt.md');
+  });
+
+  it('respects bundleId override option', async () => {
+    const fetch = fakeGithubFetch({ commitSha: 'abc123', tree: [], blobs: new Map() });
+    const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
+    const cache = new BlobCache(tmp);
+    const provider = new GitHubSingleBundleProvider({
+      spec: makeSpec(),
+      client,
+      cache,
+      bundleId: 'custom-bundle-id'
+    });
+    const refs: Awaited<ReturnType<typeof provider.listBundles> extends AsyncIterable<infer T> ? T : never>[] = [];
+    for await (const r of provider.listBundles()) {
+      refs.push(r);
+    }
+    expect(refs[0].bundleId).toBe('custom-bundle-id');
+  });
+
+  it('getCommitSha returns the commit sha from enumeration', async () => {
+    const fetch = fakeGithubFetch({ commitSha: 'commit-sha-123', tree: [], blobs: new Map() });
+    const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
+    const cache = new BlobCache(tmp);
+    const provider = new GitHubSingleBundleProvider({
+      spec: makeSpec(),
+      client,
+      cache
+    });
+    const commitSha = await provider.getCommitSha();
+    expect(commitSha).toBe('commit-sha-123');
+  });
+
+  it('classifies file paths by extension in pathKindHint', async () => {
+    const skillBytes = Buffer.from('---\ntitle: S\n---\n\n# S\n', 'utf8');
+    const skillSha = computeGitBlobSha(skillBytes);
+    const fetch = fakeGithubFetch({
+      commitSha: 'sha1',
+      tree: [
+        { path: 'prompts/hello.prompt.md', sha: skillSha, size: skillBytes.length },
+        { path: 'instructions/instr.instructions.md', sha: skillSha, size: skillBytes.length },
+        { path: 'chatmodes/m.chatmode.md', sha: skillSha, size: skillBytes.length },
+        { path: 'agents/a.agent.md', sha: skillSha, size: skillBytes.length },
+        { path: 'skills/s.skill.md', sha: skillSha, size: skillBytes.length },
+        { path: 'mcp/mcp.json', sha: skillSha, size: skillBytes.length }
+      ],
+      blobs: new Map([[skillSha, skillBytes]])
+    });
+    const client = new GitHubClient({ tokens: staticTokenProvider('t'), fetch });
+    const cache = new BlobCache(tmp);
+    const provider = new GitHubSingleBundleProvider({
+      spec: makeSpec(),
+      client,
+      cache
+    });
+    const refs: Awaited<ReturnType<typeof provider.listBundles> extends AsyncIterable<infer T> ? T : never>[] = [];
+    for await (const r of provider.listBundles()) {
+      refs.push(r);
+    }
+    const manifest = await provider.readManifest(refs[0]);
+    expect(manifest.items).toBeDefined();
+    expect(manifest.items?.[0].kind).toBe('prompt');
+    expect(manifest.items?.[1].kind).toBe('instruction');
+    expect(manifest.items?.[2].kind).toBe('chat-mode');
+    expect(manifest.items?.[3].kind).toBe('agent');
+    expect(manifest.items?.[4].kind).toBe('skill');
+    expect(manifest.items?.[5].kind).toBe('mcp-server');
+  });
 });
