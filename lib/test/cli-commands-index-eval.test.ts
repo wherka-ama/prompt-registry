@@ -186,4 +186,112 @@ describe('cli `index bench`', () => {
     expect(Array.isArray(env.data.perCase)).toBe(true);
     expect(env.data.aggregate.qps).toBeGreaterThan(0);
   });
+
+  it('renders yaml output format', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'bench'],
+      {
+        commands: [createIndexBenchCommand({
+          indexFile, goldFile, iterations: 5, output: 'yaml'
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('command: index.bench');
+    expect(stdout).toContain('status: ok');
+  });
+
+  it('renders ndjson output format', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'bench'],
+      {
+        commands: [createIndexBenchCommand({
+          indexFile, goldFile, iterations: 5, output: 'ndjson'
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const lines = stdout.trim().split('\n');
+    expect(lines.length).toBe(1);
+    const parsed = JSON.parse(lines[0]) as { perCase: unknown[] };
+    expect(Array.isArray(parsed.perCase)).toBe(true);
+  });
+
+  it('renders text output format', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'bench'],
+      {
+        commands: [createIndexBenchCommand({
+          indexFile, goldFile, iterations: 5, output: 'text'
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toMatch(/Bench|QPS/i);
+  });
+
+  it('exits 1 when gold file is missing', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'bench'],
+      {
+        commands: [createIndexBenchCommand({
+          indexFile, goldFile: '/nonexistent.json', output: 'json'
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout);
+    expect(env.errors[0].code).toBe('INDEX.NOT_FOUND');
+  });
+
+  it('exits 1 when gold file is empty string', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'bench'],
+      {
+        commands: [createIndexBenchCommand({
+          indexFile, goldFile: '', output: 'json'
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout);
+    expect(env.errors[0].code).toBe('USAGE.MISSING_FLAG');
+  });
+
+  it('exits 1 when index file is missing', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'bench'],
+      {
+        commands: [createIndexBenchCommand({
+          indexFile: '/nonexistent-index.json', goldFile, output: 'json'
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout);
+    expect(env.errors[0].code).toBe('INDEX.NOT_FOUND');
+  });
+
+  it('exits 1 when gold file has invalid JSON', async () => {
+    const invalidGold = path.join(tmpRoot, 'invalid.json');
+    fs.writeFileSync(invalidGold, 'invalid json{', 'utf8');
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'bench'],
+      {
+        commands: [createIndexBenchCommand({
+          indexFile, goldFile: invalidGold, output: 'json'
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout);
+    expect(env.errors[0].code).toBe('INDEX.BENCH_FAILED');
+  });
 });
