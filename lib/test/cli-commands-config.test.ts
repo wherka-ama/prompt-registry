@@ -92,6 +92,55 @@ describe('config commands', () => {
     expect(parsed.errors[0].code).toBe('USAGE.MISSING_FLAG');
   });
 
+  it('config get reads nested dotted key', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'cli:\n  output: json\n  indent: 2\n'
+    );
+    const result = await runCommand(['config', 'get'], {
+      commands: [createConfigGetCommand({ output: 'json', key: 'cli.indent' })],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    const parsed = JSON.parse(result.stdout) as { data: { value: unknown } };
+    expect(parsed.data.value).toBe(2);
+  });
+
+  it('config get handles object values in text output', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'cli:\n  output: json\n'
+    );
+    const result = await runCommand(['config', 'get'], {
+      commands: [createConfigGetCommand({ output: 'text', key: 'cli' })],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('cli:');
+    expect(result.stdout).toContain('json');
+  });
+
+  it('config get displays (unset) for undefined in text output', async () => {
+    const result = await runCommand(['config', 'get'], {
+      commands: [createConfigGetCommand({ output: 'text', key: 'no.such.key' })],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('(unset)');
+  });
+
+  it('config get handles array values', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'targets:\n  - name: vscode\n    type: vscode\n'
+    );
+    const result = await runCommand(['config', 'get'], {
+      commands: [createConfigGetCommand({ output: 'json', key: 'targets' })],
+      context: { cwd: tmpRoot, fs: realFs, env: {} }
+    });
+    const parsed = JSON.parse(result.stdout) as { data: { value: unknown } };
+    expect(Array.isArray(parsed.data.value)).toBe(true);
+  });
+
   it('config list text output contains section headers', async () => {
     const result = await runCommand(['config', 'list'], {
       commands: [createConfigListCommand({ output: 'text' })],
