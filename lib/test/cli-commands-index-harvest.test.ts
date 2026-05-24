@@ -154,4 +154,126 @@ describe('cli `index harvest`', () => {
     const env = JSON.parse(stdout);
     expect(env.errors[0].code).toBe('USAGE.MISSING_FLAG');
   });
+
+  it('renders yaml output format', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'harvest'],
+      {
+        commands: [createIndexHarvestCommand({
+          hubRepo: 'owner/repo',
+          output: 'yaml',
+          runPipeline: async () => ({
+            outFile: '/x', progressFile: '/p', cacheDir: '/c',
+            stats: {
+              primitives: 3, byKind: {}, bySource: {}, bundles: 1,
+              shortlists: 0, builtAt: '1970-01-01T00:00:00.000Z'
+            },
+            totals: { totalMs: 0, done: 1, error: 0, skip: 0, primitives: 3, wallMs: 0 },
+            hub: { repo: 'owner/repo', branch: 'main', sources: 1 },
+            rateLimit: {
+              limit: undefined, remaining: undefined,
+              used: undefined, resetAt: undefined
+            },
+            tokenSource: 'env'
+          })
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('command: index.harvest');
+    expect(stdout).toContain('status: ok');
+  });
+
+  it('renders ndjson output format', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'harvest'],
+      {
+        commands: [createIndexHarvestCommand({
+          hubRepo: 'owner/repo',
+          output: 'ndjson',
+          runPipeline: async () => ({
+            outFile: '/x', progressFile: '/p', cacheDir: '/c',
+            stats: {
+              primitives: 3, byKind: {}, bySource: {}, bundles: 1,
+              shortlists: 0, builtAt: '1970-01-01T00:00:00.000Z'
+            },
+            totals: { totalMs: 0, done: 1, error: 0, skip: 0, primitives: 3, wallMs: 0 },
+            hub: { repo: 'owner/repo', branch: 'main', sources: 1 },
+            rateLimit: {
+              limit: undefined, remaining: undefined,
+              used: undefined, resetAt: undefined
+            },
+            tokenSource: 'env'
+          })
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const lines = stdout.trim().split('\n');
+    expect(lines.length).toBe(1);
+    const parsed = JSON.parse(lines[0]) as { totals: { primitives: number } };
+    expect(parsed.totals.primitives).toBe(3);
+  });
+
+  it('accepts --no-hub-config flag', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'harvest'],
+      {
+        commands: [createIndexHarvestCommand({
+          noHubConfig: true,
+          output: 'json',
+          runPipeline: async () => ({
+            outFile: '/x', progressFile: '/p', cacheDir: '/c',
+            stats: {
+              primitives: 1, byKind: {}, bySource: {}, bundles: 0,
+              shortlists: 0, builtAt: '1970-01-01T00:00:00.000Z'
+            },
+            totals: { totalMs: 0, done: 1, error: 0, skip: 0, primitives: 1, wallMs: 0 },
+            hub: { repo: 'none', branch: 'main', sources: 0 },
+            rateLimit: {
+              limit: undefined, remaining: undefined,
+              used: undefined, resetAt: undefined
+            },
+            tokenSource: 'env'
+          })
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout);
+    expect(env.status).toBe('ok');
+  });
+
+  it('accepts --hub-config-file flag', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'harvest'],
+      {
+        commands: [createIndexHarvestCommand({
+          hubConfigFile: '/path/to/hub-config.yml',
+          output: 'json',
+          runPipeline: async () => ({
+            outFile: '/x', progressFile: '/p', cacheDir: '/c',
+            stats: {
+              primitives: 1, byKind: {}, bySource: {}, bundles: 1,
+              shortlists: 0, builtAt: '1970-01-01T00:00:00.000Z'
+            },
+            totals: { totalMs: 0, done: 1, error: 0, skip: 0, primitives: 1, wallMs: 0 },
+            hub: { repo: 'config-file', branch: 'main', sources: 1 },
+            rateLimit: {
+              limit: undefined, remaining: undefined,
+              used: undefined, resetAt: undefined
+            },
+            tokenSource: 'env'
+          })
+        })],
+        context: { cwd: tmpRoot, fs: createNodeFsAdapter() }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout);
+    expect(env.status).toBe('ok');
+  });
 });
