@@ -15,6 +15,9 @@ import {
   resolveUserConfigPaths,
 } from '../../app/registry';
 import {
+  type Profile,
+} from '../../domain/registry/profile';
+import {
   generateSourceId,
 } from '../../domain/source-id';
 import {
@@ -33,6 +36,8 @@ import {
   ActiveHubStore,
 } from '../../infra/stores/active-hub-store';
 import {
+  type Lockfile,
+  type LockfileSource,
   readLockfile,
   upsertEntry,
   upsertSource,
@@ -122,7 +127,7 @@ async function validateHubAndProfile(
   profileId: string,
   _ctx: Context,
   _fmt: OutputFormat
-): Promise<any> {
+): Promise<Profile> {
   const active = await mgr.getActiveHub();
   if (active?.id !== hubId) {
     throw new RegistryError({
@@ -147,12 +152,22 @@ async function validateHubAndProfile(
  * Update lockfile with bundle checksums.
  * @param lock Current lockfile.
  * @param out Activation output.
+ * @param out.state
+ * @param out.state.syncedTargets
+ * @param out.state.syncedBundleVersions
+ * @param out.written
  * @param profile Profile object.
  * @param sources Sources map.
  * @param ctx CLI context.
  * @returns Updated lockfile.
  */
-async function updateLockfileWithChecksums(lock: any, out: any, profile: any, sources: Record<string, any>, ctx: Context): Promise<any> {
+async function updateLockfileWithChecksums(
+  lock: Lockfile,
+  out: { state: { syncedTargets: string[]; syncedBundleVersions: Record<string, string> }; written: Record<string, string[]> },
+  profile: Profile,
+  sources: Record<string, LockfileSource>,
+  ctx: Context
+): Promise<Lockfile> {
   let nextLock = lock;
   for (const t of out.state.syncedTargets) {
     for (const bundleRef of profile.bundles) {
@@ -209,9 +224,8 @@ export const createApplyCommand = (opts: ApplyOptions = {}): CommandDefinition =
       await syncHubSafe(mgr, hubId, ctx, opts.noSync);
 
       // Type is validated by validateHubAndProfile
-      let profile: any;
+      let profile: Profile;
       try {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- validateHubAndProfile returns untyped YAML data
         profile = await validateHubAndProfile(mgr, hubId, profileId, ctx, fmt);
       } catch (err) {
         if (err instanceof RegistryError) {
@@ -240,11 +254,10 @@ export const createApplyCommand = (opts: ApplyOptions = {}): CommandDefinition =
 
       const activator = new ProfileActivator({ fs: ctx.fs, env: ctx.env, http: httpClient, tokens: tokenProvider });
       const sources = Object.fromEntries((await mgr.listSources(hubId)).map((s) => [s.id, s]));
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- activator.activate returns untyped activation output
+
       const out = await activator.activate({ hubId, profile, sources, targets });
       await activations.save(out.state);
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- updateLockfileWithChecksums returns untyped lockfile data
       const nextLock = await updateLockfileWithChecksums(lock, out, profile, sources, ctx);
       await writeLockfile(lockPath, nextLock, ctx.fs);
 
