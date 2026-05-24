@@ -42,7 +42,8 @@ describe('ProfileActivator', () => {
     };
 
     mockTokens = {
-      get: () => null
+      get: () => null,
+      getToken: () => null
     };
 
     activator = new ProfileActivator({
@@ -93,5 +94,28 @@ describe('ProfileActivator', () => {
       sources,
       targets
     })).rejects.toThrow('PROFILE.SOURCE_MISSING');
+  });
+
+  it('throws error when source type is unsupported', async () => {
+    const profile: Profile = {
+      id: 'test-profile',
+      name: 'Test Profile',
+      bundles: [
+        { id: 'bundle1', version: '1.0.0', source: 'unsupported-source', required: true }
+      ]
+    };
+
+    const sources: Record<string, RegistrySource> = {
+      'unsupported-source': { type: 'unsupported' as any, url: 'https://example.com', id: 'unsupported-source', name: 'Unsupported', enabled: true, priority: 0, hubId: 'test-hub' }
+    };
+
+    const targets: Target[] = [{ name: 'vscode', type: 'vscode', scope: 'user' } as any];
+
+    await expect(activator.activate({
+      hubId: 'test-hub',
+      profile,
+      sources,
+      targets
+    })).rejects.toThrow('PROFILE.SOURCE_UNSUPPORTED');
   });
 });
