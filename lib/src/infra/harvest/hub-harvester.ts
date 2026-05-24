@@ -110,7 +110,7 @@ interface BuildHarvestResultParams {
   progressFile: string;
   cacheDir: string;
   stats: IndexStats;
-  result: any;
+  result: { index: PrimitiveIndex; totalMs: number; done: number; error: number; skip: number; primitives: number; wallMs: number };
   hubRepo: string;
   hubBranch: string;
   sourcesCount: number;
@@ -285,14 +285,12 @@ export const harvestHub = async (
   const result = await runHarvester(sources, client, staticTokenProvider(resolvedToken), cacheDir, progressFile, concurrency, opts);
   await writeIndexWithIntegrity(result.index, outFile, env);
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- stats() return type is not fully typed
   const stats = result.index.stats();
 
   return buildHarvestResult({
     outFile,
     progressFile,
     cacheDir,
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- result parameter is typed as any for flexibility
     stats,
     result,
     hubRepo,
@@ -365,7 +363,7 @@ async function runHarvester(
   progressFile: string,
   concurrency: number,
   opts: HubHarvestPipelineOptions
-): Promise<{ index: any; totalMs: number; done: number; error: number; skip: number; primitives: number; wallMs: number }> {
+): Promise<{ index: PrimitiveIndex; totalMs: number; done: number; error: number; skip: number; primitives: number; wallMs: number }> {
   const cache = new BlobCache(path.join(cacheDir, 'blobs'));
   const etagStore = await EtagStore.open(path.join(cacheDir, 'etags.json'));
   const harvester = new HubHarvester({
@@ -381,14 +379,12 @@ async function runHarvester(
 }
 
 // eslint-disable-next-line @typescript-eslint/require-await -- Intentionally async for interface compatibility
-async function writeIndexWithIntegrity(index: any, outFile: string, env: NodeJS.ProcessEnv): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- index parameter is typed as any for flexibility
+async function writeIndexWithIntegrity(index: PrimitiveIndex, outFile: string, env: NodeJS.ProcessEnv): Promise<void> {
   saveIndex(index, outFile);
   const signKey = env.PRIMITIVE_INDEX_SIGN_KEY;
   const signKeyId = env.PRIMITIVE_INDEX_SIGN_KEY_ID ?? 'default';
   if (signKey !== undefined && signKey.length > 0) {
     const sigFile = outFile.replace(/\.json$/u, '.sig.json');
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- index parameter is typed as any for flexibility
     saveIndexWithIntegrity(index.toJSON(), sigFile, { keyId: signKeyId, key: signKey });
   }
 }
@@ -400,17 +396,11 @@ function buildHarvestResult(params: BuildHarvestResultParams): HubHarvestPipelin
     cacheDir: params.cacheDir,
     stats: params.stats,
     totals: {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- result parameter is typed as any for flexibility
       totalMs: params.result.totalMs,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- result parameter is typed as any for flexibility
       done: params.result.done,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- result parameter is typed as any for flexibility
       error: params.result.error,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- result parameter is typed as any for flexibility
       skip: params.result.skip,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- result parameter is typed as any for flexibility
       primitives: params.result.primitives,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- result parameter is typed as any for flexibility
       wallMs: params.result.wallMs
     },
     hub: { repo: params.hubRepo, branch: params.hubBranch, sources: params.sourcesCount },
