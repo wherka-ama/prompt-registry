@@ -105,4 +105,58 @@ describe('collection affected', () => {
     const ids = parsed.data.affected.map((a) => a.id).toSorted();
     expect(ids).toStrictEqual(['alpha', 'beta']);
   });
+
+  it('renders text output for affected collections', async () => {
+    const result = await runCommand(['collection', 'affected'], {
+      commands: [createCollectionAffectedCommand({
+        output: 'text',
+        changedPaths: ['prompts/foo.md']
+      })],
+      context: { cwd: tmpRoot, fs: realFs }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('alpha');
+    expect(result.stdout).toContain('collections/alpha.collection.yml');
+  });
+
+  it('renders "no affected collections" when no matches', async () => {
+    const result = await runCommand(['collection', 'affected'], {
+      commands: [createCollectionAffectedCommand({
+        output: 'text',
+        changedPaths: ['unrelated/file.txt']
+      })],
+      context: { cwd: tmpRoot, fs: realFs }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('no affected collections');
+  });
+
+  it('filters out empty normalized paths', async () => {
+    const result = await runCommand(['collection', 'affected'], {
+      commands: [createCollectionAffectedCommand({
+        output: 'json',
+        changedPaths: ['', '/', '  ']
+      })],
+      context: { cwd: tmpRoot, fs: realFs }
+    });
+    const parsed = JSON.parse(result.stdout) as {
+      data: { affected: { id: string }[] };
+    };
+    expect(parsed.data.affected).toStrictEqual([]);
+  });
+
+  it('flags multiple collections when paths overlap', async () => {
+    const result = await runCommand(['collection', 'affected'], {
+      commands: [createCollectionAffectedCommand({
+        output: 'json',
+        changedPaths: ['prompts/foo.md', 'prompts/bar.md']
+      })],
+      context: { cwd: tmpRoot, fs: realFs }
+    });
+    const parsed = JSON.parse(result.stdout) as {
+      data: { affected: { id: string }[] };
+    };
+    const ids = parsed.data.affected.map((a) => a.id).toSorted();
+    expect(ids).toStrictEqual(['alpha', 'beta']);
+  });
 });
