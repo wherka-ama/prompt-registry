@@ -118,7 +118,14 @@ export class GitHubBundleResolver implements BundleResolver {
    * @returns Release or undefined.
    */
   private findSpecificRelease(releases: GitHubRelease[], bundleName: string | null, wantVersion: string): GitHubRelease | undefined {
-    return releases.find((r) => (bundleName === null || r.tag_name.startsWith(bundleName)) && extractSemver(r.tag_name) === wantVersion);
+    // First try to find a release that matches both bundle name and version
+    const match = releases.find((r) => (bundleName === null || r.tag_name.startsWith(bundleName)) && extractSemver(r.tag_name) === wantVersion);
+    if (match !== undefined) {
+      return match;
+    }
+    // Fallback: try to find any release with the matching version (ignoring bundle name prefix)
+    // This handles cases where the primitive index bundle ID doesn't match the actual release tag name
+    return releases.find((r) => extractSemver(r.tag_name) === wantVersion);
   }
 
   /**
