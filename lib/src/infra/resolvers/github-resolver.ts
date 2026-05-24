@@ -279,6 +279,7 @@ const decomposeBundleId = (bundleId: string, repoSlug: string): { source: string
   //   "Amadeus-xDLC-genai.clean-code-in-the-cloud-skills-collection-amadeus-microservice-coding-guidebook-v1.0.1" -> collection: "amadeus-microservice-coding-guidebook", version: "v1.0.1"
   //   "Amadeus-xDLC-genai.clean-code-in-the-cloud-skills-collection-amadeus-microservice-coding-guidebook" -> collection: "amadeus-microservice-coding-guidebook", version: null
   //   "Amadeus-xDLC-genai.clean-code-in-the-cloud-skills-collection-skubedocs" -> collection: "skubedocs", version: null
+  //   "offer-agent-skills" -> collection: "offer-agent-skills", version: null (fallback for primitive index bundle IDs)
 
   // First, extract the version suffix if present
   const versionPattern = /-v?\d{1,3}\.\d{1,3}\.\d{1,3}(?:-[a-zA-Z0-9._-]{1,50})?$/;
@@ -298,14 +299,7 @@ const decomposeBundleId = (bundleId: string, repoSlug: string): { source: string
   }
 
   // Fallback: if the bundle ID doesn't start with the repo prefix,
-  // try to extract the collection by finding the last segment after the last hyphen
-  const lastHyphenIndex = withoutVersion.lastIndexOf('-');
-  if (lastHyphenIndex !== -1) {
-    const collection = withoutVersion.slice(lastHyphenIndex + 1);
-    const source = withoutVersion.slice(0, lastHyphenIndex);
-    return { source, collection, version };
-  }
-
-  // Last resort: return null
-  return { source: null, collection: null, version };
+  // assume it's already the collection name (e.g., from primitive index)
+  // Use the repoSlug as the source
+  return { source: repoSlug, collection: withoutVersion, version };
 };
