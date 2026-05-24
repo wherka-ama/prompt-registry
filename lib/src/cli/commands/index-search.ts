@@ -232,7 +232,7 @@ export class IndexSearchCommand extends Command {
       }
       return 0;
     } catch (cause) {
-      return failWith(ctx, fmt, classifyError(cause, indexPath));
+      return failWith(ctx, fmt, 'index.search', classifyError(cause, indexPath));
     }
   }
 }

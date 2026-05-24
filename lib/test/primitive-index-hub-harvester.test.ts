@@ -91,20 +91,16 @@ function makeFetch(repos: Map<string, { sha: string; tree: { path: string; sha: 
     // Handle raw.githubusercontent.com URLs for file content
     if (url.hostname === 'raw.githubusercontent.com') {
       const pathMatch = url.pathname.match(/^\/([^/]+)\/([^/]+)\/[^/]+\/(.+)$/);
-      console.log('DEBUG mock: raw.githubusercontent.com URL =', url.href, 'pathMatch =', pathMatch);
       if (pathMatch) {
         const owner = pathMatch[1];
         const repoName = pathMatch[2];
         const relPath = pathMatch[3];
         const rawKey = `${owner}/${repoName}`;
         const repoData = repos.get(rawKey);
-        console.log('DEBUG mock: key =', rawKey, 'repoData =', !!repoData);
         if (repoData) {
           const entry = repoData.tree.find((t) => t.path === relPath);
-          console.log('DEBUG mock: relPath =', relPath, 'entry =', !!entry);
           if (entry) {
             const blob = repoData.blobs.get(entry.sha);
-            console.log('DEBUG mock: blob =', !!blob, 'size =', blob?.length);
             if (blob) {
               return new Response(new Uint8Array(blob), { status: 200, headers: { 'content-type': 'text/plain' } });
             }

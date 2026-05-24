@@ -130,7 +130,7 @@ export class IndexBenchCommand extends Command {
     const fmt = (this.output ?? 'text') as OutputFormat;
 
     if (!this.gold || this.gold.length === 0) {
-      return failWith(ctx, fmt, new RegistryError({
+      return failWith(ctx, fmt, 'index.bench', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'index bench: --gold <FILE> is required'
       }));
@@ -165,7 +165,7 @@ export class IndexBenchCommand extends Command {
           message: `index bench failed: ${msg}`,
           cause: cause instanceof Error ? cause : undefined
         });
-      return failWith(ctx, fmt, err);
+      return failWith(ctx, fmt, 'index.bench', err);
     }
   }
 }

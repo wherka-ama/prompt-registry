@@ -139,7 +139,8 @@ describe('ClientEventKind type', () => {
 describe('ClientEventHandler type', () => {
   it('accepts a function that takes ClientEvent', () => {
     const handler: ClientEventHandler = (ev: ClientEvent) => {
-      console.log(ev.kind);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Type check only
+      const _ = ev.kind;
     };
     expect(typeof handler).toBe('function');
   });
