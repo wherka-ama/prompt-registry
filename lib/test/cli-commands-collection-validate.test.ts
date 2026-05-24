@@ -124,4 +124,60 @@ describe('collection validate', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toMatch(/FS\.NOT_FOUND|not found/);
   });
+
+  it('validates explicit collection files when collectionFiles option is set', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'alpha.collection.yml'),
+      VALID_COLLECTION
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'beta.collection.yml'),
+      INVALID_COLLECTION
+    );
+    const result = await runCommand(['collection', 'validate'], {
+      commands: [createCollectionValidateCommand({
+        output: 'json',
+        collectionFiles: ['collections/alpha.collection.yml']
+      })],
+      context: { cwd: tmpRoot, fs: realFs }
+    });
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as {
+      data: { totalFiles: number };
+    };
+    expect(parsed.data.totalFiles).toBe(1);
+  });
+
+  it('verbose mode prints each ok file in text output', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'alpha.collection.yml'),
+      VALID_COLLECTION
+    );
+    const result = await runCommand(['collection', 'validate'], {
+      commands: [createCollectionValidateCommand({
+        verbose: true
+      })],
+      context: { cwd: tmpRoot, fs: realFs }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/\[ OK \]/);
+    expect(result.stdout).toContain('alpha.collection.yml');
+  });
+
+  it('handles cross-collection duplicate errors in text output', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'alpha.collection.yml'),
+      'id: alpha\nname: Alpha\nversion: 1.0.0\nitems: []\n'
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'beta.collection.yml'),
+      'id: alpha\nname: Beta\nversion: 1.0.0\nitems: []\n'
+    );
+    const result = await runCommand(['collection', 'validate'], {
+      commands: [createCollectionValidateCommand()],
+      context: { cwd: tmpRoot, fs: realFs }
+    });
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toMatch(/Duplicate collection/);
+  });
 });
