@@ -1446,10 +1446,35 @@ async function fetchFilesForSource( // NOSONAR
     return files as unknown as Map<string, Buffer>;
   }
   if (src.type === 'github') {
+    // Check if this is an awesome-copilot source (detected by sourceId prefix)
+    const isAwesomeCopilot = entry.sourceId.startsWith('awesome-copilot-');
     const repoSlug = src.url.replace(/^https?:\/\/github\.com\//, '');
     if (verbose) {
-      ctx.stdout.write(`[verbose] Resolving ${entry.bundleId}@${entry.bundleVersion} from ${repoSlug}\n`);
+      ctx.stdout.write(`[verbose] Resolving ${entry.bundleId}@${entry.bundleVersion} from ${repoSlug} (${isAwesomeCopilot ? 'awesome-copilot' : 'github'})\n`);
     }
+
+    if (isAwesomeCopilot) {
+      // Use AwesomeCopilot resolver for awesome-copilot sources
+      const { AwesomeCopilotBundleResolver } = await import('../../infra/resolvers/awesome-copilot-resolver');
+      const resolver = new AwesomeCopilotBundleResolver({ repoSlug, http, tokens });
+      const installable = await resolver.resolve({
+        bundleId: entry.bundleId,
+        bundleVersion: entry.bundleVersion
+      });
+      if (installable === null || installable.inlineBytes === undefined) {
+        if (verbose) {
+          ctx.stdout.write(`[verbose] AwesomeCopilot resolver returned null or no inline bytes for ${entry.bundleId}@${entry.bundleVersion}\n`);
+        }
+        return null;
+      }
+      if (verbose) {
+        ctx.stdout.write(`[verbose] Using inline bundle from AwesomeCopilot resolver\n`);
+      }
+      const files = await new YauzlBundleExtractor().extract(installable.inlineBytes);
+      return files as unknown as Map<string, Buffer>;
+    }
+
+    // Use GitHub resolver for regular github sources
     const resolver = new GitHubBundleResolver({ repoSlug, http, tokens });
     const downloader = new HttpsBundleDownloader(http, tokens);
     const installable = await resolver.resolve({
