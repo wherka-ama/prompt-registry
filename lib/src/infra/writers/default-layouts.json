@@ -50,18 +50,26 @@
         "kindRoutes": {
           "prompts/": "prompts/",
           "agents/": "agents/",
-          "skills/": "skills/"
+          "skills/": "skills/",
+          "prompt-registry/prompts/": "prompts/",
+          "prompt-registry/agents/": "agents/",
+          "prompt-registry/skills/": "skills/",
+          "prompt-registry/instructions/": "instructions/"
         },
-        "skipPaths": ["deployment-manifest.yml", "README.md", "collections/", "prompt-registry/"]
+        "skipPaths": ["deployment-manifest.yml", "README.md", "collections/"]
       },
       "repository": {
         "baseDir": "${workspaceRoot}",
         "kindRoutes": {
           "prompts/": ".github/prompts/",
           "agents/": ".github/agents/",
-          "skills/": ".github/skills/"
+          "skills/": ".github/skills/",
+          "prompt-registry/prompts/": ".github/prompts/",
+          "prompt-registry/agents/": ".github/agents/",
+          "prompt-registry/skills/": ".github/skills/",
+          "prompt-registry/instructions/": ".github/instructions/"
         },
-        "skipPaths": ["deployment-manifest.yml", "README.md", "collections/", "prompt-registry/"]
+        "skipPaths": ["deployment-manifest.yml", "README.md", "collections/"]
       }
     },
     "kiro": {
