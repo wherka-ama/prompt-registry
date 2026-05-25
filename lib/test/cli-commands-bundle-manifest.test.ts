@@ -10,6 +10,7 @@ import {
   it,
 } from 'vitest';
 import {
+  BundleManifestCommand,
   createBundleManifestCommand,
 } from '../src/cli/commands/bundle-manifest';
 import {
@@ -195,5 +196,47 @@ items:
     const manifestText = await fs.readFile(path.join(tmpRoot, 'm.yml'), 'utf8');
     const manifest = yaml.load(manifestText) as { version: string };
     expect(manifest.version).toBe('latest');
+  });
+});
+
+describe('BundleManifestCommand (native class)', () => {
+  it('generates manifest via --collection-file and --version flags', async () => {
+    const outFile = path.join(tmpRoot, 'manifest-nc.yml');
+    const { exitCode, stdout } = await runCommand(
+      ['bundle', 'manifest', '--collection-file', 'collections/demo.collection.yml', '--version', '1.0.0', `--out-file=${outFile}`, '-o', 'json'],
+      {
+        commandClasses: [BundleManifestCommand],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { status: string };
+    expect(env.status).toBe('ok');
+    const manifestExists = await fs.access(outFile).then(() => true).catch(() => false);
+    expect(manifestExists).toBe(true);
+  });
+
+  it('exits 1 for missing collection file', async () => {
+    const { exitCode } = await runCommand(
+      ['bundle', 'manifest', '--collection-file', 'collections/nonexistent.yml', '--version', '1.0.0', '-o', 'json'],
+      {
+        commandClasses: [BundleManifestCommand],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(exitCode).toBe(1);
+  });
+
+  it('text output reports generated manifest', async () => {
+    const outFile = path.join(tmpRoot, 'manifest-text.yml');
+    const { exitCode, stdout } = await runCommand(
+      ['bundle', 'manifest', '--collection-file', 'collections/demo.collection.yml', '--version', '2.0.0', `--out-file=${outFile}`],
+      {
+        commandClasses: [BundleManifestCommand],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('Generated');
   });
 });

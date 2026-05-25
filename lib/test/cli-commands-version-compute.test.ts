@@ -10,6 +10,7 @@ import {
 } from 'vitest';
 import {
   createVersionComputeCommand,
+  VersionComputeCommand,
 } from '../src/cli/commands/version-compute';
 import {
   type FsAbstraction,
@@ -102,5 +103,54 @@ describe('version compute', () => {
     expect(result.exitCode).toBe(1);
     const parsed = JSON.parse(result.stdout) as { errors: { code: string }[] };
     expect(parsed.errors[0].code).toBe('BUNDLE.INVALID_VERSION');
+  });
+});
+
+describe('VersionComputeCommand (native class)', () => {
+  it('computes version via --collection-file flag', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'beta.collection.yml'),
+      'id: beta\nname: Beta\nversion: 1.0.0\nitems: []\n',
+      'utf8'
+    );
+    const { exitCode, stdout } = await runCommand(
+      ['version', 'compute', '--collection-file', 'collections/beta.collection.yml', '-o', 'json'],
+      {
+        commandClasses: [VersionComputeCommand],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { status: string; data: { version: string } };
+    expect(env.status).toBe('ok');
+    expect(env.data.nextVersion).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('exits 1 when collection file does not exist', async () => {
+    const { exitCode } = await runCommand(
+      ['version', 'compute', '--collection-file', 'collections/nonexistent.yml', '-o', 'json'],
+      {
+        commandClasses: [VersionComputeCommand],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(exitCode).toBe(1);
+  });
+
+  it('text output renders version string', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'gamma.collection.yml'),
+      'id: gamma\nname: Gamma\nversion: 2.0.0\nitems: []\n',
+      'utf8'
+    );
+    const { exitCode, stdout } = await runCommand(
+      ['version', 'compute', '--collection-file', 'collections/gamma.collection.yml'],
+      {
+        commandClasses: [VersionComputeCommand],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toMatch(/\d+\.\d+\.\d+/);
   });
 });

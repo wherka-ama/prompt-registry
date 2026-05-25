@@ -1,0 +1,22 @@
+id: demo
+version: 1.0.0
+name: Demo
+description: A demo collection.
+author: Prompt Registry
+tags:
+  - demo
+environments:
+  - vscode
+  - windsurf
+  - cursor
+license: MIT
+repository: ''
+prompts:
+  - id: foo.prompt
+    name: Foo Prompt
+    description: Brief description here.
+    file: prompts/foo.prompt.md
+    type: prompt
+    tags:
+      - demo
+dependencies: []

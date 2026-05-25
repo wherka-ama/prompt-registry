@@ -10,6 +10,7 @@ import {
 } from 'vitest';
 import {
   createInitCommand,
+  InitCommand,
 } from '../src/cli/commands/init';
 import {
   runCommand,
@@ -381,5 +382,81 @@ describe('cli `init`', () => {
       .then(() => true)
       .catch(() => false);
     expect(projectLockfile).toBe(true);
+  });
+});
+
+describe('InitCommand (native class)', () => {
+  it('creates config with --yes --scope repository via class flags', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['init', '--yes', '--scope', 'repository', '-o', 'json'],
+      {
+        commandClasses: [InitCommand],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(stdout) as { status: string };
+    expect(result.status).toBe('ok');
+    const configExists = await fs
+      .access(path.join(tmpRoot, 'prompt-registry.yml'))
+      .then(() => true).catch(() => false);
+    expect(configExists).toBe(true);
+  });
+
+  it('accepts --target-name and --target-type flags', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['init', '--yes', '--scope', 'repository', '--target-name', 'my-target', '--target-type', 'vscode', '-o', 'json'],
+      {
+        commandClasses: [InitCommand],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(stdout) as { status: string; data: { target?: { name: string } } };
+    expect(result.status).toBe('ok');
+    expect(result.data.target?.name).toBe('my-target');
+  });
+
+  it('supports all TARGET_TYPES via --target-type', async () => {
+    for (const type of TARGET_TYPES) {
+      const dir = await fs.mkdtemp(path.join(tmpRoot, `type-${type}-`));
+      const { exitCode } = await runCommand(
+        ['init', '--yes', '--scope', 'repository', '--target-type', type, '-o', 'json'],
+        {
+          commandClasses: [InitCommand],
+          context: {
+            cwd: dir,
+            fs: createNodeFsAdapter(),
+            env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+          }
+        }
+      );
+      expect(exitCode).toBe(0);
+    }
+  });
+
+  it('user scope creates config in XDG_CONFIG_HOME', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['init', '--yes', '--scope', 'user', '-o', 'json'],
+      {
+        commandClasses: [InitCommand],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(stdout) as { status: string };
+    expect(result.status).toBe('ok');
   });
 });

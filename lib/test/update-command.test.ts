@@ -237,6 +237,27 @@ describe('UpdateCommand', () => {
     expect(result.exitCode).toBe(0);
   });
 
+  it('--dry-run with text output shows "up to date" message for local-only entries', async () => {
+    await fsp.writeFile(
+      path.join(tmp, 'prompt-registry.yml'),
+      'targets:\n  - name: my-target\n    type: vscode\n    scope: user\n    path: /tmp/t\n',
+      'utf8'
+    );
+    await fsp.writeFile(
+      path.join(tmp, 'prompt-registry.lock.json'),
+      localOnlyLockfile('my-target'),
+      'utf8'
+    );
+
+    const result = await runCommand(['update', '--dry-run', '--no-hub-sync'], {
+      commandClasses: [UpdateCommand],
+      context: { cwd: tmp, fs, env: env() }
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/up to date/i);
+  });
+
   it('--target restricts output to entries for that target', async () => {
     await fsp.writeFile(
       path.join(tmp, 'prompt-registry.yml'),
