@@ -181,6 +181,62 @@ describe('UpdateCommand', () => {
     expect(after).toBe(original);
   });
 
+  it('exits 0 with "up to date" text without --dry-run (local-only entries)', async () => {
+    await fsp.writeFile(
+      path.join(tmp, 'prompt-registry.yml'),
+      'targets:\n  - name: my-target\n    type: vscode\n    scope: user\n    path: /tmp/t\n',
+      'utf8'
+    );
+    await fsp.writeFile(
+      path.join(tmp, 'prompt-registry.lock.json'),
+      localOnlyLockfile('my-target'),
+      'utf8'
+    );
+
+    const result = await runCommand(['update'], {
+      commandClasses: [UpdateCommand],
+      context: { cwd: tmp, fs, env: env() }
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('up to date');
+  });
+
+  it('accepts explicit --lockfile path', async () => {
+    const lockPath = path.join(tmp, 'custom.lock.json');
+    await fsp.writeFile(
+      path.join(tmp, 'prompt-registry.yml'),
+      'targets:\n  - name: t\n    type: vscode\n    scope: user\n    path: /tmp/t\n',
+      'utf8'
+    );
+    await fsp.writeFile(lockPath, localOnlyLockfile('t'), 'utf8');
+
+    const result = await runCommand(['update', '--lockfile', lockPath, '--dry-run', '-o', 'json'], {
+      commandClasses: [UpdateCommand],
+      context: { cwd: tmp, fs, env: env() }
+    });
+
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { status: string; data: { dryRun: boolean } };
+    expect(parsed.status).toBe('ok');
+    expect(parsed.data.dryRun).toBe(true);
+  });
+
+  it('accepts --no-hub-sync flag without error', async () => {
+    await fsp.writeFile(
+      path.join(tmp, 'prompt-registry.lock.json'),
+      localOnlyLockfile('t'),
+      'utf8'
+    );
+
+    const result = await runCommand(['update', '--no-hub-sync', '--dry-run', '-o', 'json'], {
+      commandClasses: [UpdateCommand],
+      context: { cwd: tmp, fs, env: env() }
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
   it('--target restricts output to entries for that target', async () => {
     await fsp.writeFile(
       path.join(tmp, 'prompt-registry.yml'),
