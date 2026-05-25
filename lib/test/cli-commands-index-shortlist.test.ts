@@ -14,6 +14,10 @@ import {
 } from '../src';
 import {
   createIndexShortlistCommand,
+  IndexShortlistAddCommand,
+  IndexShortlistListCommand,
+  IndexShortlistNewCommand,
+  IndexShortlistRemoveCommand,
 } from '../src/cli/commands/index-shortlist';
 import {
   runCommand,
@@ -140,5 +144,135 @@ describe('cli `index shortlist`', () => {
     expect(exitCode).toBe(1);
     const env = JSON.parse(stdout);
     expect(env.errors[0].code).toMatch(/^INDEX\.SHORTLIST_NOT_FOUND$/);
+  });
+});
+
+describe('IndexShortlist native classes', () => {
+  beforeEach(async () => {
+    tmpRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'prc-sl-native-'));
+    indexFile = path.join(tmpRoot, 'primitive-index.json');
+    const idx = await PrimitiveIndex.buildFrom(
+      new FakeBundleProvider(createFixtureBundles()),
+      { hubId: 'test' }
+    );
+    saveIndex(idx, indexFile);
+    primitiveId = idx.search({ limit: 1 }).hits[0].primitive.id;
+  });
+
+  afterEach(async () => {
+    await fsp.rm(tmpRoot, { recursive: true, force: true });
+  });
+
+  it('IndexShortlistNewCommand creates a shortlist', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'shortlist', 'new', '--name', 'my-list', '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexShortlistNewCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { shortlist: { id: string; name: string } } };
+    expect(env.data.shortlist.name).toBe('my-list');
+  });
+
+  it('IndexShortlistNewCommand exits 1 when --name missing', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'shortlist', 'new', '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexShortlistNewCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout) as { errors: { code: string }[] };
+    expect(env.errors[0].code).toBe('USAGE.MISSING_FLAG');
+  });
+
+  it('IndexShortlistAddCommand adds a primitive', async () => {
+    const r1 = await runCommand(
+      ['index', 'shortlist', 'new', '--name', 'sl1', '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexShortlistNewCommand], context: ctxOpts() }
+    );
+    const slId = (JSON.parse(r1.stdout) as { data: { shortlist: { id: string } } }).data.shortlist.id;
+
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'shortlist', 'add', '--id', slId, '--primitive', primitiveId,
+        '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexShortlistAddCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { shortlist: { primitiveIds: string[] } } };
+    expect(env.data.shortlist.primitiveIds).toContain(primitiveId);
+  });
+
+  it('IndexShortlistAddCommand exits 1 when --id missing', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'shortlist', 'add', '--primitive', primitiveId, '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexShortlistAddCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout) as { errors: { code: string }[] };
+    expect(env.errors[0].code).toBe('USAGE.MISSING_FLAG');
+  });
+
+  it('IndexShortlistRemoveCommand removes a primitive', async () => {
+    const r1 = await runCommand(
+      ['index', 'shortlist', 'new', '--name', 'sl2', '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexShortlistNewCommand], context: ctxOpts() }
+    );
+    const slId = (JSON.parse(r1.stdout) as { data: { shortlist: { id: string } } }).data.shortlist.id;
+    await runCommand(
+      ['index', 'shortlist', 'add', '--id', slId, '--primitive', primitiveId,
+        '--index', indexFile],
+      { commandClasses: [IndexShortlistAddCommand], context: ctxOpts() }
+    );
+
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'shortlist', 'remove', '--id', slId, '--primitive', primitiveId,
+        '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexShortlistRemoveCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { shortlist: { primitiveIds: string[] } } };
+    expect(env.data.shortlist.primitiveIds).not.toContain(primitiveId);
+  });
+
+  it('IndexShortlistRemoveCommand exits 1 when --id missing', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'shortlist', 'remove', '--primitive', primitiveId, '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexShortlistRemoveCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout) as { errors: { code: string }[] };
+    expect(env.errors[0].code).toBe('USAGE.MISSING_FLAG');
+  });
+
+  it('IndexShortlistListCommand lists shortlists', async () => {
+    await runCommand(
+      ['index', 'shortlist', 'new', '--name', 'listed', '--index', indexFile],
+      { commandClasses: [IndexShortlistNewCommand], context: ctxOpts() }
+    );
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'shortlist', 'list', '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexShortlistListCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { shortlists: { name: string }[] } };
+    expect(env.data.shortlists.some((s) => s.name === 'listed')).toBe(true);
+  });
+
+  it('IndexShortlistListCommand text output shows empty message', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'shortlist', 'list', '--index', indexFile],
+      { commandClasses: [IndexShortlistListCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('No shortlists');
+  });
+
+  it('IndexShortlistNewCommand exits 1 when index file missing', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'shortlist', 'new', '--name', 'test',
+        '--index', path.join(tmpRoot, 'missing.json'), '-o', 'json'],
+      { commandClasses: [IndexShortlistNewCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout) as { errors: { code: string }[] };
+    expect(env.errors[0].code).toBe('INDEX.NOT_FOUND');
   });
 });
