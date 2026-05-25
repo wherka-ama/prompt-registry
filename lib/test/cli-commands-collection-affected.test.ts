@@ -9,6 +9,7 @@ import {
   it,
 } from 'vitest';
 import {
+  CollectionAffectedCommand,
   createCollectionAffectedCommand,
 } from '../src/cli/commands/collection-affected';
 import {
@@ -156,6 +157,62 @@ describe('collection affected', () => {
     const parsed = JSON.parse(result.stdout) as {
       data: { affected: { id: string }[] };
     };
+    const ids = parsed.data.affected.map((a) => a.id).toSorted();
+    expect(ids).toStrictEqual(['alpha', 'beta']);
+  });
+});
+
+describe('CollectionAffectedCommand (native class)', () => {
+  it('returns affected collections via --changed-path flag', async () => {
+    const result = await runCommand(
+      ['collection', 'affected', '--changed-path', 'prompts/foo.md', '-o', 'json'],
+      { commandClasses: [CollectionAffectedCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { data: { affected: { id: string }[] } };
+    expect(parsed.data.affected.length).toBe(1);
+    expect(parsed.data.affected[0].id).toBe('alpha');
+  });
+
+  it('returns empty list when no paths match', async () => {
+    const result = await runCommand(
+      ['collection', 'affected', '--changed-path', 'unrelated/file.txt', '-o', 'json'],
+      { commandClasses: [CollectionAffectedCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { data: { affected: unknown[] } };
+    expect(parsed.data.affected).toStrictEqual([]);
+  });
+
+  it('text output with no matches shows empty message', async () => {
+    const result = await runCommand(
+      ['collection', 'affected'],
+      { commandClasses: [CollectionAffectedCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('no affected collections');
+  });
+
+  it('matches collection file itself as changed path', async () => {
+    const result = await runCommand(
+      ['collection', 'affected', '--changed-path', 'collections/beta.collection.yml', '-o', 'json'],
+      { commandClasses: [CollectionAffectedCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { data: { affected: { id: string }[] } };
+    expect(parsed.data.affected[0].id).toBe('beta');
+  });
+
+  it('multiple --changed-path flags affect multiple collections', async () => {
+    const result = await runCommand(
+      ['collection', 'affected',
+        '--changed-path', 'prompts/foo.md',
+        '--changed-path', 'prompts/bar.md',
+        '-o', 'json'],
+      { commandClasses: [CollectionAffectedCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { data: { affected: { id: string }[] } };
     const ids = parsed.data.affected.map((a) => a.id).toSorted();
     expect(ids).toStrictEqual(['alpha', 'beta']);
   });

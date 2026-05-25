@@ -9,6 +9,7 @@ import {
   it,
 } from 'vitest';
 import {
+  CollectionValidateCommand,
   createCollectionValidateCommand,
 } from '../src/cli/commands/collection-validate';
 import {
@@ -179,5 +180,91 @@ describe('collection validate', () => {
     });
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toMatch(/Duplicate collection/);
+  });
+});
+
+describe('CollectionValidateCommand (native class)', () => {
+  it('exits 0 for valid collection', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'alpha.collection.yml'),
+      VALID_COLLECTION
+    );
+    const result = await runCommand(
+      ['collection', 'validate', '-o', 'json'],
+      { commandClasses: [CollectionValidateCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { status: string; data: { ok: boolean } };
+    expect(parsed.status).toBe('ok');
+    expect(parsed.data.ok).toBe(true);
+  });
+
+  it('exits 1 when collections/ missing', async () => {
+    await fs.rm(path.join(tmpRoot, 'collections'), { recursive: true });
+    const result = await runCommand(
+      ['collection', 'validate'],
+      { commandClasses: [CollectionValidateCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toMatch(/FS\.NOT_FOUND|not found/);
+  });
+
+  it('exits 1 for invalid collection', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'bad.collection.yml'),
+      INVALID_COLLECTION
+    );
+    const result = await runCommand(
+      ['collection', 'validate', '-o', 'json'],
+      { commandClasses: [CollectionValidateCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(1);
+    const parsed = JSON.parse(result.stdout) as { data: { ok: boolean } };
+    expect(parsed.data.ok).toBe(false);
+  });
+
+  it('--verbose shows OK files in text mode', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'alpha.collection.yml'),
+      VALID_COLLECTION
+    );
+    const result = await runCommand(
+      ['collection', 'validate', '--verbose'],
+      { commandClasses: [CollectionValidateCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/\[ OK \]/);
+  });
+
+  it('--collection-file validates only specified file', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'alpha.collection.yml'),
+      VALID_COLLECTION
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'bad.collection.yml'),
+      INVALID_COLLECTION
+    );
+    const result = await runCommand(
+      ['collection', 'validate', '--collection-file', 'collections/alpha.collection.yml', '-o', 'json'],
+      { commandClasses: [CollectionValidateCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { data: { totalFiles: number } };
+    expect(parsed.data.totalFiles).toBe(1);
+  });
+
+  it('--markdown-path writes a markdown report', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'alpha.collection.yml'),
+      VALID_COLLECTION
+    );
+    const mdPath = path.join(tmpRoot, 'report.md');
+    await runCommand(
+      ['collection', 'validate', '--markdown-path', mdPath],
+      { commandClasses: [CollectionValidateCommand], context: { cwd: tmpRoot, fs: realFs } }
+    );
+    const md = await fs.readFile(mdPath, 'utf8');
+    expect(md).toMatch(/Collection Validation Results/);
   });
 });
