@@ -439,6 +439,57 @@ describe('F-11: apply command', () => {
     expect(stderr).toContain('target add');
   });
 
+  it('succeeds with empty-bundle profile (covers happy path)', async () => {
+    const hubsDir = path.join(xdgConfig, 'prompt-registry', 'hubs');
+    const activeHubFile = path.join(xdgConfig, 'prompt-registry', 'active-hub.json');
+    await fs.mkdir(hubsDir, { recursive: true });
+    await fs.writeFile(
+      path.join(hubsDir, 'my-hub.yml'),
+      [
+        'version: "1.0.0"',
+        'metadata:',
+        '  name: my-hub',
+        '  description: ""',
+        '  maintainer: ""',
+        '  updatedAt: "2026-01-01T00:00:00Z"',
+        'sources: []',
+        'profiles:',
+        '  - id: backend',
+        '    name: Backend',
+        '    bundles: []'
+      ].join('\n')
+    );
+    await fs.writeFile(
+      activeHubFile,
+      JSON.stringify({ hubId: 'my-hub', setAt: new Date().toISOString() })
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.lock.json'),
+      JSON.stringify({ schemaVersion: 1, entries: [], sources: {}, useProfile: { hubId: 'my-hub', profileId: 'backend' } })
+    );
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'targets:\n  - name: t1\n    type: copilot-cli\n    scope: user\n'
+    );
+
+    const { exitCode, stdout } = await runCommand(
+      ['apply'],
+      {
+        commands: [createApplyCommand({ noSync: true, output: 'json' })],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as { status: string; data: { hubId: string; profileId: string } };
+    expect(parsed.status).toBe('ok');
+    expect(parsed.data.hubId).toBe('my-hub');
+    expect(parsed.data.profileId).toBe('backend');
+  });
+
   it('yaml output wraps error in envelope', async () => {
     await fs.writeFile(
       path.join(tmpRoot, 'prompt-registry.lock.json'),
