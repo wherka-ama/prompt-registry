@@ -13,6 +13,7 @@ import {
   parseCsv,
   parseCsvEnum,
   parseCsvKinds,
+  parseCsvNonEmpty,
 } from '../../src/cli/framework/parsers';
 import {
   PRIMITIVE_KINDS,
@@ -210,5 +211,23 @@ describe('CLI Argument Parsing - Fix 2: collectRepeated Flag Validation', () => 
       const result = collect(argv, '--extra-source');
       expect(result).toEqual([]);
     });
+  });
+});
+
+describe('parseCsvNonEmpty', () => {
+  it('returns parsed array for valid CSV', () => {
+    expect(parseCsvNonEmpty('a,b,c')).toEqual(['a', 'b', 'c']);
+  });
+
+  it('returns undefined for undefined input', () => {
+    expect(parseCsvNonEmpty(undefined)).toBeUndefined();
+  });
+
+  it('returns undefined for empty string', () => {
+    expect(parseCsvNonEmpty('')).toBeUndefined();
+  });
+
+  it('returns undefined for whitespace-only string', () => {
+    expect(parseCsvNonEmpty('   ')).toBeUndefined();
   });
 });

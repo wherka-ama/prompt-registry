@@ -11,6 +11,7 @@ import {
 import {
   CollectionAffectedCommand,
   createCollectionAffectedCommand,
+  createCollectionAffectedCommandClass,
 } from '../src/cli/commands/collection-affected';
 import {
   type FsAbstraction,
@@ -215,5 +216,41 @@ describe('CollectionAffectedCommand (native class)', () => {
     const parsed = JSON.parse(result.stdout) as { data: { affected: { id: string }[] } };
     const ids = parsed.data.affected.map((a) => a.id).toSorted();
     expect(ids).toStrictEqual(['alpha', 'beta']);
+  });
+});
+
+describe('createCollectionAffectedCommandClass factory', () => {
+  it('returns a class with correct static properties', () => {
+    const ctx = {
+      cwd: () => tmpRoot,
+      fs: realFs,
+      env: {},
+      stdout: { write: (_s: string) => undefined }
+    };
+    const ConfiguredClass = createCollectionAffectedCommandClass(ctx as any, 'json', ['prompts/foo.md']);
+    expect(typeof ConfiguredClass).toBe('function');
+    expect((ConfiguredClass as any).paths).toEqual(CollectionAffectedCommand.paths);
+    expect((ConfiguredClass as any).usage).toBeDefined();
+  });
+
+  it('factory instance execute() covers factory body when invoked directly', async () => {
+    const captured: string[] = [];
+    const ctx = {
+      cwd: () => tmpRoot,
+      fs: realFs,
+      env: {},
+      stdout: { write: (s: string) => { captured.push(s); } },
+      stderr: { write: (_s: string) => undefined }
+    };
+    const ConfiguredClass = createCollectionAffectedCommandClass(ctx as any, 'json', ['prompts/foo.md']);
+    const instance = new (ConfiguredClass as any)();
+    instance.commandContext = { ctx };
+    instance.output = 'json';
+    instance.changedPath = ['prompts/foo.md'];
+    const exitCode = await instance.execute();
+    expect(exitCode).toBe(0);
+    const output = captured.join('');
+    const env = JSON.parse(output) as { status: string };
+    expect(env.status).toBe('ok');
   });
 });
