@@ -14,6 +14,7 @@ import {
 } from '../src';
 import {
   createIndexSearchCommand,
+  IndexSearchCommand,
 } from '../src/cli/commands/index-search';
 import {
   runCommand,
@@ -162,5 +163,68 @@ describe('cli `index search`', () => {
     );
     const env = JSON.parse(stdout);
     expect(env.data.hits.length).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('IndexSearchCommand (native class)', () => {
+  it('searches with --query and returns json envelope', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'search', '--query', 'a', '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexSearchCommand], context: { cwd: tmpRoot, fs: createNodeFsAdapter() } }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { status: string; data: { hits: unknown[] } };
+    expect(env.status).toBe('ok');
+    expect(Array.isArray(env.data.hits)).toBe(true);
+  });
+
+  it('returns empty hits for non-matching query', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'search', '--query', 'zzznoneexistent', '--index', indexFile, '-o', 'json'],
+      { commandClasses: [IndexSearchCommand], context: { cwd: tmpRoot, fs: createNodeFsAdapter() } }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { total: number } };
+    expect(env.data.total).toBe(0);
+  });
+
+  it('respects --limit flag', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'search', '--index', indexFile, '--limit', '2', '-o', 'json'],
+      { commandClasses: [IndexSearchCommand], context: { cwd: tmpRoot, fs: createNodeFsAdapter() } }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { hits: unknown[] } };
+    expect(env.data.hits.length).toBeLessThanOrEqual(2);
+  });
+
+  it('--kinds filters results to that kind', async () => {
+    const { stdout } = await runCommand(
+      ['index', 'search', '--index', indexFile, '--kinds', 'prompt', '-o', 'json'],
+      { commandClasses: [IndexSearchCommand], context: { cwd: tmpRoot, fs: createNodeFsAdapter() } }
+    );
+    const env = JSON.parse(stdout) as { data: { hits: { primitive: { kind: string } }[] } };
+    for (const hit of env.data.hits) {
+      expect(hit.primitive.kind).toBe('prompt');
+    }
+  });
+
+  it('text output prints total line', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'search', '--index', indexFile],
+      { commandClasses: [IndexSearchCommand], context: { cwd: tmpRoot, fs: createNodeFsAdapter() } }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toMatch(/total: \d+/);
+  });
+
+  it('exits 1 when index file missing', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'search', '--index', path.join(tmpRoot, 'missing.json'), '-o', 'json'],
+      { commandClasses: [IndexSearchCommand], context: { cwd: tmpRoot, fs: createNodeFsAdapter() } }
+    );
+    expect(exitCode).toBe(1);
+    const env = JSON.parse(stdout) as { errors: { code: string }[] };
+    expect(env.errors[0].code).toMatch(/^[A-Z]+\.[A-Z_]+$/);
   });
 });

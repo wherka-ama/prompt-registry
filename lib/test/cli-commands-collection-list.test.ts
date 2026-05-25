@@ -9,6 +9,7 @@ import {
   it,
 } from 'vitest';
 import {
+  CollectionListCommand,
   createCollectionListCommand,
 } from '../src/cli/commands/collection-list';
 import {
@@ -21,6 +22,8 @@ import {
 
 let tmpRoot: string;
 let realFs: FsAbstraction;
+
+const ctxOpts = (): { cwd: string; fs: ReturnType<typeof createNodeFsAdapter> } => ({ cwd: tmpRoot, fs: createNodeFsAdapter() });
 
 const fixtureCollections: Record<string, string> = {
   'alpha.collection.yml': 'id: alpha\nname: Alpha\nitems: []\n',
@@ -156,5 +159,51 @@ describe('collection list', () => {
     });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('no collections found');
+  });
+});
+
+describe('CollectionListCommand (native class)', () => {
+  it('lists collections via -o json', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['collection', 'list', '-o', 'json'],
+      { commandClasses: [CollectionListCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as { status: string; data: { id: string }[] };
+    expect(parsed.status).toBe('ok');
+    const ids = parsed.data.map((c) => c.id).toSorted();
+    expect(ids).toContain('alpha');
+    expect(ids).toContain('beta');
+  });
+
+  it('text output lists collection ids', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['collection', 'list'],
+      { commandClasses: [CollectionListCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('alpha');
+    expect(stdout).toContain('beta');
+  });
+
+  it('exits 1 with FS.NOT_FOUND when collections/ missing', async () => {
+    await fs.rm(path.join(tmpRoot, 'collections'), { recursive: true });
+    const { exitCode, stdout } = await runCommand(
+      ['collection', 'list', '-o', 'json'],
+      { commandClasses: [CollectionListCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(1);
+    const parsed = JSON.parse(stdout) as { errors: { code: string }[] };
+    expect(parsed.errors[0].code).toBe('FS.NOT_FOUND');
+  });
+
+  it('exits 1 in text mode when collections/ missing', async () => {
+    await fs.rm(path.join(tmpRoot, 'collections'), { recursive: true });
+    const { exitCode, stderr } = await runCommand(
+      ['collection', 'list'],
+      { commandClasses: [CollectionListCommand], context: ctxOpts() }
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toMatch(/FS\.NOT_FOUND|not found/);
   });
 });
