@@ -14,6 +14,7 @@ import {
 } from '../src';
 import {
   createIndexStatsCommand,
+  createIndexStatsCommandClass,
   IndexStatsCommand,
 } from '../src/cli/commands/index-stats';
 import {
@@ -148,5 +149,56 @@ describe('IndexStatsCommand (native class)', () => {
     expect(exitCode).toBe(1);
     const env = JSON.parse(stdout);
     expect(env.errors[0].code).toBe('INDEX.NOT_FOUND');
+  });
+});
+
+describe('createIndexStatsCommandClass factory', () => {
+  beforeEach(async () => {
+    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'prc-idx-stats3-'));
+    indexFile = path.join(tmpRoot, 'primitive-index.json');
+    const idx = await PrimitiveIndex.buildFrom(
+      new FakeBundleProvider(createFixtureBundles()),
+      { hubId: 'test' }
+    );
+    saveIndex(idx, indexFile);
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpRoot, { recursive: true, force: true });
+  });
+
+  it('returns a command class with correct static properties', () => {
+    const ctx = {
+      cwd: () => tmpRoot,
+      fs: createNodeFsAdapter(),
+      env: {},
+      stdout: { write: (_s: string) => undefined }
+    };
+    const ConfiguredClass = createIndexStatsCommandClass(ctx as any, 'json', indexFile);
+    expect(typeof ConfiguredClass).toBe('function');
+    expect((ConfiguredClass as any).paths).toEqual(IndexStatsCommand.paths);
+    expect((ConfiguredClass as any).usage).toBeDefined();
+  });
+
+  it('factory ConfiguredCommand.execute covers factory body when invoked directly', async () => {
+    const captured: string[] = [];
+    const ctx = {
+      cwd: () => tmpRoot,
+      fs: createNodeFsAdapter(),
+      env: {},
+      stdout: { write: (s: string) => { captured.push(s); } },
+      stderr: { write: (_s: string) => undefined }
+    };
+    const ConfiguredClass = createIndexStatsCommandClass(ctx as any, 'json', indexFile);
+    const instance = new (ConfiguredClass as any)();
+    instance.commandContext = { ctx };
+    instance.output = 'json';
+    instance.indexFile = indexFile;
+    const exitCode = await instance.execute();
+    console.log('factory direct invoke output:', captured.join('').slice(0, 300));
+    expect(exitCode).toBe(0);
+    const output = captured.join('');
+    const env = JSON.parse(output) as { status: string };
+    expect(env.status).toBe('ok');
   });
 });
