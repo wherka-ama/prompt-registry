@@ -9,6 +9,7 @@ import {
   it,
 } from 'vitest';
 import {
+  BundleBuildCommand,
   createBundleBuildCommand,
 } from '../src/cli/commands/bundle-build';
 import {
@@ -140,5 +141,59 @@ items: []
     expect(parsed.data.outDir).toContain('custom-output');
     const manifestExists = await fs.stat(path.join(tmpRoot, 'custom-output', 'demo', 'deployment-manifest.yml'));
     expect(manifestExists.isFile()).toBe(true);
+  });
+});
+
+describe('BundleBuildCommand (native class)', () => {
+  it('builds bundle via --collection-file, --version, --repo-slug flags', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['bundle', 'build', '--collection-file', 'collections/demo.collection.yml', '--version', '1.0.0', '--repo-slug', 'test-owner-repo', '-o', 'json'],
+      {
+        commandClasses: [BundleBuildCommand],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { status: string; data: { bundleId: string } };
+    expect(env.status).toBe('ok');
+    expect(env.data.bundleId).toContain('demo');
+  });
+
+  it('exits 1 when --repo-slug is missing and GITHUB_REPOSITORY is not set', async () => {
+    const { exitCode } = await runCommand(
+      ['bundle', 'build', '--collection-file', 'collections/demo.collection.yml', '--version', '1.0.0', '-o', 'json'],
+      {
+        commandClasses: [BundleBuildCommand],
+        context: { cwd: tmpRoot, fs: realFs, env: {} }
+      }
+    );
+    expect(exitCode).toBe(1);
+  });
+
+  it('uses GITHUB_REPOSITORY env var as repo slug', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['bundle', 'build', '--collection-file', 'collections/demo.collection.yml', '--version', '1.0.0', '-o', 'json'],
+      {
+        commandClasses: [BundleBuildCommand],
+        context: { cwd: tmpRoot, fs: realFs, env: { GITHUB_REPOSITORY: 'owner/demo-repo' } }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { status: string };
+    expect(env.status).toBe('ok');
+  });
+
+  it('respects --out-dir flag', async () => {
+    const outDir = path.join(tmpRoot, 'my-dist');
+    const { exitCode, stdout } = await runCommand(
+      ['bundle', 'build', '--collection-file', 'collections/demo.collection.yml', '--version', '1.0.0', '--repo-slug', 'owner-repo', `--out-dir=${outDir}`, '-o', 'json'],
+      {
+        commandClasses: [BundleBuildCommand],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { outDir: string } };
+    expect(env.data.outDir).toContain('my-dist');
   });
 });

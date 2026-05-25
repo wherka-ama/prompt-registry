@@ -179,4 +179,104 @@ describe('ProfileActivator', () => {
     expect(result.state.activatedAt >= before).toBe(true);
     expect(result.state.activatedAt <= after).toBe(true);
   });
+
+  it('activates local source bundle (kind=local path)', async () => {
+    const localSource: RegistrySource = {
+      id: 'local-src-1',
+      name: 'Local Source',
+      type: 'local',
+      url: '/tmp/local-bundle',
+      enabled: true,
+      priority: 0
+    };
+    const profile: Profile = {
+      id: 'local-profile',
+      name: 'Local Profile',
+      bundles: [{ id: 'my-bundle', version: '1.0.0', source: 'local-src-1' } as any]
+    };
+    const sources: Record<string, RegistrySource> = {
+      'local-src-1': localSource
+    };
+    const targets: Target[] = [{ name: 'vscode', type: 'vscode', scope: 'user' } as any];
+
+    const localManifest = Buffer.from('id: my-bundle\nversion: 1.0.0\nname: My Bundle\nschemaVersion: 1\nitems: []\n');
+    const localMockFs = {
+      ...createSimpleMockFs(),
+      exists: async (p: string) => p.startsWith('/tmp/local-bundle'),
+      readDir: async () => ['deployment-manifest.yml'],
+      readFile: async (p: string) => {
+        if (p.endsWith('deployment-manifest.yml')) return localManifest;
+        throw new Error('is a directory');
+      }
+    };
+    const localActivator = new ProfileActivator({
+      fs: localMockFs as any,
+      env: { HOME: '/tmp/test' },
+      http: mockHttp,
+      tokens: mockTokens
+    });
+
+    const result = await localActivator.activate({
+      hubId: 'test-hub',
+      profile,
+      sources,
+      targets
+    });
+    expect(result.state.profileId).toBe('local-profile');
+  });
+
+  it('rollback is triggered on write failure - re-throws PROFILE.ACTIVATION_FAILED', async () => {
+    const localSource: RegistrySource = {
+      id: 'local-fail',
+      name: 'Local Fail',
+      type: 'local',
+      url: '/tmp/local-fail',
+      enabled: true,
+      priority: 0
+    };
+    const profile: Profile = {
+      id: 'fail-profile',
+      name: 'Fail Profile',
+      bundles: [{ id: 'fail-bundle', version: '1.0.0', source: 'local-fail' } as any]
+    };
+    const sources: Record<string, RegistrySource> = {
+      'local-fail': localSource
+    };
+    const targets: Target[] = [{ name: 'vscode', type: 'vscode', scope: 'user' } as any];
+
+    const manifestContent = Buffer.from(
+      'id: fail-bundle\nversion: 1.0.0\nname: Fail Bundle\nschemaVersion: 1\nitems: []\n'
+    );
+    const promptContent = Buffer.from('# My Prompt\n\n> A test prompt.\n\nBody.\n');
+
+    const failMockFs = {
+      ...createSimpleMockFs(),
+      exists: async (p: string) => p.startsWith('/tmp/local-fail'),
+      readDir: async (p: string) => {
+        if (p === '/tmp/local-fail') return ['deployment-manifest.yml', 'prompts'];
+        if (p.endsWith('/prompts')) return ['test.prompt.md'];
+        return [];
+      },
+      readFile: async (p: string) => {
+        if (p.endsWith('deployment-manifest.yml')) return manifestContent;
+        if (p.endsWith('.prompt.md')) return promptContent;
+        throw new Error('is a directory');
+      },
+      writeFile: async () => { throw new Error('disk full'); },
+      mkdir: async () => {}
+    };
+    const failActivator = new ProfileActivator({
+      fs: failMockFs as any,
+      env: { HOME: '/tmp/test' },
+      http: mockHttp,
+      tokens: mockTokens
+    });
+
+    await expect(failActivator.activate({
+      hubId: 'test-hub',
+      profile,
+      sources,
+      targets
+    })).rejects.toThrow('PROFILE.ACTIVATION_FAILED');
+  });
 });
