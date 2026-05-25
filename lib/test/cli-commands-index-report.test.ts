@@ -11,6 +11,7 @@ import {
 } from 'vitest';
 import {
   createIndexReportCommand,
+  IndexReportCommand,
 } from '../src/cli/commands/index-report';
 import {
   runCommand,
@@ -86,6 +87,40 @@ describe('cli `index report`', () => {
     );
     expect(exitCode).toBe(0);
     const env = JSON.parse(stdout);
+    expect(env.data.summary.done).toBe(0);
+  });
+});
+
+describe('IndexReportCommand (native class)', () => {
+  it('emits summary via --progress-file flag', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'report', '--progress-file', progressFile, '-o', 'json'],
+      { commandClasses: [IndexReportCommand], context: { cwd: tmpRoot, fs: createNodeFsAdapter() } }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { summary: { done: number; error: number } } };
+    expect(env.data.summary.done).toBe(1);
+    expect(env.data.summary.error).toBe(1);
+  });
+
+  it('text output renders markdown table', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'report', '--progress-file', progressFile],
+      { commandClasses: [IndexReportCommand], context: { cwd: tmpRoot, fs: createNodeFsAdapter() } }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toMatch(/Hub harvest report/i);
+    expect(stdout).toContain('src-a');
+  });
+
+  it('empty progress file gives all-zero summary', async () => {
+    const empty = path.join(tmpRoot, 'empty.jsonl');
+    const { exitCode, stdout } = await runCommand(
+      ['index', 'report', '--progress-file', empty, '-o', 'json'],
+      { commandClasses: [IndexReportCommand], context: { cwd: tmpRoot, fs: createNodeFsAdapter() } }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { summary: { done: number } } };
     expect(env.data.summary.done).toBe(0);
   });
 });

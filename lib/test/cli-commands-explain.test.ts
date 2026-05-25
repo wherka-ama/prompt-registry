@@ -5,6 +5,7 @@ import {
 } from 'vitest';
 import {
   createExplainCommand,
+  ExplainCommand,
 } from '../src/cli/commands/explain';
 import {
   runCommand,
@@ -94,5 +95,56 @@ describe('explain command', () => {
     expect(lines.length).toBe(1);
     const parsed = JSON.parse(lines[0]) as { code: string };
     expect(parsed.code).toBe('BUNDLE.NOT_FOUND');
+  });
+});
+
+describe('ExplainCommand (native class)', () => {
+  it('explains a known code via positional arg', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['explain', 'BUNDLE.NOT_FOUND', '-o', 'json'],
+      { commandClasses: [ExplainCommand] }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { code: string; namespace: string } };
+    expect(env.data.code).toBe('BUNDLE.NOT_FOUND');
+    expect(env.data.namespace).toBe('BUNDLE');
+  });
+
+  it('returns placeholder for code in known namespace but not in catalog', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['explain', 'INDEX.UNDOCUMENTED_CODE', '-o', 'json'],
+      { commandClasses: [ExplainCommand] }
+    );
+    expect(exitCode).toBe(0);
+    const env = JSON.parse(stdout) as { data: { summary: string } };
+    expect(env.data.summary).toMatch(/recognized namespace/);
+  });
+
+  it('exits 1 for unknown namespace', async () => {
+    const { exitCode, stderr } = await runCommand(
+      ['explain', 'XYZZY.SOMETHING'],
+      { commandClasses: [ExplainCommand] }
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toMatch(/unknown namespace/);
+  });
+
+  it('text output prints code and remediation', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['explain', 'BUNDLE.NOT_FOUND'],
+      { commandClasses: [ExplainCommand] }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('BUNDLE.NOT_FOUND');
+    expect(stdout).toContain('Remediation:');
+  });
+
+  it('yaml output wraps result', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['explain', 'BUNDLE.NOT_FOUND', '-o', 'yaml'],
+      { commandClasses: [ExplainCommand] }
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('code: BUNDLE.NOT_FOUND');
   });
 });
