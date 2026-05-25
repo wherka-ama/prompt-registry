@@ -10,6 +10,7 @@
  */
 import {
   Command,
+  copyCommandPrototype,
   Option,
 } from '../framework';
 import {
@@ -147,19 +148,7 @@ const createConfigGetCommandDefinition = (
       return super.execute();
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- dynamic class static property
-  (ConfiguredCommand as any).paths = ConfigGetCommand.paths;
-
-  // Copy all property descriptors from the base class to ensure clipanion discovers options
-  const baseDescriptors = Object.getOwnPropertyDescriptors(ConfigGetCommand.prototype);
-  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
-    if (key !== 'constructor') {
-      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
-  (ConfiguredCommand as any).usage = ConfigGetCommand.usage;
+  copyCommandPrototype(ConfigGetCommand, ConfiguredCommand);
 
   return ConfiguredCommand as unknown as typeof ConfigGetCommand;
 };

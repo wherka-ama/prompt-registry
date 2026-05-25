@@ -39,6 +39,7 @@ import {
 import {
   type CommandDefinition,
   type Context,
+  copyCommandPrototype,
   defineCommand,
   formatOutput,
   type OutputFormat,
@@ -264,19 +265,7 @@ const createBundleBuildCommandDefinition = (
       return super.execute();
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- dynamic class static property
-  (ConfiguredCommand as any).paths = BundleBuildCommand.paths;
-
-  // Copy all property descriptors from the base class to ensure clipanion discovers options
-  const baseDescriptors = Object.getOwnPropertyDescriptors(BundleBuildCommand.prototype);
-  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
-    if (key !== 'constructor') {
-      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
-  (ConfiguredCommand as any).usage = BundleBuildCommand.usage;
+  copyCommandPrototype(BundleBuildCommand, ConfiguredCommand);
 
   return ConfiguredCommand as unknown as typeof BundleBuildCommand;
 };

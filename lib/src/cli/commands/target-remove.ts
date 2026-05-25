@@ -11,6 +11,7 @@ import {
 } from '../../infra/stores/target-store';
 import {
   Command,
+  copyCommandPrototype,
   failWith,
   Option,
 } from '../framework';
@@ -134,19 +135,7 @@ const createTargetRemoveCommandDefinition = (
       return super.execute();
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- dynamic class static property
-  (ConfiguredCommand as any).paths = TargetRemoveCommand.paths;
-
-  // Copy all property descriptors from the base class to ensure clipanion discovers options
-  const baseDescriptors = Object.getOwnPropertyDescriptors(TargetRemoveCommand.prototype);
-  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
-    if (key !== 'constructor') {
-      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
-  (ConfiguredCommand as any).usage = TargetRemoveCommand.usage;
+  copyCommandPrototype(TargetRemoveCommand, ConfiguredCommand);
 
   return ConfiguredCommand as unknown as typeof TargetRemoveCommand;
 };

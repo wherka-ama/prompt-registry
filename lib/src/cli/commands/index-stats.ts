@@ -17,6 +17,7 @@ import {
 } from '../../infra/stores/json-index-store';
 import {
   Command,
+  copyCommandPrototype,
   failWith,
   Option,
 } from '../framework';
@@ -131,19 +132,7 @@ const createIndexStatsCommandDefinition = (
       return super.execute();
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- dynamic class static property
-  (ConfiguredCommand as any).paths = IndexStatsCommand.paths;
-
-  // Copy all property descriptors from the base class to ensure clipanion discovers options
-  const baseDescriptors = Object.getOwnPropertyDescriptors(IndexStatsCommand.prototype);
-  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
-    if (key !== 'constructor') {
-      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
-  (ConfiguredCommand as any).usage = IndexStatsCommand.usage;
+  copyCommandPrototype(IndexStatsCommand, ConfiguredCommand);
 
   return ConfiguredCommand as unknown as typeof IndexStatsCommand;
 };
@@ -208,7 +197,6 @@ export const createIndexStatsCommand = (
       }
     }
   });
-
 
 const renderStatsText = (s: IndexStats): string =>
   [

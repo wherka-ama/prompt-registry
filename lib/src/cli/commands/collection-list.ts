@@ -21,6 +21,7 @@ import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import {
   Command,
+  copyCommandPrototype,
   Option,
 } from '../framework';
 import {
@@ -141,19 +142,7 @@ const createCollectionListCommandDefinition = (
       return super.execute();
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- dynamic class static property
-  (ConfiguredCommand as any).paths = CollectionListCommand.paths;
-
-  // Copy all property descriptors from the base class to ensure clipanion discovers options
-  const baseDescriptors = Object.getOwnPropertyDescriptors(CollectionListCommand.prototype);
-  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
-    if (key !== 'constructor') {
-      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
-  (ConfiguredCommand as any).usage = CollectionListCommand.usage;
+  copyCommandPrototype(CollectionListCommand, ConfiguredCommand);
 
   return ConfiguredCommand as unknown as typeof CollectionListCommand;
 };

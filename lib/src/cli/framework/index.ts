@@ -97,3 +97,6 @@ export {
   findProjectLockfile,
   loadTargets,
 } from './target';
+export {
+  copyCommandPrototype,
+} from './command-class';

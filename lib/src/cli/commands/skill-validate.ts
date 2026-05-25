@@ -11,6 +11,7 @@ import {
 } from '../..';
 import {
   Command,
+  copyCommandPrototype,
   Option,
 } from '../framework';
 import {
@@ -115,19 +116,7 @@ const createSkillValidateCommandDefinition = (
       return super.execute();
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- dynamic class static property
-  (ConfiguredCommand as any).paths = SkillValidateCommand.paths;
-
-  // Copy all property descriptors from the base class to ensure clipanion discovers options
-  const baseDescriptors = Object.getOwnPropertyDescriptors(SkillValidateCommand.prototype);
-  for (const [key, descriptor] of Object.entries(baseDescriptors)) {
-    if (key !== 'constructor') {
-      Object.defineProperty(ConfiguredCommand.prototype, key, descriptor);
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Command.Usage is a Clipanion factory method
-  (ConfiguredCommand as any).usage = SkillValidateCommand.usage;
+  copyCommandPrototype(SkillValidateCommand, ConfiguredCommand);
 
   return ConfiguredCommand as unknown as typeof SkillValidateCommand;
 };
