@@ -63,7 +63,7 @@ export const createIndexShortlistCommand = (
     path: ['index', 'shortlist', opts.subcommand],
     description: `Manage primitive-index shortlists: ${opts.subcommand}.`,
     category: 'Index Management',
-    run: ({ ctx }: { ctx: Context }): Promise<number> => {
+    run: ({ ctx }: { ctx: Context }): number | Promise<number> => {
       const fmt = opts.output ?? 'text';
       const indexPath = opts.indexFile ?? defaultIndexFile(ctx.env);
       try {
@@ -79,25 +79,11 @@ export const createIndexShortlistCommand = (
           }
         }
       } catch (cause) {
-        return failWithAsync(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
+        return failWith(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
       }
     }
   });
 
-/**
- * Async wrapper for failWith to support async command execution.
- * @param ctx CLI context.
- * @param output Output format.
- * @param command Command name.
- * @param err Registry error.
- * @returns Exit code wrapped in Promise.
- */
-const failWithAsync = async (
-  ctx: Context,
-  output: OutputFormat,
-  command: string,
-  err: RegistryError
-): Promise<number> => failWith(ctx, output, command, err);
 
 const runNew = async (
   ctx: Context,
@@ -107,7 +93,7 @@ const runNew = async (
   opts: IndexShortlistOptions
 ): Promise<number> => {
   if (opts.name === undefined || opts.name.length === 0) {
-    return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+    return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
       code: 'USAGE.MISSING_FLAG',
       message: 'index shortlist new: --name <NAME> is required'
     }));
@@ -132,7 +118,7 @@ const runAdd = async (
   const id = opts.shortlistId ?? '';
   const pid = opts.primitiveId ?? '';
   if (id.length === 0 || pid.length === 0) {
-    return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+    return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
       code: 'USAGE.MISSING_FLAG',
       message: 'index shortlist add: --id <SHORTLIST_ID> and --primitive <PRIMITIVE_ID> are required'
     }));
@@ -141,7 +127,7 @@ const runAdd = async (
   try {
     sl = idx.addToShortlist(id, pid);
   } catch (cause) {
-    return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+    return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
       code: 'INDEX.SHORTLIST_NOT_FOUND',
       message: `index shortlist add: ${(cause as Error).message}`,
       cause: cause instanceof Error ? cause : undefined
@@ -166,7 +152,7 @@ const runRemove = async (
   const id = opts.shortlistId ?? '';
   const pid = opts.primitiveId ?? '';
   if (id.length === 0 || pid.length === 0) {
-    return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+    return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
       code: 'USAGE.MISSING_FLAG',
       message: 'index shortlist remove: --id and --primitive are required'
     }));
@@ -175,7 +161,7 @@ const runRemove = async (
   try {
     sl = idx.removeFromShortlist(id, pid);
   } catch (cause) {
-    return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+    return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
       code: 'INDEX.SHORTLIST_NOT_FOUND',
       message: `index shortlist remove: ${(cause as Error).message}`,
       cause: cause instanceof Error ? cause : undefined
@@ -261,7 +247,7 @@ export class IndexShortlistNewCommand extends Command {
     try {
       const idx = loadIndex(indexPath);
       if (!this.name || this.name.length === 0) {
-        return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+        return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'index shortlist new: --name <NAME> is required'
         }));
@@ -275,7 +261,7 @@ export class IndexShortlistNewCommand extends Command {
       });
       return 0;
     } catch (cause) {
-      return failWithAsync(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
+      return failWith(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
     }
   }
 }
@@ -314,7 +300,7 @@ export class IndexShortlistAddCommand extends Command {
       const id = this.id ?? '';
       const pid = this.primitive ?? '';
       if (id.length === 0 || pid.length === 0) {
-        return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+        return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'index shortlist add: --id <SHORTLIST_ID> and --primitive <PRIMITIVE_ID> are required'
         }));
@@ -323,7 +309,7 @@ export class IndexShortlistAddCommand extends Command {
       try {
         sl = idx.addToShortlist(id, pid);
       } catch (cause) {
-        return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+        return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
           code: 'INDEX.SHORTLIST_NOT_FOUND',
           message: `index shortlist add: ${(cause as Error).message}`,
           cause: cause instanceof Error ? cause : undefined
@@ -337,7 +323,7 @@ export class IndexShortlistAddCommand extends Command {
       });
       return 0;
     } catch (cause) {
-      return failWithAsync(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
+      return failWith(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
     }
   }
 }
@@ -376,7 +362,7 @@ export class IndexShortlistRemoveCommand extends Command {
       const id = this.id ?? '';
       const pid = this.primitive ?? '';
       if (id.length === 0 || pid.length === 0) {
-        return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+        return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
           code: 'USAGE.MISSING_FLAG',
           message: 'index shortlist remove: --id and --primitive are required'
         }));
@@ -385,7 +371,7 @@ export class IndexShortlistRemoveCommand extends Command {
       try {
         sl = idx.removeFromShortlist(id, pid);
       } catch (cause) {
-        return failWithAsync(ctx, fmt, 'index.shortlist', new RegistryError({
+        return failWith(ctx, fmt, 'index.shortlist', new RegistryError({
           code: 'INDEX.SHORTLIST_NOT_FOUND',
           message: `index shortlist remove: ${(cause as Error).message}`,
           cause: cause instanceof Error ? cause : undefined
@@ -399,7 +385,7 @@ export class IndexShortlistRemoveCommand extends Command {
       });
       return 0;
     } catch (cause) {
-      return failWithAsync(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
+      return failWith(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
     }
   }
 }
@@ -445,7 +431,7 @@ export class IndexShortlistListCommand extends Command {
       });
       return 0;
     } catch (cause) {
-      return failWithAsync(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
+      return failWith(ctx, fmt, 'index.shortlist', classifyError(cause, indexPath));
     }
   }
 }

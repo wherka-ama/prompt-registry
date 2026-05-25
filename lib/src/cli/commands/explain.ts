@@ -160,7 +160,7 @@ export const createExplainCommand = (
     path: ['explain'],
     description: 'Print documentation for a RegistryError code (e.g., `prompt-registry explain BUNDLE.NOT_FOUND`).',
     category: 'Diagnostics',
-    run: async ({ ctx }: { ctx: Context }): Promise<number> => {
+    run: ({ ctx }: { ctx: Context }): number => {
       const fmt = opts.output ?? 'text';
 
       if (!opts.code) {
@@ -251,7 +251,7 @@ export class ExplainCommand extends Command {
   public code = Option.String();
   public output = Option.String('-o,--output');
 
-  public async execute(): Promise<number> {
+  public execute(): Promise<number> {
     const ctx = getCommandContext(this);
 
     if (!this.code) {
@@ -261,7 +261,7 @@ export class ExplainCommand extends Command {
         hint: 'Usage: `prompt-registry explain <NAMESPACE.CODE>` (e.g., BUNDLE.NOT_FOUND)'
       });
       emitError(ctx, (this.output ?? 'text') as OutputFormat, err);
-      return 1;
+      return Promise.resolve(1);
     }
     const dotIdx = this.code.indexOf('.');
     const namespace = dotIdx === -1 ? this.code : this.code.slice(0, dotIdx);
@@ -272,7 +272,7 @@ export class ExplainCommand extends Command {
         hint: `Valid namespaces: ${[...KNOWN_NAMESPACES].toSorted((a, b) => a.localeCompare(b)).join(', ')}`
       });
       emitError(ctx, (this.output ?? 'text') as OutputFormat, err);
-      return 1;
+      return Promise.resolve(1);
     }
     const entry = CATALOG[this.code];
     const data: ExplainData = entry === undefined
@@ -298,7 +298,7 @@ export class ExplainCommand extends Command {
       data,
       textRenderer: renderText
     });
-    return 0;
+    return Promise.resolve(0);
   }
 }
 

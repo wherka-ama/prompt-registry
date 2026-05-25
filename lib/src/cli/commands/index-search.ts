@@ -138,7 +138,7 @@ export const createIndexSearchCommand = (
         }
         return 0;
       } catch (cause) {
-        return failWithAsync(ctx, fmt, 'index.search', classifyError(cause, indexPath));
+        return failWith(ctx, fmt, 'index.search', classifyError(cause, indexPath));
       }
     }
   });
@@ -392,20 +392,6 @@ const classifyError = (cause: unknown, indexPath: string): RegistryError => {
   });
 };
 
-/**
- * Async wrapper for failWith to support async command execution.
- * @param ctx CLI context.
- * @param output Output format.
- * @param command Command name.
- * @param err Registry error.
- * @returns Exit code wrapped in Promise.
- */
-const failWithAsync = async (
-  ctx: Context,
-  output: OutputFormat,
-  command: string,
-  err: RegistryError
-): Promise<number> => failWith(ctx, output, command, err);
 
 const renderSearchText = (r: SearchResult): string => {
   const lines: string[] = [`total: ${String(r.total)}  took: ${String(r.tookMs)}ms`];

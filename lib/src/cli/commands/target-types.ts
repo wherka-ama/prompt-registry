@@ -59,7 +59,7 @@ export class TargetTypesCommand extends Command {
 
   public output = Option.String('-o,--output');
 
-  public async execute(): Promise<number> {
+  public execute(): Promise<number> {
     const ctx = getCommandContext(this);
 
     const data: TargetTypeEntry[] = TARGET_TYPES.map((t) => ({
@@ -78,7 +78,7 @@ export class TargetTypesCommand extends Command {
         '\nUsage: prompt-registry target add <name> --type <type>\n'
       ].join('')
     });
-    return 0;
+    return Promise.resolve(0);
   }
 }
 

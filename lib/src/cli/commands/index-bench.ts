@@ -122,16 +122,16 @@ export class IndexBenchCommand extends Command {
   public iterations = Option.String('--iterations');
   public output = Option.String('-o,--output');
 
-  public async execute(): Promise<number> {
+  public execute(): Promise<number> {
     const ctx = getCommandContext(this);
 
     const fmt = (this.output ?? 'text') as OutputFormat;
 
     if (!this.gold || this.gold.length === 0) {
-      return failWith(ctx, fmt, 'index.bench', new RegistryError({
+      return Promise.resolve(failWith(ctx, fmt, 'index.bench', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'index bench: --gold <FILE> is required'
-      }));
+      })));
     }
 
     const indexPath = this.index ?? defaultIndexFile(ctx.env);
@@ -148,7 +148,7 @@ export class IndexBenchCommand extends Command {
         data: report,
         textRenderer: (r) => renderBenchReportMarkdown(r)
       });
-      return 0;
+      return Promise.resolve(0);
     } catch (cause) {
       const msg = cause instanceof Error ? cause.message : String(cause);
       const err = /ENOENT|no such file/i.test(msg)
@@ -163,7 +163,7 @@ export class IndexBenchCommand extends Command {
           message: `index bench failed: ${msg}`,
           cause: cause instanceof Error ? cause : undefined
         });
-      return failWith(ctx, fmt, 'index.bench', err);
+      return Promise.resolve(failWith(ctx, fmt, 'index.bench', err));
     }
   }
 }

@@ -120,16 +120,16 @@ export class IndexEvalCommand extends Command {
   public index = Option.String('--index');
   public output = Option.String('-o,--output');
 
-  public async execute(): Promise<number> {
+  public execute(): Promise<number> {
     const ctx = getCommandContext(this);
 
     const fmt = (this.output ?? 'text') as OutputFormat;
 
     if (!this.gold || this.gold.length === 0) {
-      return failWith(ctx, fmt, 'index.eval', new RegistryError({
+      return Promise.resolve(failWith(ctx, fmt, 'index.eval', new RegistryError({
         code: 'USAGE.MISSING_FLAG',
         message: 'index eval: --gold <FILE> is required'
-      }));
+      })));
     }
 
     const indexPath = this.index ?? defaultIndexFile(ctx.env);
@@ -154,7 +154,7 @@ export class IndexEvalCommand extends Command {
           message: `index eval failed: ${msg}`,
           cause: cause instanceof Error ? cause : undefined
         });
-      return failWith(ctx, fmt, 'index.eval', err);
+      return Promise.resolve(failWith(ctx, fmt, 'index.eval', err));
     }
 
     formatOutput({
@@ -164,6 +164,6 @@ export class IndexEvalCommand extends Command {
     });
 
     // Non-zero exit when any case failed so CI treats it as a fail.
-    return report.aggregate.failed > 0 ? 1 : 0;
+    return Promise.resolve(report.aggregate.failed > 0 ? 1 : 0);
   }
 }

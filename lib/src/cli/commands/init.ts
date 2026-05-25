@@ -174,10 +174,10 @@ export class InitCommand extends Command {
  * @param _opts Init options.
  * @returns Array of hub choices.
  */
-async function buildHubChoices(
+function buildHubChoices(
   _ctx: Context,
   _opts: InitOptions
-): Promise<{ name: string; value: string }[]> {
+): { name: string; value: string }[] {
   const defaultHubs = getEnabledDefaultHubs();
   const hubChoices: { name: string; value: string }[] = [];
 
@@ -228,7 +228,7 @@ async function runInteractiveWizard(ctx: Context, _opts: InitOptions): Promise<{
   }
 
   const defaultHubs = getEnabledDefaultHubs();
-  const hubChoices = await buildHubChoices(ctx, _opts);
+  const hubChoices = buildHubChoices(ctx, _opts);
 
   const baseChoices = hubChoices.length > 0
     ? hubChoices

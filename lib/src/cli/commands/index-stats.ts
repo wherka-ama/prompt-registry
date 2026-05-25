@@ -100,7 +100,7 @@ export class IndexStatsCommand extends BaseIndexStatsCommand {
           message: `failed to load index ${indexPath}: ${msg}`,
           cause: cause instanceof Error ? cause : undefined
         });
-      return failWithAsync(ctx, fmt, 'index.stats', err);
+      return failWith(ctx, fmt, 'index.stats', err);
     }
   }
 }
@@ -175,7 +175,7 @@ export const createIndexStatsCommand = (
     path: ['index', 'stats'],
     description: 'Show summary statistics for a primitive index.',
     category: 'Index Management',
-    run: ({ ctx }: { ctx: Context }): Promise<number> => {
+    run: ({ ctx }: { ctx: Context }): number | Promise<number> => {
       const fmt = opts.output ?? 'text';
       const indexPath = opts.indexFile ?? defaultIndexFile(ctx.env);
       try {
@@ -204,25 +204,11 @@ export const createIndexStatsCommand = (
             message: `failed to load index ${indexPath}: ${msg}`,
             cause: cause instanceof Error ? cause : undefined
           });
-        return failWithAsync(ctx, fmt, 'index.stats', err);
+        return failWith(ctx, fmt, 'index.stats', err);
       }
     }
   });
 
-/**
- * Async wrapper for failWith to support async command execution.
- * @param ctx CLI context.
- * @param output Output format.
- * @param command Command name.
- * @param err Registry error.
- * @returns Exit code wrapped in Promise.
- */
-const failWithAsync = async (
-  ctx: Context,
-  output: OutputFormat,
-  command: string,
-  err: RegistryError
-): Promise<number> => failWith(ctx, output, command, err);
 
 const renderStatsText = (s: IndexStats): string =>
   [
