@@ -3,7 +3,11 @@
  * @module test/cli/commands/discover
  */
 
+import * as fsp from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import {
+  afterEach,
   beforeEach,
   describe,
   expect,
@@ -17,13 +21,25 @@ import {
   buildSearchQueries,
 } from '../src/app/discovery/recommendation-engine';
 import {
+  PrimitiveIndex,
+  saveIndex,
+} from '../src';
+import {
   createDiscoverCommand,
   deduplicateHits,
+  DiscoverCommand,
   renderDiscoveryText,
 } from '../src/cli/commands/discover';
 import type {
   DiscoverOptions,
 } from '../src/cli/commands/discover';
+import {
+  runCommand,
+} from '../src/cli/framework';
+import {
+  createFixtureBundles,
+  FakeBundleProvider,
+} from './fixtures/primitive-index';
 import type {
   PrimitiveKind,
   SearchHit,
@@ -1295,5 +1311,69 @@ describe('renderDiscoveryText', () => {
     const output = renderDiscoveryText(context, queries, results);
 
     expect(output).toContain('Many Tags');
+  });
+});
+
+describe('DiscoverCommand (native class)', () => {
+  let tmpRoot: string;
+  let indexFile: string;
+
+  beforeEach(async () => {
+    tmpRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'prc-discover-native-'));
+    indexFile = path.join(tmpRoot, 'primitive-index.json');
+    const idx = await PrimitiveIndex.buildFrom(
+      new FakeBundleProvider(createFixtureBundles()),
+      { hubId: 'test' }
+    );
+    saveIndex(idx, indexFile);
+  });
+
+  afterEach(async () => {
+    await fsp.rm(tmpRoot, { recursive: true, force: true });
+  });
+
+  it('exits 1 when index file is missing', async () => {
+    const { exitCode } = await runCommand(
+      ['discover', '--index', path.join(tmpRoot, 'nonexistent.json')],
+      {
+        commandClasses: [DiscoverCommand],
+        context: { cwd: tmpRoot, fs: { exists: () => Promise.resolve(false) } as never, env: {} }
+      }
+    );
+    expect(exitCode).toBe(1);
+  });
+
+  it('exits 0 with json output when index exists', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['discover', '--index', indexFile, '-o', 'json'],
+      {
+        commandClasses: [DiscoverCommand],
+        context: { cwd: tmpRoot, env: { HOME: tmpRoot } }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as { status: string };
+    expect(parsed.status).toBe('ok');
+  });
+
+  it('createDiscoverCommand success path with real index file', async () => {
+    const mockCtx = {
+      stdout: { write: vi.fn() },
+      stderr: { write: vi.fn() },
+      env: { HOME: tmpRoot },
+      cwd: () => tmpRoot
+    };
+    const opts: DiscoverOptions = {
+      output: 'json',
+      indexFile,
+      limit: 5,
+      cwd: tmpRoot
+    };
+    const cmd = createDiscoverCommand(opts);
+    const result = await cmd.run({ ctx: mockCtx as never });
+    expect(result).toBe(0);
+    const written = mockCtx.stdout.write.mock.calls.map((c: unknown[]) => c[0] as string).join('');
+    const parsed = JSON.parse(written) as { status: string };
+    expect(parsed.status).toBe('ok');
   });
 });
