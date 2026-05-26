@@ -17,6 +17,7 @@ import {
 } from '../src/cli/commands/target-list';
 import {
   createTargetRemoveCommand,
+  createTargetRemoveCommandClass,
   TargetRemoveCommand,
 } from '../src/cli/commands/target-remove';
 import {
@@ -235,5 +236,36 @@ describe('TargetRemoveCommand (native class)', () => {
     expect(result.exitCode).toBe(1);
     const parsed = JSON.parse(result.stdout) as { errors: { code: string }[] };
     expect(parsed.errors[0].code).toBe('USAGE.MISSING_FLAG');
+  });
+
+  it('createTargetRemoveCommandClass factory removes target', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'targets:\n  - name: foo\n    type: vscode\n    scope: user\n'
+    );
+    const sharedCtx = { cwd: tmpRoot, fs: realFs, env: {} };
+    const result = await runCommand(['target', 'remove', 'foo', '-o', 'json'], {
+      commandClasses: [createTargetRemoveCommandClass(sharedCtx as unknown as Parameters<typeof createTargetRemoveCommandClass>[0])],
+      context: sharedCtx
+    });
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('returns INTERNAL.UNEXPECTED when fs write fails', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'prompt-registry.yml'),
+      'targets:\n  - name: foo\n    type: vscode\n    scope: user\n'
+    );
+    const badFs: FsAbstraction = {
+      ...realFs,
+      writeFile: (): Promise<void> => Promise.reject(new Error('write failed'))
+    };
+    const result = await runCommand(['target', 'remove', 'foo', '-o', 'json'], {
+      commandClasses: [TargetRemoveCommand],
+      context: { cwd: tmpRoot, fs: badFs, env: {} }
+    });
+    expect(result.exitCode).toBe(1);
+    const parsedErr = JSON.parse(result.stdout) as { errors: { code: string }[] };
+    expect(parsedErr.errors[0].code).toBe('INTERNAL.UNEXPECTED');
   });
 });
