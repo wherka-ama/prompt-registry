@@ -141,4 +141,71 @@ describe('UninstallCommand (native class)', () => {
     const parsed = JSON.parse(stdout) as { errors: { code: string }[] };
     expect(parsed.errors[0].code).toBe('USAGE.MISSING_FLAG');
   });
+
+  it('--bundle runs actual uninstall and updates lockfile', async () => {
+    const lockfile = {
+      schemaVersion: 1,
+      entries: [{ bundleId: 'my-bundle', target: 't1', files: ['prompts/x.md'], installedAt: '', fileChecksums: {}, bundleVersion: '1.0.0', sourceId: 's1' }],
+      sources: {}
+    };
+    await fsp.writeFile(path.join(tmp, 'prompt-registry.lock.json'), JSON.stringify(lockfile));
+    const { exitCode, stdout } = await runCommand(
+      ['uninstall', '--bundle', 'my-bundle', '--target', 't1', '-o', 'json'],
+      { commandClasses: [UninstallCommand], context: { cwd: tmp, fs: createNodeFsAdapter(), env: { HOME: tmp } } }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as { status: string; data: { bundle: string } };
+    expect(parsed.status).toBe('ok');
+    expect(parsed.data.bundle).toBe('my-bundle');
+    const lock = JSON.parse(await fsp.readFile(path.join(tmp, 'prompt-registry.lock.json'), 'utf8')) as { entries: unknown[] };
+    expect(lock.entries).toHaveLength(0);
+  });
+
+  it('--lockfile runs actual uninstall from lockfile path', async () => {
+    const lockPath = path.join(tmp, 'prompt-registry.lock.json');
+    const lockfile = {
+      schemaVersion: 1,
+      entries: [{ bundleId: 'b1', target: 't1', files: ['prompts/x.md'], installedAt: '', fileChecksums: {}, bundleVersion: '1.0.0', sourceId: 's1' }],
+      sources: {}
+    };
+    await fsp.writeFile(lockPath, JSON.stringify(lockfile));
+    const { exitCode, stdout } = await runCommand(
+      ['uninstall', '--lockfile', lockPath, '--target', 't1', '-o', 'json'],
+      { commandClasses: [UninstallCommand], context: { cwd: tmp, fs: createNodeFsAdapter(), env: { HOME: tmp } } }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as { status: string; data: { uninstalled: number } };
+    expect(parsed.status).toBe('ok');
+    expect(parsed.data.uninstalled).toBe(1);
+  });
+
+  it('--all runs actual uninstall for all bundles in target', async () => {
+    const lockfile = {
+      schemaVersion: 1,
+      entries: [
+        { bundleId: 'b1', target: 't1', files: ['prompts/a.md'], installedAt: '', fileChecksums: {}, bundleVersion: '1.0.0', sourceId: 's1' },
+        { bundleId: 'b2', target: 't1', files: ['prompts/b.md'], installedAt: '', fileChecksums: {}, bundleVersion: '1.0.0', sourceId: 's1' }
+      ],
+      sources: {}
+    };
+    await fsp.writeFile(path.join(tmp, 'prompt-registry.lock.json'), JSON.stringify(lockfile));
+    const { exitCode, stdout } = await runCommand(
+      ['uninstall', '--all', '--target', 't1', '-o', 'json'],
+      { commandClasses: [UninstallCommand], context: { cwd: tmp, fs: createNodeFsAdapter(), env: { HOME: tmp } } }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as { status: string; data: { uninstalled: number } };
+    expect(parsed.status).toBe('ok');
+    expect(parsed.data.uninstalled).toBe(2);
+  });
+
+  it('exits 1 when target not configured (RegistryError catch path)', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['uninstall', '--bundle', 'foo', '--target', 'nonexistent', '-o', 'json'],
+      { commandClasses: [UninstallCommand], context: { cwd: tmp, fs: createNodeFsAdapter(), env: { HOME: tmp } } }
+    );
+    expect(exitCode).toBe(1);
+    const parsed = JSON.parse(stdout) as { errors: { code: string }[] };
+    expect(parsed.errors[0].code).toBe('USAGE.MISSING_FLAG');
+  });
 });

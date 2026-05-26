@@ -10,6 +10,8 @@ import {
 } from 'vitest';
 import {
   createPluginsListCommand,
+  createPluginsListCommandClass,
+  PluginsListCommand,
 } from '../src/cli/commands/plugins-list';
 import {
   type FsAbstraction,
@@ -111,6 +113,47 @@ describe('plugins list', () => {
         fs: realFs,
         env: { PATH: '' }
       }
+    });
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { data: unknown[] };
+    expect(parsed.data).toStrictEqual([]);
+  });
+
+  it('PluginsListCommand native class lists plugins', async () => {
+    await fs.writeFile(path.join(tmpA, 'prompt-registry-myplugin'), '');
+    const result = await runCommand(['plugins', 'list'], {
+      commandClasses: [PluginsListCommand],
+      context: {
+        cwd: tmpA,
+        fs: realFs,
+        env: { PATH: tmpA }
+      }
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('myplugin');
+  });
+
+  it('createPluginsListCommandClass factory lists plugins in json mode', async () => {
+    await fs.writeFile(path.join(tmpB, 'prompt-registry-alpha'), '');
+    const context = { cwd: tmpB, fs: realFs, env: { PATH: tmpB } };
+    const result = await runCommand(['plugins', 'list', '-o', 'json'], {
+      commandClasses: [createPluginsListCommandClass({ cwd: tmpB, fs: realFs, env: { PATH: tmpB } })],
+      context
+    });
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { data: { name: string }[] };
+    expect(parsed.data.some((p) => p.name === 'alpha')).toBe(true);
+  });
+
+  it('shows warning status when PATH dir is not readable (readDir throws)', async () => {
+    const badFs: FsAbstraction = {
+      ...realFs,
+      exists: () => Promise.resolve(true),
+      readDir: () => Promise.reject(new Error('permission denied'))
+    };
+    const result = await runCommand(['plugins', 'list'], {
+      commands: [createPluginsListCommand({ output: 'json' })],
+      context: { cwd: tmpA, fs: badFs, env: { PATH: tmpA } }
     });
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as { data: unknown[] };

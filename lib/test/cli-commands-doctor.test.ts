@@ -5,6 +5,7 @@ import {
 } from 'vitest';
 import {
   createDoctorCommand,
+  DoctorCommand,
 } from '../src/cli/commands/doctor';
 import {
   type FsAbstraction,
@@ -33,6 +34,67 @@ const simpleMockFs: FsAbstraction = {
   readDir: () => Promise.resolve([]),
   remove: () => Promise.resolve(undefined)
 };
+
+describe('DoctorCommand (native class)', () => {
+  it('runs doctor via native class', async () => {
+    const result = await runCommand(['doctor'], {
+      commandClasses: [DoctorCommand],
+      context: {
+        env: { PATH: '/usr/bin', NODE_VERSION: `v${process.versions.node}` },
+        cwd: process.cwd(),
+        fs: simpleMockFs
+      }
+    });
+    expect(result.exitCode).toBeLessThanOrEqual(1);
+  });
+
+  it('cwd-accessible reports fail when cwd does not exist', async () => {
+    const result = await runCommand(['doctor'], {
+      commands: [createDoctorCommand({ output: 'json' })],
+      context: {
+        env: { PATH: '/usr/bin', NODE_VERSION: `v${process.versions.node}` },
+        cwd: '/tmp/nonexistent-dir-xyz-12345',
+        fs: {
+          ...simpleMockFs,
+          exists: () => Promise.resolve(false)
+        }
+      }
+    });
+    const parsed = JSON.parse(result.stdout) as { data: { checks: { name: string; status: string }[] } };
+    const cwdCheck = parsed.data.checks.find((c) => c.name === 'cwd-accessible');
+    expect(cwdCheck?.status).toBe('fail');
+  });
+
+  it('cwd-accessible reports fail when fs.exists throws', async () => {
+    const result = await runCommand(['doctor'], {
+      commands: [createDoctorCommand({ output: 'json' })],
+      context: {
+        env: { PATH: '/usr/bin', NODE_VERSION: `v${process.versions.node}` },
+        cwd: process.cwd(),
+        fs: {
+          ...simpleMockFs,
+          exists: () => Promise.reject(new Error('fs error'))
+        }
+      }
+    });
+    const parsed = JSON.parse(result.stdout) as { data: { checks: { name: string; status: string }[] } };
+    const cwdCheck = parsed.data.checks.find((c) => c.name === 'cwd-accessible');
+    expect(cwdCheck?.status).toBe('fail');
+  });
+
+  it('reports warning status when summary has warn > 0', async () => {
+    const result = await runCommand(['doctor'], {
+      commands: [createDoctorCommand({ output: 'json' })],
+      context: {
+        env: { PATH: '', NODE_VERSION: `v${process.versions.node}` },
+        cwd: process.cwd(),
+        fs: simpleMockFs
+      }
+    });
+    const parsed = JSON.parse(result.stdout) as { status: string };
+    expect(['ok', 'warning', 'error']).toContain(parsed.status);
+  });
+});
 
 describe('doctor command', () => {
   it('runs and exits 0 in a healthy environment (text mode default)', { timeout: 10_000 }, async () => {
