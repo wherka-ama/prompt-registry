@@ -10,6 +10,8 @@ import {
 } from 'vitest';
 import {
   createSkillNewCommand,
+  createSkillNewCommandClass,
+  SkillNewCommand,
 } from '../src/cli/commands/skill-new';
 import {
   type FsAbstraction,
@@ -73,5 +75,33 @@ describe('skill new', () => {
     expect(result.exitCode).toBe(1);
     const parsed = JSON.parse(result.stdout) as { errors: { code: string }[] };
     expect(parsed.errors[0].code).toMatch(/^PRIMITIVE\./);
+  });
+
+  it('SkillNewCommand native class creates a skill', async () => {
+    const result = await runCommand(
+      ['skill', 'new', '--skill-name', 'my-skill', '--description', 'A valid description for the skill', '-o', 'json'],
+      {
+        commandClasses: [SkillNewCommand],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { status: string; data: { skillName: string } };
+    expect(parsed.status).toBe('ok');
+    expect(parsed.data.skillName).toBe('my-skill');
+  });
+
+  it('createSkillNewCommandClass factory creates a skill with defaults', async () => {
+    const sharedCtx = { cwd: tmpRoot, fs: realFs, env: {} };
+    const result = await runCommand(
+      ['skill', 'new', '--skill-name', 'my-skill2', '--description', 'Another valid description for the skill', '-o', 'json'],
+      {
+        commandClasses: [createSkillNewCommandClass(sharedCtx as unknown as Parameters<typeof createSkillNewCommandClass>[0])],
+        context: sharedCtx
+      }
+    );
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { status: string };
+    expect(parsed.status).toBe('ok');
   });
 });

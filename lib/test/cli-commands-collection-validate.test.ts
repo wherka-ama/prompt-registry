@@ -11,6 +11,7 @@ import {
 import {
   CollectionValidateCommand,
   createCollectionValidateCommand,
+  createCollectionValidateCommandClass,
 } from '../src/cli/commands/collection-validate';
 import {
   type FsAbstraction,
@@ -266,5 +267,37 @@ describe('CollectionValidateCommand (native class)', () => {
     );
     const md = await fs.readFile(mdPath, 'utf8');
     expect(md).toMatch(/Collection Validation Results/);
+  });
+
+  it('createCollectionValidateCommandClass factory validates with defaults', async () => {
+    await fs.writeFile(
+      path.join(tmpRoot, 'collections', 'alpha.collection.yml'),
+      VALID_COLLECTION
+    );
+    const sharedCtx = { cwd: tmpRoot, fs: realFs, env: {} };
+    const { exitCode, stdout } = await runCommand(
+      ['collection', 'validate', '-o', 'json'],
+      {
+        commandClasses: [createCollectionValidateCommandClass(sharedCtx as unknown as Parameters<typeof createCollectionValidateCommandClass>[0])],
+        context: sharedCtx
+      }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as { status: string };
+    expect(parsed.status).toBe('ok');
+  });
+
+  it('json format emits error envelope when collections dir is missing', async () => {
+    await fs.rm(path.join(tmpRoot, 'collections'), { recursive: true });
+    const { exitCode, stdout } = await runCommand(
+      ['collection', 'validate'],
+      {
+        commands: [createCollectionValidateCommand({ output: 'json' })],
+        context: { cwd: tmpRoot, fs: realFs }
+      }
+    );
+    expect(exitCode).toBe(1);
+    const parsed = JSON.parse(stdout) as { errors: { code: string }[] };
+    expect(parsed.errors[0].code).toMatch(/FS\.|COLLECTION\./);
   });
 });
