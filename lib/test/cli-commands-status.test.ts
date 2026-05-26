@@ -14,6 +14,7 @@ import {
 } from '../src';
 import {
   createStatusCommand,
+  StatusCommand,
 } from '../src/cli/commands/status';
 import {
   runCommand,
@@ -400,5 +401,65 @@ describe('cli `status`', () => {
     };
     expect(parsed.data.targets).toHaveLength(1);
     expect(parsed.data.targets[0].name).toBe('user-copilot');
+  });
+
+  it('StatusCommand native class runs successfully', async () => {
+    const { exitCode, stdout } = await runCommand(
+      ['status', '-o', 'json'],
+      {
+        commandClasses: [StatusCommand],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as { status: string };
+    expect(parsed.status).toBe('ok');
+  });
+
+  it('StatusCommand native class supports --verbose flag', async () => {
+    const lockfile = {
+      schemaVersion: 1,
+      entries: [{ bundleId: 'b1', target: 't1', files: [], installedAt: new Date().toISOString(), fileChecksums: {}, bundleVersion: '1.0.0', sourceId: 's1' }],
+      sources: {}
+    };
+    await fs.writeFile(path.join(tmpRoot, 'prompt-registry.lock.json'), JSON.stringify(lockfile));
+    const { exitCode, stdout } = await runCommand(
+      ['status', '-o', 'json', '--verbose'],
+      {
+        commandClasses: [StatusCommand],
+        context: {
+          cwd: tmpRoot,
+          fs: createNodeFsAdapter(),
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as { data: { lockfile: { bundles: unknown[] } } };
+    expect(parsed.data.lockfile.bundles).toHaveLength(1);
+  });
+
+  it('status exits 1 and renders error on unexpected failure', async () => {
+    const badFs = {
+      ...createNodeFsAdapter(),
+      exists: (_p: string): Promise<boolean> => Promise.reject(new Error('unexpected fs error'))
+    };
+    const { exitCode, stderr } = await runCommand(
+      ['status'],
+      {
+        commands: [createStatusCommand({ output: 'text' })],
+        context: {
+          cwd: tmpRoot,
+          fs: badFs,
+          env: { XDG_CONFIG_HOME: xdgConfig, HOME: tmpRoot }
+        }
+      }
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr).toMatch(/unexpected fs error/i);
   });
 });

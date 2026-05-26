@@ -10,6 +10,8 @@ import {
 } from 'vitest';
 import {
   createSkillValidateCommand,
+  createSkillValidateCommandClass,
+  SkillValidateCommand,
 } from '../src/cli/commands/skill-validate';
 import {
   type FsAbstraction,
@@ -71,6 +73,43 @@ describe('skill validate', () => {
     await fs.writeFile(path.join(tmpRoot, 'skills', 'broken', 'SKILL.md'), '# missing frontmatter');
     const result = await runCommand(['skill', 'validate'], {
       commands: [createSkillValidateCommand({ output: 'json' })],
+      context: { cwd: tmpRoot, fs: realFs }
+    });
+    expect(result.exitCode).toBe(1);
+    const parsed = JSON.parse(result.stdout) as { status: string };
+    expect(parsed.status).toBe('error');
+  });
+
+  it('SkillValidateCommand native class validates skills', async () => {
+    await fs.mkdir(path.join(tmpRoot, 'skills', 'foo-skill'), { recursive: true });
+    await fs.writeFile(path.join(tmpRoot, 'skills', 'foo-skill', 'SKILL.md'), validSkillMd);
+    const result = await runCommand(['skill', 'validate', '-o', 'json'], {
+      commandClasses: [SkillValidateCommand],
+      context: { cwd: tmpRoot, fs: realFs }
+    });
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { status: string };
+    expect(parsed.status).toBe('ok');
+  });
+
+  it('createSkillValidateCommandClass factory validates with defaults', async () => {
+    await fs.mkdir(path.join(tmpRoot, 'skills', 'foo-skill'), { recursive: true });
+    await fs.writeFile(path.join(tmpRoot, 'skills', 'foo-skill', 'SKILL.md'), validSkillMd);
+    const sharedContext = { cwd: tmpRoot, fs: realFs, env: {} };
+    const result = await runCommand(['skill', 'validate', '-o', 'json'], {
+      commandClasses: [createSkillValidateCommandClass(sharedContext as unknown as Parameters<typeof createSkillValidateCommandClass>[0])],
+      context: sharedContext
+    });
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { status: string };
+    expect(parsed.status).toBe('ok');
+  });
+
+  it('SkillValidateCommand native class exits 1 on invalid skill', async () => {
+    await fs.mkdir(path.join(tmpRoot, 'skills', 'badskill'), { recursive: true });
+    await fs.writeFile(path.join(tmpRoot, 'skills', 'badskill', 'SKILL.md'), '# no frontmatter');
+    const result = await runCommand(['skill', 'validate', '-o', 'json'], {
+      commandClasses: [SkillValidateCommand],
       context: { cwd: tmpRoot, fs: realFs }
     });
     expect(result.exitCode).toBe(1);
