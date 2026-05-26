@@ -338,4 +338,3 @@ const classifyError = (cause: unknown, indexPath: string): RegistryError => {
     cause: cause instanceof Error ? cause : undefined
   });
 };
-

@@ -147,7 +147,6 @@ export const createIndexExportCommand = (
     }
   });
 
-
 const buildIndexExportError = (cause: unknown, indexPath: string): RegistryError => {
   const msg = cause instanceof Error ? cause.message : String(cause);
   return /ENOENT|no such file/i.test(msg)

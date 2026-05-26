@@ -174,10 +174,10 @@ describe('createIndexStatsCommandClass factory', () => {
       env: {},
       stdout: { write: (_s: string) => undefined }
     };
-    const ConfiguredClass = createIndexStatsCommandClass(ctx as any, 'json', indexFile);
-    expect(typeof ConfiguredClass).toBe('function');
-    expect((ConfiguredClass as any).paths).toEqual(IndexStatsCommand.paths);
-    expect((ConfiguredClass as any).usage).toBeDefined();
+    const configuredClass = createIndexStatsCommandClass(ctx as any, 'json', indexFile);
+    expect(typeof configuredClass).toBe('function');
+    expect((configuredClass as any).paths).toEqual(IndexStatsCommand.paths);
+    expect((configuredClass as any).usage).toBeDefined();
   });
 
   it('factory ConfiguredCommand.execute covers factory body when invoked directly', async () => {
@@ -186,11 +186,13 @@ describe('createIndexStatsCommandClass factory', () => {
       cwd: () => tmpRoot,
       fs: createNodeFsAdapter(),
       env: {},
-      stdout: { write: (s: string) => { captured.push(s); } },
+      stdout: { write: (s: string) => {
+        captured.push(s);
+      } },
       stderr: { write: (_s: string) => undefined }
     };
-    const ConfiguredClass = createIndexStatsCommandClass(ctx as any, 'json', indexFile);
-    const instance = new (ConfiguredClass as any)();
+    const configuredClass = createIndexStatsCommandClass(ctx as any, 'json', indexFile);
+    const instance = new (configuredClass as any)();
     instance.commandContext = { ctx };
     instance.output = 'json';
     instance.indexFile = indexFile;

@@ -227,10 +227,10 @@ describe('createCollectionAffectedCommandClass factory', () => {
       env: {},
       stdout: { write: (_s: string) => undefined }
     };
-    const ConfiguredClass = createCollectionAffectedCommandClass(ctx as any, 'json', ['prompts/foo.md']);
-    expect(typeof ConfiguredClass).toBe('function');
-    expect((ConfiguredClass as any).paths).toEqual(CollectionAffectedCommand.paths);
-    expect((ConfiguredClass as any).usage).toBeDefined();
+    const configuredClass = createCollectionAffectedCommandClass(ctx as any, 'json', ['prompts/foo.md']);
+    expect(typeof configuredClass).toBe('function');
+    expect((configuredClass as any).paths).toEqual(CollectionAffectedCommand.paths);
+    expect((configuredClass as any).usage).toBeDefined();
   });
 
   it('factory instance execute() covers factory body when invoked directly', async () => {
@@ -239,11 +239,13 @@ describe('createCollectionAffectedCommandClass factory', () => {
       cwd: () => tmpRoot,
       fs: realFs,
       env: {},
-      stdout: { write: (s: string) => { captured.push(s); } },
+      stdout: { write: (s: string) => {
+        captured.push(s);
+      } },
       stderr: { write: (_s: string) => undefined }
     };
-    const ConfiguredClass = createCollectionAffectedCommandClass(ctx as any, 'json', ['prompts/foo.md']);
-    const instance = new (ConfiguredClass as any)();
+    const configuredClass = createCollectionAffectedCommandClass(ctx as any, 'json', ['prompts/foo.md']);
+    const instance = new (configuredClass as any)();
     instance.commandContext = { ctx };
     instance.output = 'json';
     instance.changedPath = ['prompts/foo.md'];

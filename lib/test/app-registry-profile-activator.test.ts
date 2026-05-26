@@ -205,7 +205,9 @@ describe('ProfileActivator', () => {
       exists: async (p: string) => p.startsWith('/tmp/local-bundle'),
       readDir: async () => ['deployment-manifest.yml'],
       readFile: async (p: string) => {
-        if (p.endsWith('deployment-manifest.yml')) return localManifest;
+        if (p.endsWith('deployment-manifest.yml')) {
+          return localManifest;
+        }
         throw new Error('is a directory');
       }
     };
@@ -253,16 +255,26 @@ describe('ProfileActivator', () => {
       ...createSimpleMockFs(),
       exists: async (p: string) => p.startsWith('/tmp/local-fail'),
       readDir: async (p: string) => {
-        if (p === '/tmp/local-fail') return ['deployment-manifest.yml', 'prompts'];
-        if (p.endsWith('/prompts')) return ['test.prompt.md'];
+        if (p === '/tmp/local-fail') {
+          return ['deployment-manifest.yml', 'prompts'];
+        }
+        if (p.endsWith('/prompts')) {
+          return ['test.prompt.md'];
+        }
         return [];
       },
       readFile: async (p: string) => {
-        if (p.endsWith('deployment-manifest.yml')) return manifestContent;
-        if (p.endsWith('.prompt.md')) return promptContent;
+        if (p.endsWith('deployment-manifest.yml')) {
+          return manifestContent;
+        }
+        if (p.endsWith('.prompt.md')) {
+          return promptContent;
+        }
         throw new Error('is a directory');
       },
-      writeFile: async () => { throw new Error('disk full'); },
+      writeFile: async () => {
+        throw new Error('disk full');
+      },
       mkdir: async () => {}
     };
     const failActivator = new ProfileActivator({

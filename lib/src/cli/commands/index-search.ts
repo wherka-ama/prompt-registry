@@ -392,7 +392,6 @@ const classifyError = (cause: unknown, indexPath: string): RegistryError => {
   });
 };
 
-
 const renderSearchText = (r: SearchResult): string => {
   const lines: string[] = [`total: ${String(r.total)}  took: ${String(r.tookMs)}ms`];
   for (const hit of r.hits) {

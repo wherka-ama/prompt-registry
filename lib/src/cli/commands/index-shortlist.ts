@@ -84,7 +84,6 @@ export const createIndexShortlistCommand = (
     }
   });
 
-
 const runNew = async (
   ctx: Context,
   fmt: OutputFormat,
