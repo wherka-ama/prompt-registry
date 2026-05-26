@@ -14,16 +14,16 @@ import {
   it,
   vi,
 } from 'vitest';
+import {
+  PrimitiveIndex,
+  saveIndex,
+} from '../src';
 import type {
   DetectedContext,
 } from '../src/app/context-detection';
 import {
   buildSearchQueries,
 } from '../src/app/discovery/recommendation-engine';
-import {
-  PrimitiveIndex,
-  saveIndex,
-} from '../src';
 import {
   createDiscoverCommand,
   deduplicateHits,
@@ -36,14 +36,14 @@ import type {
 import {
   runCommand,
 } from '../src/cli/framework';
-import {
-  createFixtureBundles,
-  FakeBundleProvider,
-} from './fixtures/primitive-index';
 import type {
   PrimitiveKind,
   SearchHit,
 } from '../src/infra/search/types';
+import {
+  createFixtureBundles,
+  FakeBundleProvider,
+} from './fixtures/primitive-index';
 
 describe('DiscoverCommand', () => {
   const mockContext = {
